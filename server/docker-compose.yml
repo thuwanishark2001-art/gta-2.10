@@ -1,0 +1,62 @@
+# Local development stack: MariaDB (MySQL compatible), a one-shot migration
+# job, and the server. MariaDB is used because the MySQL plugin (R41-4) can't
+# use MySQL 8's default caching_sha2_password authentication.
+#   cp .env.example .env && ./scripts/fetch-deps.sh && docker compose up --build
+name: kingmakers
+
+services:
+  db:
+    image: mirror.gcr.io/library/mariadb:11.4
+    command: ["--default-time-zone=+00:00", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+    restart: unless-stopped
+
+  migrate:
+    image: mirror.gcr.io/library/mariadb:11.4
+    entrypoint: ["bash", "/scripts/migrate.sh"]
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./scripts/migrate.sh:/scripts/migrate.sh:ro
+      - ./sql/migrations:/migrations:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  server:
+    build:
+      context: .
+      target: server
+    environment:
+      KM_SERVER_NAME: ${KM_SERVER_NAME:-Kingmakers RP}
+      KM_PORT: ${KM_PORT:-7777}
+      KM_MAX_PLAYERS: ${KM_MAX_PLAYERS:-100}
+      KM_RCON_PASSWORD: ${KM_RCON_PASSWORD:-}
+      KM_ANNOUNCE: ${KM_ANNOUNCE:-false}
+      KM_SCRIPT: ${KM_SCRIPT:-kingmakers}
+      DB_HOST: db
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${KM_PORT:-7777}:${KM_PORT:-7777}/udp"
+    volumes:
+      - ./data/logs:/srv/omp/logs
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped

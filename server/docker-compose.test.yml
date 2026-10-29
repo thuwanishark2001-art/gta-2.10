@@ -1,0 +1,14 @@
+# Test overrides: throwaway database, test gamemode, no restart, no ports.
+# Used by scripts/test.sh.
+services:
+  db:
+    volumes: !reset []
+    tmpfs:
+      - /var/lib/mysql
+    restart: "no"
+  server:
+    environment:
+      KM_SCRIPT: ${KM_SCRIPT:-km_tests}
+    ports: !reset []
+    volumes: !reset []
+    restart: "no"

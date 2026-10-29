@@ -18,12 +18,13 @@ this repo's MIT license.
 - [ ] Decide whether to purge old secrets from git history (see Risk 2)
 
 ### Phase 1: server foundation (`/server`)
-- [ ] open.mp server + Pawn gamemode skeleton, config via env/file
-- [ ] MySQL (mysql plugin) + migrations in `/server/sql`
-- [ ] docker-compose for local dev (server + MySQL)
-- [ ] Accounts: register/login, bcrypt, sessions, anti-spam, ban/mute/kick
-- [ ] Characters: several per account, `First_Last` names, skin, spawn, stats
-- [ ] Test plan: Pawn unit tests + scripted login against the dockerized server
+- [x] open.mp server + modular Pawn gamemode, config via env (`.env`)
+- [x] MariaDB via the MySQL plugin R41-4, migrations in `/server/sql/migrations`
+- [x] docker-compose for local dev (database, migration job, server)
+- [x] Accounts: register/login, bcrypt, sessions, login limits, anti-spam, ban/mute/kick
+- [x] Characters: up to 3 per account, `First_Last` names, gender + outfit, spawn, saved stats
+- [x] Tests: `server/scripts/test.sh` (71 checks + boot smoke test)
+- [ ] Play through the login and character flow with the APK on a device
 
 ### Phase 2: core RP systems
 - [ ] Economy, jobs (taxi, trucker, miner, pizza, mechanic), vehicles, property,
@@ -36,6 +37,39 @@ this repo's MIT license.
 - [ ] Tests, server-side anti-cheat, logging, backups, deploy script, docs
 
 ---
+
+## Phase 1 report (2026-10-29)
+
+**What works**
+- `docker compose up --build` starts MariaDB 11.4, applies migrations, and
+  starts open.mp with the Kingmakers gamemode. Details in
+  [server/README.md](server/README.md).
+- Accounts: the connecting nickname is the account. Register (password +
+  confirm, bcrypt cost 12) or log in. 3 wrong passwords per connection, 10
+  per IP per 15 minutes, 2-minute login timeout, one live session per
+  account. Sessions and every login attempt are stored.
+- Characters: list, create (validated `First_Last`, unique, max 3 enforced
+  in SQL), choose gender and outfit, spawn, save on disconnect and every
+  5 minutes. Cash is server-authoritative from the start.
+- Moderation: `/kick`, `/mute`, `/unmute`, `/ban` (account + IP, timed or
+  permanent), `/unban`, `/setadmin`, with rank checks and `admin_log` rows.
+  Chat and command flood limits, repeat filter, auto-mute.
+- Local IC chat (20 m) so players can talk; full RP chat is Phase 2.
+
+**What was tested**
+- `server/scripts/test.sh`: 71 checks pass (name/password validation,
+  anti-spam, command parsing, sscanf, schema constraints, capped character
+  insert, ban lookup incl. expired/lifted/IP bans, mute expiry in UTC,
+  cascades, bcrypt hash/verify), plus a boot test of the real gamemode.
+- Gamemode and tests compile with zero warnings.
+
+**Still broken or untested**
+- The in-game flow (dialogs, spectate-then-spawn) hasn't been run with a
+  real client. It uses standard SA:MP dialogs, which the client supports.
+- The plugins are 32-bit and the MySQL plugin is old: it needs MariaDB
+  (or MySQL with native passwords) and an IP address instead of a hostname
+  (the entrypoint resolves it).
+- No password reset or email yet.
 
 ## Phase 0 report (2026-10-29)
 
