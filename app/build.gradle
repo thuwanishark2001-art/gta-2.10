@@ -1,25 +1,24 @@
 plugins {
     id 'com.android.application'
-    id 'com.google.gms.google-services'
 }
 
 android {
     signingConfigs {
-        debug {
-            storeFile file("../app/src/main/key.jks")
-            storePassword "12348765"
-            keyAlias "tgrpKey"
-            keyPassword "12348765"
-        }
-        release {
-            storeFile file("../app/src/main/key.jks")
-            storePassword "12348765"
-            keyAlias "tgrpKey"
-            keyPassword "12348765"
+        // Release signing comes from keystore.properties (never committed).
+        // Debug builds use the Android SDK's default debug keystore.
+        def ksFile = rootProject.file('keystore.properties')
+        if (ksFile.exists()) {
+            def ks = new Properties()
+            ksFile.withInputStream { ks.load(it) }
+            release {
+                storeFile file(ks['storeFile'])
+                storePassword ks['storePassword']
+                keyAlias ks['keyAlias']
+                keyPassword ks['keyPassword']
+            }
         }
     }
     compileSdk 34
-    allprojects {repositories {maven { url 'https://maven.aliyun.com/repository/jcenter' }}}
     namespace 'com.samp.mobile'
 
     defaultConfig {
@@ -36,6 +35,13 @@ android {
         }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                // shadowhook's prefab package is only published for the shared STL
+                arguments "-DANDROID_STL=c++_shared"
+            }
+        }
     }
 
     packagingOptions {
@@ -62,14 +68,13 @@ android {
             minifyEnabled false
 
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
         }
         release {
             debuggable false
             jniDebuggable false
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            signingConfig signingConfigs.findByName('release')
         }
         all{
             multiDexEnabled true
@@ -95,30 +100,12 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation "com.google.android.material:material:1.3.0"
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.navigation:navigation-fragment:2.3.5'
-    implementation 'androidx.navigation:navigation-ui:2.3.5'
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
-
-    implementation 'com.mindorks.android:prdownloader:0.6.0'
-    implementation 'com.android.volley:volley:1.2.1'
+    // Scalable dp/sp dimensions (@dimen/_Nsdp) used by the layouts
     implementation 'com.intuit.sdp:sdp-android:1.1.0'
+    testImplementation 'junit:junit:4.13.2'
 
-    implementation platform('com.google.firebase:firebase-bom:30.1.0')
-    implementation 'com.google.firebase:firebase-analytics:21.2.0'
-    implementation 'com.google.firebase:firebase-messaging:23.1.1'
-
-    implementation 'com.github.smarteist:autoimageslider:1.4.0'
-    implementation 'org.ini4j:ini4j:0.5.4'
-    implementation 'com.github.hzy3774:AndroidP7zip:v1.7.2'
-    implementation 'com.hzy:un7zip:+'
-    implementation 'com.squareup.retrofit2:converter-gson:2.1.0'
-
-    implementation 'com.github.bumptech.glide:glide:4.13.0'
-
-    implementation("androidx.lifecycle:lifecycle-process:2.2.0")
-
-    implementation "com.joom.paranoid:paranoid-gradle-plugin:0.3.14"
+    // @Obfuscate annotation used by the game UI classes
+    compileOnly "com.joom.paranoid:paranoid-core:0.3.14"
+    // Native hooking library, consumed by CMake through prefab
     implementation 'com.bytedance.android:shadowhook:1.0.9'
 }
