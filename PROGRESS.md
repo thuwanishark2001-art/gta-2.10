@@ -98,6 +98,17 @@ info, teleports and checkpoints. A second scenario, `economy`:
 3. Carries the ore to the drop-off and gets the `+$90` toast.
 4. Ends with $440 cash and $150 in the bank.
 
+A third scenario, `admin`, logs in to RCON with packet 201 (the test stack
+sets an RCON password), makes itself owner, then:
+- Property: creates a house, is refused buying it with too little money,
+  gets $2,000 from `/givemoney`, buys it, and is moved into the interior and
+  back out by `/enter` and `/exit`. It sells for $600.
+- Police: joins the LSPD at rank 6, goes on duty at HQ, opens its MDT entry
+  (licence and ticket lines present), and goes off duty.
+- Reports: files a report, sees it in `/reports`, then takes and closes it.
+
+`test.sh` checks the exact `money_log` and `admin_log` for it.
+
 `test.sh` then checks the exact `money_log` trail. The anti-cheat logged
 the bot's 3 km jump to the quarry as a teleport and, as designed, didn't
 kick.
