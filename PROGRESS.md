@@ -62,6 +62,39 @@ this repo's MIT license.
 
 ---
 
+## End-to-end test bot, and a login bug it found (2026-10-31)
+
+**The bug.** Registration and login could never complete, ever since
+Phase 1. samp-bcrypt 0.4.1 calls back with
+`(playerid, <our args>, hashid)` after `bcrypt_hash`, but with
+`(playerid, success, <our args>)` after `bcrypt_verify`. The registration
+callback expected the verify-style order, so it read the connection
+counter as 0, decided the player had changed, and returned without showing
+the confirm dialog. The unit tests used no custom arguments, so they
+couldn't see it. Fixed in `accounts.inc`, and `km_tests.pwn` now checks
+both orders against the real plugin.
+
+**The bot.** `server/tools/kmbot` is a headless SA:MP 0.3.7 client built
+from the mobile client's own RakNet, handshake and encryption code (plus a
+stub `main.h`). It runs on Linux and plays a fixed scenario against the
+real open.mp server:
+1. Register (password and confirm), try an invalid character name and get
+   it explained, then create a character (name, gender, outfit).
+2. Ask for a class and spawn like the client, then get the spawn
+   message and the `KM1|hud` UI event.
+3. Run `/stats`, `/balance`, an unknown command, `/me`, `/jobs` and `/phone`
+   (`KM1|phone`).
+4. Reconnect, enter a wrong password and get it explained, log in, pick the
+   character from the list, spawn, then `/stats`.
+
+`scripts/test.sh` builds it (host `g++`, or a gcc container) and runs it
+inside the compose network after the boot test. Every step passes.
+
+**Also learned from it** (no code change needed): open.mp drops dialog
+responses to input and password dialogs unless the list item is -1. The
+mobile client already sends -1 there. The server's command flood limit (5
+per 3 s) works.
+
 ## Licences, tickets, vehicle anti-cheat (2026-10-31)
 
 - Migration `006_licences_tickets`: `characters.driving_licence` and a

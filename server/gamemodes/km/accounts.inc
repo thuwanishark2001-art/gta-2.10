@@ -6,7 +6,7 @@
 
 forward Acc_OnBanCheck(playerid, race);
 forward Acc_OnLookup(playerid, race);
-forward Acc_OnRegisterHash(playerid, hashid, race);
+forward Acc_OnRegisterHash(playerid, race, hashid);
 forward Acc_OnRegisterConfirm(playerid, bool:success, race);
 forward Acc_OnRegistered(playerid, race);
 forward Acc_OnLoginVerify(playerid, bool:success, race);
@@ -197,7 +197,11 @@ stock Acc_OnDialog(playerid, dialogid, response, const inputtext[])
     return 0;
 }
 
-public Acc_OnRegisterHash(playerid, hashid, race)
+// samp-bcrypt 0.4.1 orders callback arguments differently per call:
+//   bcrypt_hash   -> callback(playerid, <our args>, hashid)
+//   bcrypt_verify -> callback(playerid, success, <our args>)
+// tests/km_tests.pwn checks both orders.
+public Acc_OnRegisterHash(playerid, race, hashid)
 {
     if (gPlayerRace[playerid] != race) return 1;
     bcrypt_get_hash(gPlayer[playerid][pPasswordHash], BCRYPT_HASH_LENGTH);

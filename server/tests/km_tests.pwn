@@ -750,6 +750,24 @@ forward T_OnVerifyBad(playerid, bool:success);
 public T_OnVerifyBad(playerid, bool:success)
 {
     Expect(!success, "bcrypt rejects a wrong password");
+    // The gamemode passes an extra argument; check where the plugin puts it.
+    bcrypt_hash(3, "T_OnHashArgs", "pw", 4, "d", 4242);
+    return 1;
+}
+
+forward T_OnHashArgs(playerid, extra, hashid);
+public T_OnHashArgs(playerid, extra, hashid)
+{
+    Expect(playerid == 3 && extra == 4242, "bcrypt_hash passes custom args before hashid");
+    bcrypt_get_hash(gHash);
+    bcrypt_verify(3, "T_OnVerifyArgs", "pw", gHash, "d", 4343);
+    return 1;
+}
+
+forward T_OnVerifyArgs(playerid, bool:success, extra);
+public T_OnVerifyArgs(playerid, bool:success, extra)
+{
+    Expect(playerid == 3 && extra == 4343 && success, "bcrypt_verify passes custom args after success");
     Test_Finish();
     return 1;
 }
