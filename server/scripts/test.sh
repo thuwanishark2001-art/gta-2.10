@@ -4,6 +4,8 @@
 #   2. a backup, restore and retention check with scripts/backup.sh and restore.sh
 #   3. a smoke test: the real gamemode boots, connects to the database and
 #      loads factions and properties without query errors
+#   4. an end-to-end run of tools/kmbot, a headless SA:MP client, through
+#      registration, character creation, spawn, commands and login
 # Exit code 0 means everything passed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -65,9 +67,32 @@ for i in $(seq 1 60); do
     if echo "$logs" | grep -qE "connection failed|shutting down|query error"; then break; fi
     if echo "$logs" | grep -q "\[db\] connected" && echo "$logs" | grep -q "Kingmakers RP 0" \
         && echo "$logs" | grep -q "\[faction\] factions loaded" && echo "$logs" | grep -q "\[property\] loaded"; then
-        echo "gamemode started, connected to the database and loaded factions and properties"; exit 0
+        echo "gamemode started, connected to the database and loaded factions and properties"
+        booted=1; break
     fi
     sleep 2
 done
-"${COMPOSE[@]}" logs server | tail -30
-echo "smoke test failed"; exit 1
+if [ -z "${booted:-}" ]; then
+    "${COMPOSE[@]}" logs server | tail -30
+    echo "smoke test failed"; exit 1
+fi
+
+echo "== end-to-end: kmbot plays through the game as a SA:MP client"
+# tools/kmbot is a headless client built from the mobile client's RakNet.
+# It registers, creates a character, spawns, runs commands, checks the UI
+# protocol, reconnects and logs in.
+mkdir -p .deps
+if [ ! -x .deps/kmbot ] || [ -n "$(find tools/kmbot ../app/src/main/cpp/samp/vendor/raknet -newer .deps/kmbot -print -quit)" ]; then
+    if command -v g++ >/dev/null; then
+        ./tools/kmbot/build.sh "$PWD/.deps/kmbot" >/dev/null
+    else
+        docker run --rm -v "$(cd .. && pwd)":/src -w /src mirror.gcr.io/library/gcc:13 \
+            server/tools/kmbot/build.sh /src/server/.deps/kmbot >/dev/null
+    fi
+fi
+server_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$("${COMPOSE[@]}" ps -q server)")
+if ! "${COMPOSE[@]}" run --rm --no-deps -v "$PWD/.deps/kmbot:/kmbot:ro" --entrypoint /kmbot server \
+        "$server_ip" 7777 kmbot_e2e Bot_Tester; then
+    "${COMPOSE[@]}" logs server | tail -30
+    echo "end-to-end test failed"; exit 1
+fi

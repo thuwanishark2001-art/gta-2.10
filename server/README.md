@@ -209,6 +209,12 @@ runs `tests/km_tests.pwn`, backs up and restores the database, and then
 checks that the real gamemode boots, connects and loads factions and
 properties without query errors. It exits non-zero on any failure.
 
+It then runs `tools/kmbot`, a headless SA:MP 0.3.7 client built from the
+mobile client's RakNet code, through the real server: it registers, creates
+a character, spawns, runs commands, checks the Kingmakers UI events,
+reconnects and logs in (see `tools/kmbot/kmbot.cpp`). It's built with the
+host's `g++`, or in a `gcc` container if there is none.
+
 The test script includes every gamemode module, so it uses the real code:
 validation, anti-spam, command parsing, game rules (pay, interest, levels,
 fuel, plates), schema constraints (money can't go negative, unique phone
@@ -218,9 +224,9 @@ migrated schema, `Money_Give`/`Money_Charge` and inventory changes checked in
 the database and `money_log`, the faction and property loaders, cascades, and
 bcrypt.
 
-Not covered automatically: anything that needs a real client in the world
-(dialogs, checkpoints, vehicles, interiors, map coordinates). That needs the
-APK on a device or emulator.
+Not covered automatically: anything that needs the game world (checkpoints,
+vehicles, interiors, map coordinates, the client's own UI). That needs the
+APK on a device.
 
 ## Pinned versions
 
