@@ -8,6 +8,8 @@
 // basic:   register, create a character, spawn, commands, UI events, log in
 // economy: register, ATM deposit and withdrawal, then a full miner job loop
 //          (walk to the checkpoints the server sets, mine, deliver, get paid)
+// driving: RCON for money, pass the driving test, buy a vehicle at the
+//          dealership (engine, lock, park), then one trucker delivery
 // admin:   RCON login (KMBOT_RCON env), make itself owner, then property
 //          (create, buy, enter, exit, sell), police (faction, duty, MDT),
 //          and the report flow
@@ -71,6 +73,24 @@ struct OnFootSync
 #pragma pack(pop)
 static_assert(sizeof(OnFootSync) == 68, "on-foot sync layout");
 
+#pragma pack(push, 1)
+// INCAR_SYNC_DATA from the client's net/localplayer.h (63 bytes).
+struct InCarSync
+{
+    uint16_t vehicleId, lrAnalog, udAnalog, keys;
+    float quat[4];
+    float pos[3];
+    float moveSpeed[3];
+    float carHealth;
+    uint8_t health, armour, weapon, siren, landingGear;
+    uint16_t trailerId;
+    float trainSpeed;
+};
+#pragma pack(pop)
+static_assert(sizeof(InCarSync) == 63, "in-car sync layout");
+
+static uint16_t g_vehicle = 0;   // vehicle we're driving, 0 = on foot
+
 static uint32_t Now()
 {
     using namespace std::chrono;
@@ -102,6 +122,25 @@ static void OnSetCheckpoint(RPCParameters* params)
 }
 
 static void OnDisableCheckpoint(RPCParameters*) { g_haveCheckpoint = false; }
+
+static void OnPutInVehicle(RPCParameters* params)
+{
+    RakNet::BitStream bs(params->input, (params->numberOfBitsOfData / 8) + 1, false);
+    uint16_t id; uint8_t seat;
+    bs.Read(id); bs.Read(seat);
+    g_vehicle = id;
+    printf("  << put in vehicle %u\n", id);
+}
+
+static void OnRemoveFromVehicle(RPCParameters*) { g_vehicle = 0; }
+
+static void OnVehicleRemoved(RPCParameters* params)
+{
+    RakNet::BitStream bs(params->input, (params->numberOfBitsOfData / 8) + 1, false);
+    uint16_t id;
+    bs.Read(id);
+    if (id == g_vehicle) { g_vehicle = 0; printf("  << our vehicle %u was removed\n", id); }
+}
 
 static void OnInitGame(RPCParameters*)
 {
@@ -195,6 +234,20 @@ static void SendAuthKey(Packet* pkt)
 
 static void SendSync()
 {
+    if (g_vehicle != 0)
+    {
+        InCarSync car = {};
+        car.vehicleId = g_vehicle;
+        car.quat[0] = 1.0f;
+        car.pos[0] = g_pos.x; car.pos[1] = g_pos.y; car.pos[2] = g_pos.z;
+        car.carHealth = 1000.0f;
+        car.health = 100;
+        RakNet::BitStream bs;
+        bs.Write((uint8_t)ID_VEHICLE_SYNC);
+        bs.Write((char*)&car, sizeof(car));
+        g_client->Send(&bs, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
+        return;
+    }
     OnFootSync sync = {};
     sync.pos[0] = g_pos.x; sync.pos[1] = g_pos.y; sync.pos[2] = g_pos.z;
     sync.quat[0] = 1.0f;
@@ -237,7 +290,7 @@ static void Fail(const char* what)
 
 static bool Connect(const char* host, int port)
 {
-    g_connected = false; g_spectating = true; g_spawned = false; g_haveCheckpoint = false;
+    g_connected = false; g_spectating = true; g_spawned = false; g_haveCheckpoint = false; g_vehicle = 0;
     g_dialogs.clear(); g_messages.clear();
     g_client = RakNetworkFactory::GetRakClientInterface();
     g_client->RegisterAsRemoteProcedureCall(&RPC_InitGame, OnInitGame);
@@ -248,6 +301,9 @@ static bool Connect(const char* host, int port)
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetPlayerPos, OnSetPlayerPos);
     g_client->RegisterAsRemoteProcedureCall(&RPC_SetCheckpoint, OnSetCheckpoint);
     g_client->RegisterAsRemoteProcedureCall(&RPC_DisableCheckpoint, OnDisableCheckpoint);
+    g_client->RegisterAsRemoteProcedureCall(&RPC_ScrPutPlayerInVehicle, OnPutInVehicle);
+    g_client->RegisterAsRemoteProcedureCall(&RPC_ScrRemovePlayerFromVehicle, OnRemoveFromVehicle);
+    g_client->RegisterAsRemoteProcedureCall(&RPC_WorldVehicleRemove, OnVehicleRemoved);
     for (int attempt = 0; attempt < 10 && !g_connected; attempt++)
     {
         g_client->Connect(host, port, 0, 0, 5);
@@ -372,6 +428,95 @@ static void Rcon(const std::string& command)
     bs.Write(command.c_str(), command.size());
     g_client->Send(&bs, HIGH_PRIORITY, RELIABLE, 0);
     printf("  >> rcon %s\n", command.substr(0, 5).c_str());
+}
+
+// Gets out like the client does: tell the server, then walk.
+static void ExitVehicle()
+{
+    if (g_vehicle == 0) return;
+    RakNet::BitStream bs;
+    bs.Write(g_vehicle);
+    g_client->RPC(&RPC_ExitVehicle, &bs, HIGH_PRIORITY, RELIABLE_SEQUENCED, 0, false, UNASSIGNED_NETWORK_ID, nullptr);
+    printf("  >> exit vehicle %u\n", g_vehicle);
+    g_vehicle = 0;
+    g_pos.x += 2.0f;
+    Pump(1000);
+}
+
+static bool BecomeOwner(const std::string& character)
+{
+    const char* rconPassword = getenv("KMBOT_RCON");
+    if (!rconPassword) { Fail("KMBOT_RCON isn't set"); return false; }
+    Rcon(std::string("login ") + rconPassword);
+    Pump(1000);
+    Command("/setadmin " + character + " 5");
+    return ExpectMessage("Your admin level is now 5");
+}
+
+static void DrivingScenario(const char* host, int port, const std::string& character)
+{
+    printf("== register %s and create %s\n", g_name.c_str(), character.c_str());
+    if (!Connect(host, port)) return;
+    RegisterAndCreate(character);
+    Pump(1500);
+    if (!BecomeOwner(character)) return;
+    Command("/givemoney " + character + " 60000 kmbot driving");
+    ExpectMessage("Their bank balance is $60000");
+
+    printf("== driving test\n");
+    MoveTo(1490.0f, -1771.0f, 18.8f);
+    g_haveCheckpoint = false;
+    Command("/drivingtest");
+    ExpectMessage("Drive through the");
+    if (g_vehicle == 0) Fail("not put in the test car");
+    for (int stop = 0; stop < 5; stop++)
+    {
+        if (!ExpectCheckpoint()) break;
+        EnterCheckpoint();
+    }
+    ExpectMessage("You passed!", 0, 4000);
+    g_vehicle = 0;  // the test car is removed
+    Pump(1000);
+    Command("/licence");
+    ExpectMessage("You have a driving licence");
+
+    printf("== dealership\n");
+    MoveTo(2131.8f, -1150.5f, 24.1f);
+    g_dialogs.clear();
+    Command("/buyvehicle");
+    if (ExpectDialog(9)) Respond(9, 1, 0, "");          // the first model: Faggio
+    ExpectMessage("You bought a Faggio (plate KM-");
+    // Driving a vehicle that uses fuel puts the fuel level on the HUD.
+    ExpectMessage("fuel=100", kKmuiColour, 4000);
+    if (g_vehicle == 0) Fail("not put in the new vehicle");
+    Command("/engine");
+    ExpectMessage("starts the engine");
+    MoveTo(2150.0f, -1120.0f, 25.0f);
+    Command("/park");
+    ExpectMessage("Parked.");
+    Command("/lock");
+    ExpectMessage("locks their vehicle");
+    Command("/myvehicles");
+    Dialog list;
+    if (ExpectDialog(8, &list) && list.text.find("Faggio") == std::string::npos) Fail("Faggio missing from /myvehicles");
+    ExitVehicle();
+
+    printf("== trucker delivery\n");
+    MoveTo(2197.0f, -2662.9f, 13.5f);
+    Command("/takejob");
+    ExpectMessage("You're now working as: Trucker");
+    g_haveCheckpoint = false;
+    Command("/work");
+    ExpectMessage("Shift started as Trucker");
+    if (g_vehicle == 0) Fail("not put in the truck");
+    if (ExpectCheckpoint())
+    {
+        EnterCheckpoint();
+        ExpectMessage("for truck delivery", kKmuiColour, 5000);
+    }
+    Command("/stopwork");
+    ExpectMessage("Shift ended");
+    Disconnect();
 }
 
 static void AdminScenario(const char* host, int port, const std::string& character)
@@ -508,7 +653,7 @@ static void EconomyScenario(const char* host, int port, const std::string& chara
 
 int main(int argc, char** argv)
 {
-    if (argc < 5) { printf("usage: kmbot <host> <port> <account> <First_Last> [basic|economy|admin]\n"); return 2; }
+    if (argc < 5) { printf("usage: kmbot <host> <port> <account> <First_Last> [basic|economy|admin|driving]\n"); return 2; }
     setvbuf(stdout, nullptr, _IONBF, 0);
     char host[64];
     {
@@ -521,10 +666,12 @@ int main(int argc, char** argv)
     g_name = argv[3];
     std::string character = argv[4];
     const std::string& password = kPassword;
-    if (argc > 5 && (strcmp(argv[5], "economy") == 0 || strcmp(argv[5], "admin") == 0))
+    if (argc > 5 && strcmp(argv[5], "basic") != 0)
     {
         if (strcmp(argv[5], "economy") == 0) EconomyScenario(host, port, character);
-        else AdminScenario(host, port, character);
+        else if (strcmp(argv[5], "admin") == 0) AdminScenario(host, port, character);
+        else if (strcmp(argv[5], "driving") == 0) DrivingScenario(host, port, character);
+        else { printf("unknown scenario %s\n", argv[5]); return 2; }
         printf(g_failures ? "KMBOT DONE: %d failure(s)\n" : "KMBOT DONE: all steps passed\n", g_failures);
         return g_failures ? 1 : 0;
     }

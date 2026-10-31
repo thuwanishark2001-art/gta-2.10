@@ -224,7 +224,12 @@ mobile client's RakNet code, through the real server, twice (see
   - joins the LSPD, goes on duty and reads its own MDT entry;
   - files a report, then takes and closes it.
 
-  The script checks the money trail and the staff actions in `admin_log`. It's built with the
+  The script checks the money trail and the staff actions in `admin_log`.
+- `driving`: drives like a client (in-vehicle sync). It passes the
+  driving test through its checkpoints, buys a Faggio at the dealership,
+  starts the engine, parks, locks and lists it, then gets out and does a
+  trucker delivery for pay. The script checks the licence, the owned
+  vehicle and the money trail. It's built with the
 host's `g++`, or in a `gcc` container if there is none.
 
 The test script includes every gamemode module, so it uses the real code:

@@ -6,8 +6,9 @@
 #      loads factions and properties without query errors
 #   4. end-to-end runs of tools/kmbot, a headless SA:MP client: registration,
 #      character creation, spawn, commands and login; then ATM banking and a
-#      full miner job loop; then RCON, property, police and reports as an
-#      admin; each checked against money_log and admin_log
+#      full miner job loop; RCON, property, police and reports as an admin;
+#      and driving: the licence test, the dealership and a trucker delivery;
+#      each checked against the database
 # Exit code 0 means everything passed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -95,7 +96,8 @@ fi
 server_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$("${COMPOSE[@]}" ps -q server)")
 # KMBOT_RCON matches KM_RCON_PASSWORD in docker-compose.test.yml.
 run_bot() { "${COMPOSE[@]}" run --rm --no-deps -e KMBOT_RCON=kmbot-rcon-test -v "$PWD/.deps/kmbot:/kmbot:ro" --entrypoint /kmbot server "$server_ip" 7777 "$@"; }
-if ! run_bot kmbot_e2e Bot_Tester basic || ! run_bot kmbot_eco Eco_Tester economy || ! run_bot kmbot_adm Admin_Bot admin; then
+if ! run_bot kmbot_e2e Bot_Tester basic || ! run_bot kmbot_eco Eco_Tester economy || ! run_bot kmbot_adm Admin_Bot admin \
+        || ! run_bot kmbot_drv Driver_Bot driving; then
     "${COMPOSE[@]}" logs server | tail -30
     echo "end-to-end test failed"; exit 1
 fi
@@ -120,3 +122,14 @@ if [ "$actions" != "accept_report,check,close_report,create_property,give_money,
     echo "unexpected admin_log for the admin run: $actions"; exit 1
 fi
 echo "money_log and admin_log match the admin run"
+# Delivery pay depends on the random drop, so check the sequence, the
+# licence and the owned vehicle rather than amounts.
+driving=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
+    "SELECT CONCAT((SELECT GROUP_CONCAT(m.reason ORDER BY m.id) FROM money_log m WHERE m.character_id = c.id),
+                   ' licence=', c.driving_licence,
+                   ' vehicles=', (SELECT COUNT(*) FROM vehicles v WHERE v.owner_character_id = c.id AND v.model = 462))
+     FROM characters c WHERE c.name = 'Driver_Bot'")
+if [ "$driving" != "admin,driving_test,vehicle_buy,job licence=1 vehicles=1" ]; then
+    echo "unexpected database state after the driving run: $driving"; exit 1
+fi
+echo "database matches the driving run"

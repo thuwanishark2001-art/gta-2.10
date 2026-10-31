@@ -110,6 +110,17 @@ sets an RCON password), makes itself owner, then:
 
 `test.sh` checks the exact `money_log` and `admin_log` for it.
 
+A fourth scenario, `driving`, adds in-vehicle sync (the 63-byte
+`INCAR_SYNC_DATA`), plus put-in, exit and vehicle-removed handling:
+1. Driving test: drives the test car through all 5 markers and earns the
+   licence.
+2. Dealership: buys a Faggio from the dialog. The HUD shows fuel 100, and
+   `/engine`, `/park`, `/lock` and `/myvehicles` all work.
+3. Trucker: gets out, takes the trucker job, drives the truck to the
+   random drop and gets paid.
+
+`test.sh` checks the licence, the owned vehicle and the money reasons.
+
 `test.sh` then checks the exact `money_log` trail. The anti-cheat logged
 the bot's 3 km jump to the quarry as a teleport and, as designed, didn't
 kick.
