@@ -20,6 +20,7 @@
 #include "km/antispam.inc"
 #include "km/players.inc"
 #include "km/util.inc"
+#include "km/achooks.inc"
 #include "km/validate.inc"
 #include "km/rpcalc.inc"
 #include "km/places.inc"
@@ -38,6 +39,7 @@
 #include "km/factions.inc"
 #include "km/support.inc"
 #include "km/kmui.inc"
+#include "km/anticheat.inc"
 
 new gPass, gFail;
 
@@ -67,6 +69,7 @@ public OnGameModeInit()
     Test_Util();
     Test_Rules();
     Test_Kmui();
+    Test_AntiCheat();
 
     if (!DB_Connect())
     {
@@ -356,6 +359,32 @@ Test_Kmui()
     EXPECT(KMUI_Send(5, "toast", "text=x") == 0);
 }
 
+Test_AntiCheat()
+{
+    EXPECT(AC_WeaponAllowed(WEAPON:0, WEAPON:0));
+    EXPECT(AC_WeaponAllowed(WEAPON_DEAGLE, WEAPON_DEAGLE));
+    EXPECT(AC_WeaponAllowed(WEAPON:0, WEAPON_PARACHUTE));
+    EXPECT(!AC_WeaponAllowed(WEAPON:0, WEAPON_DEAGLE));
+    EXPECT(!AC_WeaponAllowed(WEAPON_NITESTICK, WEAPON_SHOTGUN));
+
+    EXPECT(!AC_IsTeleport(0.0, 0.0, 60.0, 60.0, 100.0));
+    EXPECT(AC_IsTeleport(0.0, 0.0, 80.0, 80.0, 100.0));
+    EXPECT(AC_IsTeleport(500.0, 500.0, 300.0, 500.0, 100.0));
+
+    // the hooks record what the server hands out (player 7 isn't connected,
+    // the natives just fail)
+    AC_Reset(7);
+    GivePlayerWeapon(7, WEAPON_DEAGLE, 50);
+    GivePlayerWeapon(7, WEAPON_NITESTICK, 1);
+    EXPECT(gAcWeapon[7][_:GetWeaponSlot(WEAPON_DEAGLE)] == WEAPON_DEAGLE);
+    EXPECT(gAcWeapon[7][_:GetWeaponSlot(WEAPON_NITESTICK)] == WEAPON_NITESTICK);
+    ResetPlayerWeapons(7);
+    EXPECT(gAcWeapon[7][_:GetWeaponSlot(WEAPON_DEAGLE)] == WEAPON:0);
+    EXPECT(gAcGraceUntil[7] == 0);
+    SetPlayerPos(7, 0.0, 0.0, 0.0);
+    EXPECT(gAcGraceUntil[7] >= gettime() + AC_GRACE_SECONDS - 1);
+}
+
 // Affected rows of a statement, or -1 on error.
 DB_Affected(const query[])
 {
@@ -560,6 +589,10 @@ Test_StartAsync()
     EXPECT(!Inv_Remove(0, ITEM_WATER, 1));
     EXPECT(Inv_Has(0, ITEM_PHONE) && !Inv_Has(0, ITEM_WATER));
 
+    // anti-cheat findings are logged against the account and character
+    gPlayer[0][pAccountId] = gTestAccount;
+    EXPECT(!AC_Report(0, "test", "from km_tests", false));
+
     // the real loaders
     Fac_Load();
     Prop_Load();
@@ -600,14 +633,18 @@ public T_CheckAsync()
         EXPECT(Prop_CountOwned(gTestChar) == 1 && Prop_CountOwned(gTestChar2) == 0);
     }
 
+    format(q, sizeof (q), "SELECT COUNT(*) FROM anticheat_log WHERE account_id = %d AND character_id = %d AND type = 'test' AND kicked = 0", gTestAccount, gTestChar);
+    EXPECT(DB_Int(q) == 1);
+
     // deleting the account removes everything that belongs to it
     format(q, sizeof (q), "DELETE FROM accounts WHERE id = %d", gTestAccount);
     DB_Exec(q);
     format(q, sizeof (q),
         "SELECT (SELECT COUNT(*) FROM characters WHERE account_id = %d) + (SELECT COUNT(*) FROM vehicles WHERE owner_character_id = %d) \
          + (SELECT COUNT(*) FROM money_log WHERE character_id = %d) + (SELECT COUNT(*) FROM character_items WHERE character_id = %d) \
-         + (SELECT COUNT(*) FROM criminal_records WHERE character_id = %d) + (SELECT COUNT(*) FROM reports WHERE reporter_account_id = %d)",
-        gTestAccount, gTestChar, gTestChar, gTestChar, gTestChar, gTestAccount);
+         + (SELECT COUNT(*) FROM criminal_records WHERE character_id = %d) + (SELECT COUNT(*) FROM reports WHERE reporter_account_id = %d) \
+         + (SELECT COUNT(*) FROM anticheat_log WHERE account_id = %d)",
+        gTestAccount, gTestChar, gTestChar, gTestChar, gTestChar, gTestAccount, gTestAccount);
     EXPECT(DB_Int(q) == 0);
     // the property goes back on the market
     format(q, sizeof (q), "SELECT owner_character_id IS NULL FROM properties WHERE id = %d", gTestProperty);

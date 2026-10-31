@@ -63,8 +63,14 @@ database = $DB_NAME
 auto_reconnect = true
 INI
 
-# Volumes are created root-owned; fix that, then drop privileges.
+# Start each run with a fresh server.log; keep the last 10.
 mkdir -p logs
+if [ -s logs/server.log ]; then
+    mv logs/server.log "logs/server-$(date -u +%Y%m%d-%H%M%S).log"
+fi
+ls -1t logs/server-*.log 2>/dev/null | tail -n +11 | xargs -r rm -f
+
+# Volumes are created root-owned; fix that, then drop privileges.
 if [ "$(id -u)" = 0 ]; then
     chown -R omp:omp logs scriptfiles config.json mysql.ini
     exec setpriv --reuid=omp --regid=omp --init-groups ./omp-server "$@"

@@ -16,6 +16,7 @@
 #include "km/antispam.inc"
 #include "km/players.inc"
 #include "km/util.inc"
+#include "km/achooks.inc"
 #include "km/validate.inc"
 #include "km/rpcalc.inc"
 #include "km/places.inc"
@@ -34,6 +35,7 @@
 #include "km/factions.inc"
 #include "km/support.inc"
 #include "km/kmui.inc"
+#include "km/anticheat.inc"
 
 forward KM_Tick();
 
@@ -86,6 +88,7 @@ public OnPlayerConnect(playerid)
     gVehBuying[playerid] = false;
     gPropBuying[playerid] = false;
     KMUI_Reset(playerid);
+    AC_Reset(playerid);
     Acc_OnConnect(playerid);
     return 1;
 }
@@ -135,6 +138,8 @@ public OnPlayerSpawn(playerid)
         TogglePlayerSpectating(playerid, true);
         return 1;
     }
+    AC_Grace(playerid);
+    gAcHavePos[playerid] = false;
     Char_OnSpawn(playerid);
     return 1;
 }
@@ -208,8 +213,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
     return 1;
 }
 
-// Once a second: paydays, jail time, cuffs, the cash display and the
-// Kingmakers client HUD.
+// Once a second: paydays, jail time, cuffs, the cash display, the
+// Kingmakers client HUD and the anti-cheat.
 public KM_Tick()
 {
     for (new i = 0; i < MAX_PLAYERS; i++)
@@ -221,6 +226,7 @@ public KM_Tick()
         // The client's money is display only; put it back if it drifted.
         if (GetPlayerMoney(i) != gChar[i][cCash]) Char_SyncCash(i);
         KMUI_UpdateHud(i);
+        if (GetPlayerState(i) != PLAYER_STATE_WASTED) AC_Tick(i);
     }
     return 1;
 }

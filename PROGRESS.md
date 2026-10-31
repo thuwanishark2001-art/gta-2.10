@@ -49,9 +49,54 @@ this repo's MIT license.
 - [ ] Rebrand the client (app name, icon, loading screen)
 
 ### Phase 4: quality and ops
-- [ ] Tests, server-side anti-cheat, logging, backups, deploy script, docs
+- [x] Server-side anti-cheat (weapons, jetpack, health/armour, teleport), logged in `anticheat_log`
+- [x] Daily database backups with retention, a restore script, both checked by `test.sh`
+- [x] Deploy/update script with a backup before every update
+- [x] Log rotation (game server log and container logs)
+- [x] Operator guide: [docs/DEPLOY.md](docs/DEPLOY.md)
+- [x] Tests: 198 server checks, backup/restore check, boot test, client parser host test
+- [ ] Tune the anti-cheat once real players are on (false positives)
+- [ ] Off-site copies of the backups (depends on where the server is hosted)
 
 ---
+
+## Phase 4 report (2026-10-31)
+
+**What works**
+- Anti-cheat (`km/achooks.inc`, `km/anticheat.inc`, migration
+  `005_ops`). The natives that give weapons or move players are wrapped,
+  so the server knows what it handed out and when it teleported someone.
+  Every second it checks each player. A weapon the server never gave is
+  removed, and the third one is a kick. A jetpack is a kick. Health or
+  armour above 100 is reset. An on-foot jump of over 100 m in a second
+  outside a server teleport is reported to admins only. Findings go to
+  `anticheat_log` and to online admins (one alert per player per 30 s).
+- Backups: a `backup` compose service dumps the database every 24 hours
+  into `data/backups`, keeps 14, and throws away incomplete dumps.
+  `scripts/restore.sh` restores one (it needs `--yes`).
+- `scripts/deploy.sh` refuses the example passwords, fetches the
+  dependencies, builds, backs up the running database, starts everything,
+  recreates the game server and waits until the gamemode has loaded.
+- Logs: `server.log` starts fresh on every run and the last 10 are kept;
+  container logs rotate at 10 MB.
+- `docs/DEPLOY.md`: install, update, backup and restore, logs, and what the
+  anti-cheat does.
+
+**What was tested**
+- `server/scripts/test.sh`: 198 checks pass. New ones cover the
+  anti-cheat rules, the native wrappers and the `anticheat_log` row and
+  cascade. A new step backs up, deletes a row, restores, checks that it's
+  back, checks that a restore without `--yes` is refused, and checks
+  retention.
+- `deploy.sh` was run three times on a fresh machine state: the first
+  install, an update with the pre-update backup, and the log rotation
+  after a restart.
+
+**Still broken or untested**
+- The anti-cheat thresholds haven't met real players. The teleport check
+  only reports, for that reason.
+- No vehicle speed or vehicle health checks yet.
+- Backups stay on the server's disk until someone copies them elsewhere.
 
 ## Phase 3 report (2026-10-31)
 

@@ -6,6 +6,13 @@ services:
     tmpfs:
       - /var/lib/mysql
     restart: "no"
+  backup:
+    volumes: !override
+      - ./scripts/backup.sh:/scripts/backup.sh:ro
+      - ./scripts/restore.sh:/scripts/restore.sh:ro
+    tmpfs:
+      - /backups
+    restart: "no"
   server:
     environment:
       KM_SCRIPT: ${KM_SCRIPT:-km_tests}

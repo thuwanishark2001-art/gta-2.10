@@ -6,6 +6,8 @@ database. The mobile client in `../app` connects to it as a standard SA:MP
 
 ## Run it locally
 
+(For a public server, see `../docs/DEPLOY.md` and use `scripts/deploy.sh`.)
+
 Requirements: Docker with Compose v2, `curl`, `git`, `unzip`.
 
 ```bash
@@ -28,12 +30,15 @@ Data lives in `server/data/` (database files and logs). Delete it to start over.
 | `gamemodes/km/*.inc` | Modules: `accounts`, `characters`, `moderation`, `chat`, `economy`, `offers`, `vehicles`, `jobs`, `property`, `inventory`, `factions`, `support`, plus helpers (`antispam`, `validate`, `rpcalc`, `cmd`, `db`, `util`) |
 | `gamemodes/km/config.inc` | Gameplay numbers: pay, prices, limits, timers |
 | `gamemodes/km/places.inc` | Fixed map locations: ATMs, gas stations, dealership, hospital, jail, job sites, faction vehicles |
+| `gamemodes/km/achooks.inc`, `gamemodes/km/anticheat.inc` | Anti-cheat: wrappers that record what the server gave, and the checks |
 | `gamemodes/km/kmui.inc` | Server side of the client UI protocol (`../docs/KMUI.md`) |
 | `gamemodes/km/ids.inc` | Job, item, faction-type and property-type ids stored in the database (never renumber) |
 | `sql/migrations/NNN_*.sql` | Database schema, applied in order by `scripts/migrate.sh` |
 | `tests/km_tests.pwn` | Unit tests plus database and bcrypt integration tests |
 | `scripts/fetch-deps.sh` | Downloads third-party binaries, pinned by SHA-256 |
-| `scripts/entrypoint.sh` | Writes `config.json` and `mysql.ini` from env vars, starts the server |
+| `scripts/entrypoint.sh` | Writes `config.json` and `mysql.ini` from env vars, rotates the log, starts the server |
+| `scripts/backup.sh`, `scripts/restore.sh` | Database dumps (the `backup` service runs them daily) and restore |
+| `scripts/deploy.sh` | Install or update on a server (see `../docs/DEPLOY.md`) |
 | `scripts/test.sh` | Runs the test suite and a boot smoke test in Docker |
 
 ## Configuration
@@ -48,6 +53,8 @@ Set in `.env` (see `.env.example`):
 | `KM_RCON_PASSWORD` | empty | Empty disables RCON |
 | `KM_ANNOUNCE` | false | List on the open.mp master list |
 | `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_ROOT_PASSWORD` | | Database credentials |
+| `KM_BACKUP_KEEP` | 14 | Database backups to keep in `data/backups` |
+| `KM_BACKUP_INTERVAL_HOURS` | 24 | Hours between backups |
 
 Gameplay settings (bcrypt cost, login limits, character limit, spawn point,
 anti-spam thresholds, pay, prices, limits) are in `gamemodes/km/config.inc`.
@@ -171,6 +178,7 @@ the third warning is an automatic 2-minute mute.
 | `character_items` | Inventory: item id and quantity per character |
 | `criminal_records` | Charges from `/su`, shown in the MDT |
 | `reports` | `/report` and `/helpme` requests and who handled them |
+| `anticheat_log` | Anti-cheat findings and whether the player was kicked |
 | `schema_migrations` | Which migration files have been applied |
 
 All times are UTC. To change the schema, add a new numbered file in
@@ -183,9 +191,9 @@ All times are UTC. To change the schema, add a new numbered file in
 ```
 
 It builds the image, starts a throwaway database, applies the migrations,
-runs `tests/km_tests.pwn` and then checks that the real gamemode boots,
-connects and loads factions and properties without query errors. It exits
-non-zero on any failure.
+runs `tests/km_tests.pwn`, backs up and restores the database, and then
+checks that the real gamemode boots, connects and loads factions and
+properties without query errors. It exits non-zero on any failure.
 
 The test script includes every gamemode module, so it uses the real code:
 validation, anti-spam, command parsing, game rules (pay, interest, levels,

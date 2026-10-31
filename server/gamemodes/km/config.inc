@@ -72,3 +72,6 @@
 
 // Support
 #define KM_REPORT_COOLDOWN      (60)      // seconds between reports
+
+// Anti-cheat
+#define KM_AC_TELEPORT_METRES   (100.0)   // on foot, per second

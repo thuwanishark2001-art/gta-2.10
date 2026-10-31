@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Builds the server image and runs:
 #   1. tests/km_tests.pwn against a fresh, migrated MySQL
-#   2. a smoke test: the real gamemode boots, connects to the database and
+#   2. a backup, restore and retention check with scripts/backup.sh and restore.sh
+#   3. a smoke test: the real gamemode boots, connects to the database and
 #      loads factions and properties without query errors
 # Exit code 0 means everything passed.
 set -euo pipefail
@@ -34,6 +35,28 @@ if [ -z "$summary" ]; then
 fi
 echo "$summary"
 case "$summary" in *"fail=0") ;; *) exit 1 ;; esac
+
+echo "== backup and restore"
+# Back up, delete a marker row, restore, and check the marker is back.
+"${COMPOSE[@]}" run --rm --no-deps --entrypoint bash backup -c '
+    set -euo pipefail
+    export MYSQL_PWD="$DB_PASSWORD"
+    sql() { mariadb --skip-ssl -h db -u "$DB_USER" -N -B "$DB_NAME" -e "$1"; }
+    sql "INSERT INTO accounts (username, password_hash, register_ip) VALUES (\"kmtest_backup\", REPEAT(\"x\", 60), \"127.0.0.1\")"
+    bash /scripts/backup.sh once
+    file=$(ls -1 /backups/km-*.sql.gz | head -n 1)
+    sql "DELETE FROM accounts WHERE username = \"kmtest_backup\""
+    [ "$(sql "SELECT COUNT(*) FROM accounts WHERE username = \"kmtest_backup\"")" = 0 ]
+    if bash /scripts/restore.sh "$file" >/dev/null 2>&1; then echo "restore ran without --yes"; exit 1; fi
+    bash /scripts/restore.sh "$file" --yes
+    [ "$(sql "SELECT COUNT(*) FROM accounts WHERE username = \"kmtest_backup\"")" = 1 ]
+    [ "$(sql "SELECT COUNT(*) FROM schema_migrations")" -ge 5 ]
+    sql "DELETE FROM accounts WHERE username = \"kmtest_backup\""
+    # retention: keep only BACKUP_KEEP files
+    for i in 1 2 3; do sleep 1; BACKUP_KEEP=2 bash /scripts/backup.sh once >/dev/null; done
+    [ "$(ls -1 /backups/km-*.sql.gz | wc -l)" = 2 ]
+    echo "backup, restore and retention OK"
+'
 
 echo "== smoke test: gamemode boots"
 KM_SCRIPT=kingmakers "${COMPOSE[@]}" up -d --no-deps server >/dev/null 2>&1
