@@ -2,9 +2,11 @@
 # kmbot end-to-end scenarios) and builds the client APK on every push and PR.
 name: CI
 
+# Pushes to main, and every PR (feature branches are covered through their
+# PR, so a branch push doesn't run everything twice).
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
   pull_request:
 
 permissions:
