@@ -75,3 +75,12 @@
 
 // Anti-cheat
 #define KM_AC_TELEPORT_METRES   (100.0)   // on foot, per second
+
+// Driving licence and tickets
+#define KM_LICENCE_FEE          (500)
+#define KM_LICENCE_TEST_SECONDS (240)     // whole route
+#define KM_LICENCE_MIN_HEALTH   (850.0)   // test car health to pass
+#define KM_TICKET_MAX           (5000)
+
+// Anti-cheat, vehicles
+#define KM_AC_MAX_KMH           (330)     // ground vehicles

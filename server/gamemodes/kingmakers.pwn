@@ -36,6 +36,7 @@
 #include "km/support.inc"
 #include "km/kmui.inc"
 #include "km/anticheat.inc"
+#include "km/licence.inc"
 
 forward KM_Tick();
 
@@ -62,6 +63,7 @@ public OnGameModeInit()
     Eco_Init();
     Veh_Init();
     Job_Init();
+    Lic_Init();
     SetTimer("Char_AutoSaveAll", KM_AUTOSAVE_MS, true);
     SetTimer("KM_Tick", 1000, true);
     return 1;
@@ -89,6 +91,7 @@ public OnPlayerConnect(playerid)
     gPropBuying[playerid] = false;
     KMUI_Reset(playerid);
     AC_Reset(playerid);
+    Lic_Reset(playerid);
     Acc_OnConnect(playerid);
     return 1;
 }
@@ -98,6 +101,7 @@ public OnPlayerDisconnect(playerid, reason)
     if (Player_IsPlaying(playerid))
     {
         Job_Stop(playerid);
+        Lic_End(playerid, false);
         Fac_OnLeaveWhileCuffed(playerid);
         Char_Save(playerid);
         Veh_OnOwnerLeave(playerid);
@@ -148,6 +152,7 @@ public OnPlayerSpawn(playerid)
 public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 {
     Job_Stop(playerid, "you were injured.");
+    Lic_End(playerid, false, "you were injured.");
     Char_OnDeath(playerid);
     return 1;
 }
@@ -160,7 +165,7 @@ public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstat
 
 public OnPlayerEnterCheckpoint(playerid)
 {
-    if (Player_IsPlaying(playerid)) Job_OnCheckpoint(playerid);
+    if (Player_IsPlaying(playerid) && !Lic_OnCheckpoint(playerid)) Job_OnCheckpoint(playerid);
     return 1;
 }
 
@@ -172,6 +177,7 @@ public OnVehicleSpawn(vehicleid)
 
 public OnVehicleDeath(vehicleid, killerid)
 {
+    Lic_OnVehicleDeath(vehicleid);
     Job_OnVehicleDeath(vehicleid);
     return 1;
 }
@@ -227,6 +233,7 @@ public KM_Tick()
         // The client's money is display only; put it back if it drifted.
         if (GetPlayerMoney(i) != gChar[i][cCash]) Char_SyncCash(i);
         KMUI_UpdateHud(i);
+        Lic_Tick(i);
         if (GetPlayerState(i) != PLAYER_STATE_WASTED) AC_Tick(i);
     }
     return 1;
@@ -237,14 +244,14 @@ CMD:help(playerid, params[])
     SendClientMessage(playerid, COLOR_BRAND, "Kingmakers RP commands");
     SendClientMessage(playerid, COLOR_WHITE, "General: /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
     SendClientMessage(playerid, COLOR_WHITE, "Chat: /me /do /b /s /low /w /pm /r /o  Phone: /phone /number /sms /911");
-    SendClientMessage(playerid, COLOR_WHITE, "Vehicles: /engine /lights /lock /park /myvehicles /buyvehicle /sellvehicle /refuel");
+    SendClientMessage(playerid, COLOR_WHITE, "Vehicles: /engine /lights /lock /park /myvehicles /buyvehicle /sellvehicle /refuel /drivingtest /licence /showlicence /tickets /paytickets");
     SendClientMessage(playerid, COLOR_WHITE, "Jobs: /jobs /takejob /quitjob /work /stopwork /calltaxi  Property: /enter /exit /buyproperty /sellproperty /myproperties /shop /till");
     if (Fac_Valid(gChar[playerid][cFaction]))
     {
         SendClientMessage(playerid, COLOR_RADIO, "Faction: /f /duty /members /quitfaction  Leaders: /invite /uninvite /setrank /roster");
         switch (Fac_Type(gChar[playerid][cFaction]))
         {
-            case FACTION_POLICE: SendClientMessage(playerid, COLOR_RADIO, "Police: /d /cuff /uncuff /su /clearwanted /arrest /mdt");
+            case FACTION_POLICE: SendClientMessage(playerid, COLOR_RADIO, "Police: /d /cuff /uncuff /su /clearwanted /arrest /ticket /mdt");
             case FACTION_MEDICAL: SendClientMessage(playerid, COLOR_RADIO, "Medical: /d /heal");
         }
     }

@@ -26,10 +26,14 @@ new gFacRankName[KM_MAX_FACTIONS + 1][KM_MAX_RANKS + 1][32];
 new gFacRankSalary[KM_MAX_FACTIONS + 1][KM_MAX_RANKS + 1];
 new gFacInvite[MAX_PLAYERS];                          // pending invite: faction id
 
-// MDT lookups: by character id, or by name with id 0.
+// MDT lookups: by character id, or by name with id 0. MDT_QUERY_SIZE is
+// checked against the longest possible query in tests/km_tests.pwn.
+#define MDT_QUERY_SIZE (1024)
 #define MDT_PERSON_SQL \
-    "SELECT c.id, c.name, c.wanted, c.jail_seconds, IFNULL(c.phone_number, 0) AS phone, \
-     (SELECT GROUP_CONCAT(v.id ORDER BY v.id) FROM vehicles v WHERE v.owner_character_id = c.id) AS vehicles \
+    "SELECT c.id, c.name, c.wanted, c.jail_seconds, IFNULL(c.phone_number, 0) AS phone, c.driving_licence, \
+     (SELECT GROUP_CONCAT(v.id ORDER BY v.id) FROM vehicles v WHERE v.owner_character_id = c.id) AS vehicles, \
+     (SELECT COUNT(*) FROM tickets t WHERE t.character_id = c.id AND t.paid_at IS NULL) AS tickets, \
+     (SELECT IFNULL(SUM(t.amount), 0) FROM tickets t WHERE t.character_id = c.id AND t.paid_at IS NULL) AS owed \
      FROM characters c WHERE c.id = %d OR (%d = 0 AND c.name = '%e') LIMIT 1"
 #define MDT_RECORDS_SQL \
     "SELECT r.charge, DATE_FORMAT(r.created_at, '%%Y-%%m-%%d') AS day, IFNULL(o.name, '-') AS officer \
@@ -573,7 +577,7 @@ CMD:mdt(playerid, params[])
 {
     if (!Fac_PoliceCheck(playerid)) return 1;
     if (isnull(params)) return SendInfo(playerid, "Usage: /mdt [player id or First_Last name]");
-    new query[512], targetid, characterId = 0;
+    new query[MDT_QUERY_SIZE], targetid, characterId = 0;
     if (!sscanf(params, "u", targetid) && Player_IsPlaying(targetid)) characterId = gChar[targetid][cId];
     mysql_format(gDB, query, sizeof (query), MDT_PERSON_SQL, characterId, characterId, params);
     mysql_tquery(gDB, query, "Fac_OnMdt", "dd", playerid, gPlayerRace[playerid]);
@@ -586,12 +590,15 @@ public Fac_OnMdt(playerid, race)
 {
     if (gPlayerRace[playerid] != race) return 1;
     if (cache_num_rows() == 0) return SendError(playerid, "No record found. Names are First_Last."), 1;
-    new id, name[MAX_PLAYER_NAME], wanted, jail, phone, vehicles[96], bool:noVehicles;
+    new id, name[MAX_PLAYER_NAME], wanted, jail, phone, licence, tickets, owed, vehicles[96], bool:noVehicles;
     cache_get_value_name_int(0, "id", id);
     cache_get_value_name(0, "name", name);
     cache_get_value_name_int(0, "wanted", wanted);
     cache_get_value_name_int(0, "jail_seconds", jail);
     cache_get_value_name_int(0, "phone", phone);
+    cache_get_value_name_int(0, "driving_licence", licence);
+    cache_get_value_name_int(0, "tickets", tickets);
+    cache_get_value_name_int(0, "owed", owed);
     cache_is_value_name_null(0, "vehicles", noVehicles);
     if (!noVehicles) cache_get_value_name(0, "vehicles", vehicles);
 
@@ -611,8 +618,8 @@ public Fac_OnMdt(playerid, race)
             if (vehicles[pos] == ',') pos++;
         }
     }
-    format(gMdtBody[playerid], sizeof (gMdtBody[]), EMBED_BRAND "%s\n" EMBED_WHITE "Wanted level: %d\nIn jail: %s\nPhone: %d\nVehicles: %s\n\n" EMBED_BRAND "Records\n" EMBED_WHITE,
-        name, wanted, jail > 0 ? ("yes") : ("no"), phone, plates);
+    format(gMdtBody[playerid], sizeof (gMdtBody[]), EMBED_BRAND "%s\n" EMBED_WHITE "Wanted level: %d\nIn jail: %s\nDriving licence: %s\nUnpaid tickets: %d ($%d)\nPhone: %d\nVehicles: %s\n\n" EMBED_BRAND "Records\n" EMBED_WHITE,
+        name, wanted, jail > 0 ? ("yes") : ("no"), licence ? ("valid") : ("none"), tickets, owed, phone, plates);
     new query[320];
     mysql_format(gDB, query, sizeof (query), MDT_RECORDS_SQL, id);
     mysql_tquery(gDB, query, "Fac_OnMdtRecords", "ddd", playerid, race, id);

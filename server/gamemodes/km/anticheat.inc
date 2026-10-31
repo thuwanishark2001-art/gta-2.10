@@ -5,6 +5,8 @@
 //   health   health or armour above 100: put back to 100
 //   teleport on foot, more than KM_AC_TELEPORT_METRES in one second without a
 //            server teleport: reported to admins only (falls and lag can do it)
+//   speed    a ground vehicle above KM_AC_MAX_KMH: reported to admins only
+//   vehicle_health  vehicle health above 1000: put back to 1000
 // Money can't be cheated: it's server-side (economy.inc) and the display is
 // reset every second. Every finding goes to anticheat_log and online admins.
 
@@ -27,6 +29,40 @@ stock AC_Reset(playerid)
 stock bool:AC_WeaponAllowed(WEAPON:allowed, WEAPON:held)
 {
     return held == WEAPON:0 || held == allowed || held == WEAPON_PARACHUTE;
+}
+
+// Planes and helicopters are allowed to go faster than ground vehicles.
+stock bool:AC_IsAircraft(model)
+{
+    switch (model)
+    {
+        case 417, 425, 447, 460, 469, 476, 487, 488, 497, 511, 512, 513, 519, 520, 548, 553, 563, 577, 592, 593: return true;
+    }
+    return false;
+}
+
+// Speed hack (reported only) and repair hack (health above 1000, reset).
+stock AC_CheckVehicle(playerid, vehicleid)
+{
+    if (!(0 < vehicleid < MAX_VEHICLES)) return;
+    new Float:vx, Float:vy, Float:vz;
+    GetVehicleVelocity(vehicleid, vx, vy, vz);
+    new kmh = floatround(Speed_Kmh(vx, vy, vz));
+    if (kmh > KM_AC_MAX_KMH && !AC_IsAircraft(GetVehicleModel(vehicleid)) && gettime() > gAcGraceUntil[playerid])
+    {
+        new details[48];
+        format(details, sizeof (details), "%d km/h in model %d", kmh, GetVehicleModel(vehicleid));
+        AC_Report(playerid, "speed", details, false);
+    }
+    new Float:health;
+    GetVehicleHealth(vehicleid, health);
+    if (health > 1000.5)
+    {
+        new details[48];
+        format(details, sizeof (details), "vehicle health %.0f", health);
+        AC_Report(playerid, "vehicle_health", details, false);
+        SetVehicleHealth(vehicleid, 1000.0);
+    }
 }
 
 stock bool:AC_IsTeleport(Float:fromX, Float:fromY, Float:toX, Float:toY, Float:limit)
@@ -101,6 +137,8 @@ stock AC_Tick(playerid)
         if (health > 100.5) SetPlayerHealth(playerid, 100.0);
         if (armour > 100.5) SetPlayerArmour(playerid, 100.0);
     }
+
+    if (GetPlayerState(playerid) == PLAYER_STATE_DRIVER) AC_CheckVehicle(playerid, GetPlayerVehicleID(playerid));
 
     new Float:x, Float:y, Float:z;
     GetPlayerPos(playerid, x, y, z);

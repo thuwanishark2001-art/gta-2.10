@@ -7,3 +7,4 @@ forward bool:Job_IsWorking(playerid, job);
 forward bool:Prop_TryLock(playerid);
 forward bool:Fac_Valid(id);
 forward bool:Fac_IsOnDutyType(playerid, type);
+forward bool:AC_Report(playerid, const type[], const details[], bool:kick);

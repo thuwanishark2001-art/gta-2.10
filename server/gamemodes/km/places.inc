@@ -113,3 +113,16 @@ stock bool:Place_Near(playerid, const point[E_POINT], Float:range)
 {
     return IsPlayerInRangeOfPoint(playerid, range, point[ptX], point[ptY], point[ptZ]);
 }
+
+// ---- driving licence ----------------------------------------------------
+
+// Licensing office by City Hall, the test car's spawn, and the test route.
+stock const gLicenceOffice[E_POINT] = { 1490.0, -1771.0, 18.8, 0.0 };
+stock const gLicenceCarSpawn[E_POINT] = { 1497.0, -1746.0, 13.4, 270.0 };
+stock const gLicenceRoute[][E_POINT] = {
+    { 1527.0, -1729.0, 13.4, 0.0 },
+    { 1527.0, -1600.0, 13.4, 0.0 },
+    { 1430.0, -1590.0, 13.4, 0.0 },
+    { 1430.0, -1720.0, 13.4, 0.0 },
+    { 1497.0, -1746.0, 13.4, 0.0 }
+};

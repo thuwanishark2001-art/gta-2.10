@@ -40,6 +40,7 @@
 #include "km/support.inc"
 #include "km/kmui.inc"
 #include "km/anticheat.inc"
+#include "km/licence.inc"
 
 new gPass, gFail;
 
@@ -383,6 +384,10 @@ Test_AntiCheat()
     EXPECT(gAcGraceUntil[7] == 0);
     SetPlayerPos(7, 0.0, 0.0, 0.0);
     EXPECT(gAcGraceUntil[7] >= gettime() + AC_GRACE_SECONDS - 1);
+
+    EXPECT(AC_IsAircraft(487) && AC_IsAircraft(520) && !AC_IsAircraft(411) && !AC_IsAircraft(522));
+    // the driving test route has a few stops and the test car fits the clock
+    EXPECT(sizeof (gLicenceRoute) >= 3 && KM_LICENCE_TEST_SECONDS >= 60);
 }
 
 // Affected rows of a statement, or -1 on error.
@@ -483,10 +488,11 @@ Test_SharedQueries()
     mysql_format(gDB, q, sizeof (q), CHAR_SELECT_SQL, gTestChar, gTestAccount);
     new Cache:c = mysql_query(gDB, q);
     EXPECT(mysql_errno(gDB) == 0 && cache_num_rows() == 1);
-    new phone, faction;
+    new phone, faction, licence = -1;
     cache_get_value_name_int(0, "phone_number", phone);
     cache_get_value_name_int(0, "faction_id", faction);
-    EXPECT(phone == 5551234 && faction == 0);
+    cache_get_value_name_int(0, "driving_licence", licence);
+    EXPECT(phone == 5551234 && faction == 0 && licence == 0);
     cache_delete(c);
     // another account can't load the character
     mysql_format(gDB, q, sizeof (q), CHAR_SELECT_SQL, gTestChar, gTestAccount + 100000);
@@ -524,6 +530,10 @@ Test_SharedQueries()
     cache_is_value_name_null(0, "vehicles", noVehicles);
     EXPECT(cache_num_rows() == 1 && id == gTestChar2 && noVehicles);
     cache_delete(c);
+    // the longest lookup (24-character name of quotes, escaped to 48) fits the game's buffer
+    new mdt[MDT_QUERY_SIZE + 512];
+    mysql_format(gDB, mdt, sizeof (mdt), MDT_PERSON_SQL, cellmax, cellmax, "\'\'\'\'\'\'\'\'\'\'\'\'\'\'\'\'\'\'\'\'\'\'\'\'");
+    EXPECT(strlen(mdt) < MDT_QUERY_SIZE - 1);
     mysql_format(gDB, q, sizeof (q), MDT_PERSON_SQL, 0, 0, "Nobody_Here");
     c = mysql_query(gDB, q);
     EXPECT(cache_num_rows() == 0);
@@ -534,6 +544,28 @@ Test_SharedQueries()
     cache_get_value_name(0, "officer", officer);
     cache_get_value_name(0, "day", day);
     EXPECT(mysql_errno(gDB) == 0 && cache_num_rows() == 2 && strcmp(officer, "Test_Other") == 0 && strlen(day) == 10);
+    cache_delete(c);
+
+    // tickets: amount is constrained; paying only covers tickets seen
+    format(q, sizeof (q), "INSERT INTO tickets (character_id, amount, reason) VALUES (%d, 0, 'free')", gTestChar);
+    EXPECT(DB_Exec(q) != 0);
+    format(q, sizeof (q), "INSERT INTO tickets (character_id, officer_character_id, amount, reason) VALUES (%d, %d, 150, 'Speeding'), (%d, %d, 300, 'No licence')",
+        gTestChar, gTestChar2, gTestChar, gTestChar2);
+    EXPECT(DB_Exec(q) == 0);
+    mysql_format(gDB, q, sizeof (q), TICKETS_UNPAID_SQL, gTestChar);
+    c = mysql_query(gDB, q);
+    new firstTicket;
+    cache_get_value_name_int(0, "id", firstTicket);
+    EXPECT(mysql_errno(gDB) == 0 && cache_num_rows() == 2);
+    cache_delete(c);
+    mysql_format(gDB, q, sizeof (q), TICKETS_PAY_SQL, gTestChar, firstTicket);
+    EXPECT(DB_Affected(q) == 1);
+    mysql_format(gDB, q, sizeof (q), MDT_PERSON_SQL, gTestChar, gTestChar, "");
+    c = mysql_query(gDB, q);
+    new tickets, owed;
+    cache_get_value_name_int(0, "tickets", tickets);
+    cache_get_value_name_int(0, "owed", owed);
+    EXPECT(mysql_errno(gDB) == 0 && tickets == 1 && owed == 300);
     cache_delete(c);
 
     // offline faction removal only works on lower ranks
@@ -672,8 +704,8 @@ public T_CheckAsync()
         "SELECT (SELECT COUNT(*) FROM characters WHERE account_id = %d) + (SELECT COUNT(*) FROM vehicles WHERE owner_character_id = %d) \
          + (SELECT COUNT(*) FROM money_log WHERE character_id = %d) + (SELECT COUNT(*) FROM character_items WHERE character_id = %d) \
          + (SELECT COUNT(*) FROM criminal_records WHERE character_id = %d) + (SELECT COUNT(*) FROM reports WHERE reporter_account_id = %d) \
-         + (SELECT COUNT(*) FROM anticheat_log WHERE account_id = %d)",
-        gTestAccount, gTestChar, gTestChar, gTestChar, gTestChar, gTestAccount, gTestAccount);
+         + (SELECT COUNT(*) FROM anticheat_log WHERE account_id = %d) + (SELECT COUNT(*) FROM tickets WHERE character_id = %d)",
+        gTestAccount, gTestChar, gTestChar, gTestChar, gTestChar, gTestAccount, gTestAccount, gTestChar);
     EXPECT(DB_Int(q) == 0);
     // the property goes back on the market
     format(q, sizeof (q), "SELECT owner_character_id IS NULL FROM properties WHERE id = %d", gTestProperty);

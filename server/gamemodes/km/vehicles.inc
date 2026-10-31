@@ -333,6 +333,10 @@ CMD:engine(playerid, params[])
     if (Veh_UsesFuel(vehicleid) && gVeh[vehicleid][vFuel] <= 0.0) return SendError(playerid, "The tank is empty.");
     Veh_SetEngine(vehicleid, true);
     Chat_Action(playerid, "starts the engine.");
+    if (gVeh[vehicleid][vType] == VEH_OWNED && !gChar[playerid][cDrivingLicence])
+    {
+        SendInfo(playerid, "You don't have a driving licence. Police can fine you; take the test with /drivingtest.");
+    }
     return 1;
 }
 

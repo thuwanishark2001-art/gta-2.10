@@ -111,6 +111,15 @@ appear while you play, at the spot you last `/park`ed; `/lock`, `/myvehicles`,
 can. Plates are `KM-` plus the vehicle id. Job and faction vehicles only start
 for their worker or faction.
 
+**Licences and tickets.** `/drivingtest` at the licensing office by City
+Hall ($500): drive a test car through 5 markers within 4 minutes and bring
+it back undamaged (health 850+). `/licence`, `/showlicence [player]`.
+Driving your own car without one is allowed, but you're reminded that
+police can fine you. Police write fines with
+`/ticket [player] [amount] [reason]` (up to $5,000). Players see them with
+`/tickets` and pay them all from the bank with `/paytickets`, at an ATM or
+by phone. The MDT shows the licence and unpaid tickets.
+
 **Property.** Lead admins place houses and 24/7 shops with
 `/createproperty [interior] [price] [name]` at the door. Players
 `/buyproperty` (up to 2), `/enter`, `/exit`, `/lock`, `/sellproperty` (60%
@@ -183,6 +192,7 @@ the third warning is an automatic 2-minute mute.
 | `criminal_records` | Charges from `/su`, shown in the MDT |
 | `reports` | `/report` and `/helpme` requests and who handled them |
 | `anticheat_log` | Anti-cheat findings and whether the player was kicked |
+| `tickets` | Traffic tickets, who wrote them and when they were paid |
 | `schema_migrations` | Which migration files have been applied |
 
 All times are UTC. To change the schema, add a new numbered file in

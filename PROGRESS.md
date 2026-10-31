@@ -62,6 +62,25 @@ this repo's MIT license.
 
 ---
 
+## Licences, tickets, vehicle anti-cheat (2026-10-31)
+
+- Migration `006_licences_tickets`: `characters.driving_licence` and a
+  `tickets` table.
+- `km/licence.inc`: `/drivingtest` costs $500. It's a timed 5-marker route
+  in a test car that has to come back with 850+ health, and it fails on
+  timeout, death, disconnect or a wrecked car. Also `/licence`,
+  `/showlicence`, police `/ticket`, and `/tickets` and `/paytickets`.
+  Paying only marks the tickets that were listed, so one written meanwhile
+  stays open. The MDT now shows the licence and the number and total of
+  unpaid tickets.
+- Anti-cheat: a ground vehicle above 330 km/h is reported (aircraft are
+  excluded), and vehicle health above 1000 is reset and reported.
+- Found while adding this: the MDT query had outgrown its 512-cell buffer
+  and would have been cut off in game. It's now 1024 (`MDT_QUERY_SIZE`),
+  and a test checks that the longest possible query fits.
+- Tests: 214 server checks pass (8 new). The licence office and route
+  coordinates are guesses near City Hall and need checking in game.
+
 ## Client cleanup (2026-10-31)
 
 - **HUD weapon icons**: the 45 GTA:SA icons are replaced by 11 original

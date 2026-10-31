@@ -92,6 +92,8 @@ Checked every second for each player:
 | Jetpack | Kick |
 | Health or armour above 100 | Set back to 100 and logged |
 | On-foot jump of more than 100 m in a second | Logged and shown to admins only (lag and falls can cause it) |
+| Ground vehicle above 330 km/h | Logged and shown to admins only |
+| Vehicle health above 1000 (repair hack) | Set back to 1000 and logged |
 | Money | Can't be cheated: it's kept on the server and the client display is reset |
 
 Admins see findings in chat as `[AC]` lines. Review them in `anticheat_log`

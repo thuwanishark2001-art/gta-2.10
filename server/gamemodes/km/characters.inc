@@ -30,7 +30,8 @@ enum E_CHAR
     bool:cSpawned,
     bool:cDied,         // respawn at the hospital
     bool:cOnDuty,
-    bool:cCuffed
+    bool:cCuffed,
+    bool:cDrivingLicence
 }
 
 new gChar[MAX_PLAYERS][E_CHAR];
@@ -38,7 +39,7 @@ new gChar[MAX_PLAYERS][E_CHAR];
 // Shared with tests/km_tests.pwn, which runs them against the real schema.
 #define CHAR_SELECT_SQL \
     "SELECT id, name, gender, skin, level, xp, cash, bank, job, IFNULL(faction_id, 0) AS faction_id, faction_rank, \
-     payday_seconds, wanted, jail_seconds, IFNULL(phone_number, 0) AS phone_number, \
+     payday_seconds, wanted, jail_seconds, IFNULL(phone_number, 0) AS phone_number, driving_licence, \
      health, armour, pos_x, pos_y, pos_z, pos_a, interior, virtual_world \
      FROM characters WHERE id = %d AND account_id = %d"
 
@@ -303,6 +304,9 @@ public Char_OnLoaded(playerid, race)
     cache_get_value_name_int(0, "wanted", gChar[playerid][cWanted]);
     cache_get_value_name_int(0, "jail_seconds", gChar[playerid][cJailSeconds]);
     cache_get_value_name_int(0, "phone_number", gChar[playerid][cPhone]);
+    new licence;
+    cache_get_value_name_int(0, "driving_licence", licence);
+    gChar[playerid][cDrivingLicence] = licence != 0;
     cache_get_value_name_float(0, "health", gChar[playerid][cHealth]);
     cache_get_value_name_float(0, "armour", gChar[playerid][cArmour]);
     cache_get_value_name_float(0, "pos_x", gChar[playerid][cX]);
