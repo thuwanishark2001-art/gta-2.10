@@ -62,6 +62,21 @@ this repo's MIT license.
 
 ---
 
+## Client cleanup (2026-10-31)
+
+- **HUD weapon icons**: the 45 GTA:SA icons are replaced by 11 original
+  vector silhouettes. Each GTA weapon id maps to a category (fist, melee,
+  pistol, shotgun, SMG, rifle, sniper, heavy, thrown, tool, parachute) in
+  `HudManager.weaponIcon`.
+- **MonetLoader and LuaJIT removed**: no code loaded them, and the Lua mod
+  loader let players run cheats.
+- **Permissions**: down from 17 to 8 (`aapt2 dump permissions`): wake lock,
+  external storage, internet, vibrate, network and Wi-Fi state, and the
+  microphone for voice chat.
+- The APK is now 18.6 MB (was 66 MB at the start of this phase).
+- Built with `assembleDebug`; the icons were checked in a rendered preview.
+  Not run on a device.
+
 ## Game files from the player's install (2026-10-31)
 
 Decision: players supply their own GTA: San Andreas. The APK went from
@@ -362,9 +377,9 @@ AGP 8.4.0. Full steps in [docs/BUILD.md](docs/BUILD.md).
 3. **Custom RPCs (Phase 3):** extend `Packet_CustomRPC` (packet 251) with
    documented Kingmakers sub-ids for HUD stats, inventory, phone, character
    select. Server side via Pawn.RakNet or an open.mp component.
-4. **Permissions trim:** drop `INSTALL_PACKAGES`, `REQUEST_INSTALL_PACKAGES`,
-   `RECORD_AUDIO` unless voice chat stays, and reassess
-   `MANAGE_EXTERNAL_STORAGE`.
+4. **Permissions trim:** done. Removed install-packages, licence check, boot,
+   foreground service, all-files storage and Bluetooth permissions. Kept
+   `RECORD_AUDIO` for voice chat.
 
 ## Risks
 
@@ -372,17 +387,18 @@ AGP 8.4.0. Full steps in [docs/BUILD.md](docs/BUILD.md).
    APK no longer contains `libGTASA.so`, `libSCAnd.so`,
    `libImmEmulatorJ.so` or the game data in `assets/`. They come from the
    player's own GTA:SA 2.10 (see the game files report below). Still from
-   GTA:SA and still in the APK: the 45 HUD weapon icons
-   (`res/drawable/weapon_*.png`), which need replacing with our own art.
-   Older commits still contain the removed files.
+   GTA:SA: the 45 HUD weapon icons
+   were replaced too (see the cleanup report). Older commits still contain
+   the removed files.
 2. **Secrets stay in git history.** Decision: leave history alone. The
    keystore isn't ours and is never used again, so it has no value to us;
    rewriting history would break every fork and clone.
 3. **Engine version lock.** All hooks target GTA:SA Android 2.10. Players
    with a different version will crash.
-4. **Closed prebuilts.** `libmonetloader.so`, `libImmEmulatorJ.so` and
-   `libbass.so` are binaries of unknown or proprietary license. MonetLoader
-   also lets players run Lua mods, which is a cheating vector.
+4. **Closed prebuilts.** MonetLoader and LuaJIT are removed: nothing loaded
+   them, and the Lua mod loader was a cheating vector. `libImmEmulatorJ.so`
+   now comes from the player's GTA:SA. `libbass.so` (proprietary, free for
+   non-commercial use) is still bundled.
 5. **Custom RPCs need a packet-level server plugin.** Pawn alone can't send
    packet 251; Pawn.RakNet (SA-MP) or an open.mp component is required.
 6. **No device testing in CI.** The build is verified; gameplay needs a
