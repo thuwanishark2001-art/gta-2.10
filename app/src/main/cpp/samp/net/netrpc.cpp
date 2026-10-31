@@ -4,6 +4,7 @@
 #include "../gui/gui.h"
 #include "../vendor/encoding/encoding.h"
 #include "../settings.h"
+#include "../kmui/kmui.h"
 
 extern UI* pUI;
 extern CGame *pGame;
@@ -150,6 +151,7 @@ void InitGame(RPCParameters* rpcParams)
 	if (pUI) pUI->chat()->addDebugMessage("Connected to {B9C9BF}%.64s", Encoding::cp2utf(pNetGame->m_szHostName).c_str());
 
 	pNetGame->SetGameState(GAMESTATE_CONNECTED);
+	KMUI::OnConnected();
 
 	pPlayerPool->GetLocalPlayer()->HandleClassSelection();
 
@@ -324,6 +326,7 @@ void ClientMessage(RPCParameters *rpcParams)
 		bsData.Read(szMsg, dwStrLen);
 		szMsg[dwStrLen] = '\0';
 		Log::addParameter("szMsg", szMsg);
+		if (KMUI::HandleClientMessage(dwColor, szMsg)) return;
 		if (pUI) pUI->chat()->addClientMessage(Encoding::cp2utf(szMsg), UI::fixcolor(dwColor));
 	}
 }

@@ -3,6 +3,8 @@ package com.nvidia.devtech;
 import android.content.Context;
 import android.content.res.AssetManager;
 
+import com.samp.mobile.game.GameFiles;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -47,7 +49,7 @@ public class NvAPKFileHelper {
     /* access modifiers changed from: 0000 */
     public void GetAssetList() {
         try {
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(this.context.getAssets().open("assetfile.txt")));
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(gameAssets().open("assetfile.txt")));
             int parseInt = Integer.parseInt(bufferedReader.readLine());
             this.myApkCount = 0;
             if (parseInt > 0) {
@@ -65,7 +67,7 @@ public class NvAPKFileHelper {
                 }
             }
         } catch (Exception e) {
-            AssetManager assets = this.context.getAssets();
+            AssetManager assets = gameAssets();
             getDirectoryListing(assets, "", 0);
             getDirectoryListing(assets, "", this.apkCount);
         }
@@ -129,7 +131,7 @@ public class NvAPKFileHelper {
         nvAPKFile.position = 0;
         nvAPKFile.bufferSize = 0;
         try {
-            nvAPKFile.is = this.context.getAssets().open(this.apkFiles[findInAPKFiles]);
+            nvAPKFile.is = gameAssets().open(this.apkFiles[findInAPKFiles]);
             nvAPKFile.length = nvAPKFile.is.available();
             nvAPKFile.is.mark(READ_MODE_ONLY);
             nvAPKFile.bufferSize = 1024;
@@ -172,6 +174,11 @@ public class NvAPKFileHelper {
         }
         nvAPKFile.position = (int) j;
         return j;
+    }
+
+    // Game data is read from the player's installed GTA: San Andreas.
+    private AssetManager gameAssets() {
+        return GameFiles.assets(this.context);
     }
 
     public void setContext(Context context2) {

@@ -4,9 +4,17 @@
 #   cp .env.example .env && ./scripts/fetch-deps.sh && docker compose up --build
 name: kingmakers
 
+# Container logs rotate at 10 MB, 5 files per service.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   db:
     image: mirror.gcr.io/library/mariadb:11.4
+    logging: *logging
     command: ["--default-time-zone=+00:00", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     environment:
       MARIADB_DATABASE: ${DB_NAME}
@@ -24,6 +32,7 @@ services:
 
   migrate:
     image: mirror.gcr.io/library/mariadb:11.4
+    logging: *logging
     entrypoint: ["bash", "/scripts/migrate.sh"]
     environment:
       DB_HOST: db
@@ -37,7 +46,30 @@ services:
       db:
         condition: service_healthy
 
+  # Daily database dumps into data/backups (see scripts/backup.sh).
+  backup:
+    image: mirror.gcr.io/library/mariadb:11.4
+    logging: *logging
+    entrypoint: ["bash", "/scripts/backup.sh"]
+    command: ["loop"]
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      BACKUP_KEEP: ${KM_BACKUP_KEEP:-14}
+      BACKUP_INTERVAL_HOURS: ${KM_BACKUP_INTERVAL_HOURS:-24}
+    volumes:
+      - ./scripts/backup.sh:/scripts/backup.sh:ro
+      - ./scripts/restore.sh:/scripts/restore.sh:ro
+      - ./data/backups:/backups
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
   server:
+    logging: *logging
     build:
       context: .
       target: server

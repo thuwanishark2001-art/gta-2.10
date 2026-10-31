@@ -38,6 +38,19 @@ CJavaWrapper::CJavaWrapper(JNIEnv *env, jobject activity)
     s_showHud = env->GetMethodID(clas, "showHud", "()V");
     s_hideHud = env->GetMethodID(clas, "hideHud", "()V");
 
+    s_kmHud = env->GetMethodID(clas, "kmHud", "(IIIII[BII)V");
+    s_kmToast = env->GetMethodID(clas, "kmToast", "([B)V");
+    s_kmSms = env->GetMethodID(clas, "kmSms", "(I[B)V");
+    s_kmPhone = env->GetMethodID(clas, "kmPhone", "(III)V");
+    s_kmSpeed = env->GetMethodID(clas, "kmSpeed", "(II)V");
+    if (env->ExceptionCheck())
+    {
+        // An activity without the Kingmakers UI: leave those calls disabled.
+        env->ExceptionClear();
+        FLog("Kingmakers UI methods missing");
+        s_kmHud = s_kmToast = s_kmSms = s_kmPhone = s_kmSpeed = nullptr;
+    }
+
     env->DeleteLocalRef(clas);
 }
 
@@ -237,4 +250,56 @@ void CJavaWrapper::HideEditObject() {
     }
 
     env->CallVoidMethod(this->activity, this->s_hideEditObject);
+}
+// ---- Kingmakers UI ---------------------------------------------------------
+
+void CJavaWrapper::KmHud(int cash, int bank, int level, int xp, int xpMax, const std::string& job, int wanted, int fuel)
+{
+    JNIEnv* env;
+    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    if (!env || !s_kmHud) return;
+    jbyteArray jJob = as_byte_array((unsigned char*)job.c_str(), job.length());
+    env->CallVoidMethod(activity, s_kmHud, cash, bank, level, xp, xpMax, jJob, wanted, fuel);
+    env->DeleteLocalRef(jJob);
+    EXCEPTION_CHECK(env);
+}
+
+void CJavaWrapper::KmToast(const std::string& text)
+{
+    JNIEnv* env;
+    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    if (!env || !s_kmToast) return;
+    jbyteArray jText = as_byte_array((unsigned char*)text.c_str(), text.length());
+    env->CallVoidMethod(activity, s_kmToast, jText);
+    env->DeleteLocalRef(jText);
+    EXCEPTION_CHECK(env);
+}
+
+void CJavaWrapper::KmSms(int fromNumber, const std::string& text)
+{
+    JNIEnv* env;
+    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    if (!env || !s_kmSms) return;
+    jbyteArray jText = as_byte_array((unsigned char*)text.c_str(), text.length());
+    env->CallVoidMethod(activity, s_kmSms, fromNumber, jText);
+    env->DeleteLocalRef(jText);
+    EXCEPTION_CHECK(env);
+}
+
+void CJavaWrapper::KmPhone(int hasPhone, int number, int bank)
+{
+    JNIEnv* env;
+    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    if (!env || !s_kmPhone) return;
+    env->CallVoidMethod(activity, s_kmPhone, hasPhone, number, bank);
+    EXCEPTION_CHECK(env);
+}
+
+void CJavaWrapper::KmSpeed(int kmh, int inVehicle)
+{
+    JNIEnv* env;
+    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    if (!env || !s_kmSpeed) return;
+    env->CallVoidMethod(activity, s_kmSpeed, kmh, inVehicle);
+    EXCEPTION_CHECK(env);
 }

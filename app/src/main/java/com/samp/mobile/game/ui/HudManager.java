@@ -13,7 +13,6 @@ import com.samp.mobile.launcher.other.Util;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.Formatter;
 
 public class HudManager {
     public Activity activity;
@@ -60,10 +59,26 @@ public class HudManager {
         textWanted.setText(String.valueOf(wanted));
 
 
-        int id = activity.getResources().getIdentifier(new Formatter().format("weapon_%d", Integer.valueOf(weaponid)).toString(), "drawable", activity.getPackageName());
-        hud_weapon.setImageResource(id);
+        hud_weapon.setImageResource(weaponIcon(weaponid));
         hud_ammo.setText(String.format("%s / %s", ammo, ammoinclip));
         //hud_weapon.setOnClickListener(v -> NvEventQueueActivity.getInstance().onWeaponChanged());
+    }
+
+    // GTA weapon id -> our own category icon.
+    static int weaponIcon(int weaponid) {
+        if (weaponid <= 1) return R.drawable.km_weapon_fist;           // fist, brass knuckles
+        if (weaponid <= 9) return R.drawable.km_weapon_melee;          // clubs, knife, bat, katana, chainsaw
+        if (weaponid <= 15) return R.drawable.km_weapon_melee;         // gifts and cane
+        if (weaponid <= 18) return R.drawable.km_weapon_thrown;        // grenade, tear gas, molotov
+        if (weaponid <= 24) return R.drawable.km_weapon_pistol;
+        if (weaponid <= 27) return R.drawable.km_weapon_shotgun;
+        if (weaponid == 28 || weaponid == 29 || weaponid == 32) return R.drawable.km_weapon_smg;
+        if (weaponid <= 31) return R.drawable.km_weapon_rifle;
+        if (weaponid <= 34) return R.drawable.km_weapon_sniper;
+        if (weaponid <= 38) return R.drawable.km_weapon_heavy;         // rockets, flamethrower, minigun
+        if (weaponid == 39) return R.drawable.km_weapon_thrown;        // satchel charge
+        if (weaponid == 46) return R.drawable.km_weapon_parachute;
+        return R.drawable.km_weapon_tool;                              // detonator, spray, extinguisher, camera, goggles
     }
 
     public void ShowHud()

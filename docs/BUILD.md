@@ -27,7 +27,12 @@ echo "sdk.dir=/path/to/android-sdk" > local.properties
 ./gradlew assembleDebug
 ```
 
-Output: `app/build/outputs/apk/debug/app-debug.apk` (about 66 MB).
+Output: `app/build/outputs/apk/debug/app-debug.apk` (about 33 MB).
+
+The APK doesn't contain GTA: San Andreas. To run it, the device needs
+GTA: San Andreas for Android **version 2.10** installed from Google Play.
+On first launch the app copies the engine from that install and reads the
+game data from it (see `com/samp/mobile/game/GameFiles.java`).
 
 Debug builds are signed with the Android SDK's default debug key. Release
 signing reads `keystore.properties` in the repo root, which is git-ignored:

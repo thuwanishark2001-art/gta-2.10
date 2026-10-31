@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HUD weapon icon (parachute), Kingmakers RP original art. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M4,22 a20,14 0 0 1 40,0 z M8,22 l14,16 h4 l14,-16 h-3 l-12,14 l-12,-14 z M21,36 h6 v8 h-6 z" />
+</vector>

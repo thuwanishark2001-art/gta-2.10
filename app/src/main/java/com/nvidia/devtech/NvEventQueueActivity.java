@@ -264,7 +264,7 @@ public abstract class NvEventQueueActivity extends AppCompatActivity implements 
             {
                 try
                 {
-                    is = getAssets().open(filename); 
+                    is = com.samp.mobile.game.GameFiles.assets(this).open(filename);
                 }
                 catch (Exception e2)
                 {
@@ -317,7 +317,7 @@ public abstract class NvEventQueueActivity extends AppCompatActivity implements 
             {
                 try
                 {
-                    is = getAssets().open(filename); 
+                    is = com.samp.mobile.game.GameFiles.assets(this).open(filename);
                 }
                 catch (Exception e2)
                 {

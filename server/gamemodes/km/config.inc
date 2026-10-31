@@ -1,7 +1,7 @@
 // Kingmakers RP gameplay settings. Server and database settings come from
 // the environment (see scripts/entrypoint.sh).
 
-#define KM_VERSION              "0.1.0"
+#define KM_VERSION              "0.2.0"
 #define KM_MODE_TEXT            "Kingmakers RP " KM_VERSION
 
 // Accounts
@@ -39,3 +39,48 @@
 #define ADMIN_ADMIN             (2)       // ban, unban
 #define ADMIN_LEAD              (4)
 #define ADMIN_OWNER             (5)       // set admin levels
+
+// Economy
+#define KM_PAYDAY_SECONDS       (3600)    // played time between paydays
+#define KM_PAYDAY_BASE          (150)     // everyone's base pay
+#define KM_INTEREST_PERMILLE    (1)       // bank interest per payday, 0.1%
+#define KM_INTEREST_MAX         (500)
+#define KM_PAY_MAX              (50000)   // largest /pay or /transfer
+#define KM_HOSPITAL_FEE         (100)
+
+// Vehicles
+#define KM_MAX_OWNED_VEHICLES   (3)
+#define KM_VEHICLE_SELL_PERCENT (50)      // refund when selling to the dealer
+#define KM_FUEL_PRICE           (3)       // per litre
+#define KM_FUEL_TICK_MS         (5000)
+
+// Property
+#define KM_MAX_PROPERTIES       (200)     // loaded at once
+#define KM_MAX_OWNED_PROPERTIES (2)
+#define KM_PROPERTY_SELL_PERCENT (60)
+#define KM_PROPERTY_WORLD_BASE  (1000)    // interior world = base + property id
+
+// Jobs
+#define KM_PIZZAS_PER_LOAD      (5)
+#define KM_MINE_MS              (5000)
+#define KM_ORE_PAY              (90)
+#define KM_SERVICE_PRICE_MAX    (2000)    // most a mechanic or medic can charge
+
+// Police
+#define KM_JAIL_MAX_MIN         (60)
+#define KM_MAX_WANTED           (6)
+
+// Support
+#define KM_REPORT_COOLDOWN      (60)      // seconds between reports
+
+// Anti-cheat
+#define KM_AC_TELEPORT_METRES   (100.0)   // on foot, per second
+
+// Driving licence and tickets
+#define KM_LICENCE_FEE          (500)
+#define KM_LICENCE_TEST_SECONDS (240)     // whole route
+#define KM_LICENCE_MIN_HEALTH   (850.0)   // test car health to pass
+#define KM_TICKET_MAX           (5000)
+
+// Anti-cheat, vehicles
+#define KM_AC_MAX_KMH           (330)     // ground vehicles
