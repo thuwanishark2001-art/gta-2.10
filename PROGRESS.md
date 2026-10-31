@@ -90,6 +90,18 @@ real open.mp server:
 `scripts/test.sh` builds it (host `g++`, or a gcc container) and runs it
 inside the compose network after the boot test. Every step passes.
 
+**Movement (follow-up).** The bot now sends on-foot position updates like
+the client (the 68-byte `ONFOOT_SYNC_DATA`). It follows the server's spawn
+info, teleports and checkpoints. A second scenario, `economy`:
+1. Deposits and withdraws at an ATM, and is refused an overdraft.
+2. Takes the miner job, walks into the rock checkpoint and mines.
+3. Carries the ore to the drop-off and gets the `+$90` toast.
+4. Ends with $440 cash and $150 in the bank.
+
+`test.sh` then checks the exact `money_log` trail. The anti-cheat logged
+the bot's 3 km jump to the quarry as a teleport and, as designed, didn't
+kick.
+
 **Also learned from it** (no code change needed): open.mp drops dialog
 responses to input and password dialogs unless the list item is -1. The
 mobile client already sends -1 there. The server's command flood limit (5
