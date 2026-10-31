@@ -57,6 +57,7 @@ this repo's MIT license.
 - [x] Log rotation (game server log and container logs)
 - [x] Operator guide: [docs/DEPLOY.md](docs/DEPLOY.md)
 - [x] Tests: 198 server checks, backup/restore check, boot test, client parser host test
+- [x] CI (`.github/workflows/ci.yml`): server tests including the kmbot scenarios, and the APK build (uploaded as an artifact, checked to contain no GTA:SA files) on every push and PR
 - [ ] Tune the anti-cheat once real players are on (false positives)
 - [ ] Off-site copies of the backups (depends on where the server is hosted)
 
