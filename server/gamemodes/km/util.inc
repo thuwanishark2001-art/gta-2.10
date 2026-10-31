@@ -7,6 +7,7 @@
 #define COLOR_SUCCESS   (0x7FD17FFF)
 #define COLOR_ADMIN     (0xF2B04BFF)
 #define COLOR_BRAND     (0xD4AF37FF)    // Kingmakers gold
+#define COLOR_YELLOW    (0xFFFF00FF)
 
 #define EMBED_BRAND     "{D4AF37}"
 #define EMBED_WHITE     "{FFFFFF}"
@@ -78,4 +79,13 @@ stock Dialog_AppendError(body[], const error[], size = sizeof (body))
     if (error[0] == '\0') return;
     strcat(body, "\n\n" EMBED_ERROR, size);
     strcat(body, error, size);
+}
+
+stock bool:Player_IsNear(playerid, targetid, Float:range)
+{
+    if (GetPlayerVirtualWorld(playerid) != GetPlayerVirtualWorld(targetid)) return false;
+    if (GetPlayerInterior(playerid) != GetPlayerInterior(targetid)) return false;
+    new Float:x, Float:y, Float:z;
+    GetPlayerPos(targetid, x, y, z);
+    return IsPlayerInRangeOfPoint(playerid, range, x, y, z);
 }

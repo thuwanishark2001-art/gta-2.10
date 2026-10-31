@@ -27,8 +27,17 @@ this repo's MIT license.
 - [ ] Play through the login and character flow with the APK on a device
 
 ### Phase 2: core RP systems
-- [ ] Economy, jobs (taxi, trucker, miner, pizza, mechanic), vehicles, property,
-      inventory, factions + MDT, admin/helper + reports + logs, RP chat commands
+- [x] Economy: cash/bank, ATMs, /pay, /transfer, hourly payday, levels, `money_log`
+- [x] Jobs: trucker, pizza, taxi (NPC fares + player calls), miner, mechanic
+- [x] Vehicles: dealership, owned vehicles, parking, locks, manual engine, fuel, job and faction vehicles
+- [x] Property: houses and 24/7 shops, buy/sell, interiors, locks, shop till
+- [x] Inventory: phone (number, SMS, 911, mobile banking), food, medkit, fuel can
+- [x] Factions: LSPD, LSFMD, Government; ranks, salaries, duty, radio; police cuffs, charges, arrest, jail, MDT; medic treatment
+- [x] Staff: helpers, /report and /helpme with a reports table, staff chat, admin tools, everything in `admin_log`
+- [x] RP chat: local, /me, /do, /b, /s, /low, /w, /pm, /r, /o
+- [x] Tests: 176 checks + boot test that loads factions and properties
+- [ ] Play through every system on a device and fix map coordinates that are off
+- [ ] Place the first houses and shops in game (`/createproperty`)
 
 ### Phase 3: mobile UX
 - [ ] Login, character select, inventory, phone, speedometer, HUD (documented RPCs)
@@ -37,6 +46,47 @@ this repo's MIT license.
 - [ ] Tests, server-side anti-cheat, logging, backups, deploy script, docs
 
 ---
+
+## Phase 2 report (2026-10-31)
+
+**What works**
+- Migration `004_rp_core` adds factions (seeded with ranks and salaries),
+  vehicles, properties, inventory, criminal records, reports and `money_log`,
+  plus new character columns (bank, XP, job, faction, wanted, jail, phone).
+  Cash and bank can't go negative in the database either.
+- New modules in `server/gamemodes/km/`: `chat`, `economy`, `offers`,
+  `vehicles`, `jobs`, `property`, `inventory`, `factions`, `support`.
+  `server/README.md` documents every command.
+- All money moves through `Money_Give`: it refuses overdrafts, saves at
+  once and logs a reason, the other character and the balances after.
+- Async callbacks check the player's connection counter like Phase 1.
+  Purchases create or claim the row first (`... WHERE owner IS NULL`, so two
+  buyers can't both get a house) and only charge once that worked; if the
+  payment then fails, the row is released again.
+- Dialog answers are re-checked on the server (location, ownership, item
+  counts), so a spoofed dialog response can't buy from afar.
+
+**What was tested**
+- `server/scripts/test.sh`: 176 checks pass (up from 71). New: game rules,
+  Phase 2 schema constraints, the gamemode's own character, vehicle, MDT
+  and report SQL run against the migrated schema, `Money_Give` /
+  `Money_Charge` / inventory checked in the database, the faction and
+  property loaders, and account-delete cascades.
+- The boot test now also requires factions and properties to load with no
+  query errors.
+- Gamemode and tests compile with zero warnings.
+
+**Still broken or untested**
+- Nothing has been played with a real client yet. The commands, dialogs,
+  checkpoints, vehicle spawns and interiors are untested in the world.
+- Map coordinates (job sites, routes, dealership, ATMs, jail cell, faction
+  cars, interiors) come from common SA:MP references. Some will be a few
+  metres off, or inside something, until checked on a device.
+- There are no houses or shops yet: admins place them with `/createproperty`.
+- Gaps to close later: cuffs aren't saved, so a cuffed player can quit to
+  avoid arrest. Faction leaders can only manage online members. No driving
+  licences or ticketing yet. Duty status isn't saved, so players go off duty
+  when they reconnect.
 
 ## Phase 1 report (2026-10-29)
 

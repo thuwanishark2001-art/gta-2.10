@@ -7,7 +7,16 @@ enum E_CHAR
     cGender,
     cSkin,
     cLevel,
+    cXp,
     cCash,
+    cBank,
+    cJob,
+    cFaction,           // faction id, 0 = none
+    cFactionRank,
+    cPaydaySeconds,
+    cWanted,
+    cJailSeconds,
+    cPhone,             // phone number, 0 = none
     Float:cHealth,
     Float:cArmour,
     Float:cX,
@@ -18,10 +27,25 @@ enum E_CHAR
     cWorld,
     cPlayedMark,        // unix time of the last played_seconds update
     cSessionStart,
-    bool:cSpawned
+    bool:cSpawned,
+    bool:cDied,         // respawn at the hospital
+    bool:cOnDuty,
+    bool:cCuffed
 }
 
 new gChar[MAX_PLAYERS][E_CHAR];
+
+// Shared with tests/km_tests.pwn, which runs them against the real schema.
+#define CHAR_SELECT_SQL \
+    "SELECT id, name, gender, skin, level, xp, cash, bank, job, IFNULL(faction_id, 0) AS faction_id, faction_rank, \
+     payday_seconds, wanted, jail_seconds, IFNULL(phone_number, 0) AS phone_number, \
+     health, armour, pos_x, pos_y, pos_z, pos_a, interior, virtual_world \
+     FROM characters WHERE id = %d AND account_id = %d"
+
+#define CHAR_SAVE_SQL \
+    "UPDATE characters SET cash = %d, bank = %d, level = %d, xp = %d, job = %d, faction_id = NULLIF(%d, 0), faction_rank = %d, \
+     payday_seconds = %d, wanted = %d, jail_seconds = %d, health = %f, armour = %f, pos_x = %f, pos_y = %f, pos_z = %f, pos_a = %f, \
+     interior = %d, virtual_world = %d, played_seconds = played_seconds + %d, last_played_at = UTC_TIMESTAMP() WHERE id = %d"
 
 // The character list shown in the select dialog.
 new gCharListCount[MAX_PLAYERS];
@@ -250,8 +274,7 @@ stock Char_Load(playerid, characterId)
 {
     new query[512];
     mysql_format(gDB, query, sizeof (query),
-        "SELECT id, name, gender, skin, level, cash, health, armour, pos_x, pos_y, pos_z, pos_a, interior, virtual_world \
-         FROM characters WHERE id = %d AND account_id = %d",
+CHAR_SELECT_SQL,
         characterId, gPlayer[playerid][pAccountId]);
     mysql_tquery(gDB, query, "Char_OnLoaded", "dd", playerid, gPlayerRace[playerid]);
 }
@@ -270,7 +293,16 @@ public Char_OnLoaded(playerid, race)
     cache_get_value_name_int(0, "gender", gChar[playerid][cGender]);
     cache_get_value_name_int(0, "skin", gChar[playerid][cSkin]);
     cache_get_value_name_int(0, "level", gChar[playerid][cLevel]);
+    cache_get_value_name_int(0, "xp", gChar[playerid][cXp]);
     cache_get_value_name_int(0, "cash", gChar[playerid][cCash]);
+    cache_get_value_name_int(0, "bank", gChar[playerid][cBank]);
+    cache_get_value_name_int(0, "job", gChar[playerid][cJob]);
+    cache_get_value_name_int(0, "faction_id", gChar[playerid][cFaction]);
+    cache_get_value_name_int(0, "faction_rank", gChar[playerid][cFactionRank]);
+    cache_get_value_name_int(0, "payday_seconds", gChar[playerid][cPaydaySeconds]);
+    cache_get_value_name_int(0, "wanted", gChar[playerid][cWanted]);
+    cache_get_value_name_int(0, "jail_seconds", gChar[playerid][cJailSeconds]);
+    cache_get_value_name_int(0, "phone_number", gChar[playerid][cPhone]);
     cache_get_value_name_float(0, "health", gChar[playerid][cHealth]);
     cache_get_value_name_float(0, "armour", gChar[playerid][cArmour]);
     cache_get_value_name_float(0, "pos_x", gChar[playerid][cX]);
@@ -279,6 +311,12 @@ public Char_OnLoaded(playerid, race)
     cache_get_value_name_float(0, "pos_a", gChar[playerid][cA]);
     cache_get_value_name_int(0, "interior", gChar[playerid][cInterior]);
     cache_get_value_name_int(0, "virtual_world", gChar[playerid][cWorld]);
+
+    if (!(JOB_NONE <= gChar[playerid][cJob] < JOB_COUNT)) gChar[playerid][cJob] = JOB_NONE;
+    // A faction that no longer exists, or a rank above its new maximum.
+    if (!Fac_Valid(gChar[playerid][cFaction])) gChar[playerid][cFaction] = 0;
+    if (gChar[playerid][cFaction] == 0) gChar[playerid][cFactionRank] = 0;
+    else gChar[playerid][cFactionRank] = Clamp(gChar[playerid][cFactionRank], 1, Fac_MaxRank(gChar[playerid][cFaction]));
 
     if (SetPlayerName(playerid, gChar[playerid][cName]) == -1)
     {
@@ -297,6 +335,8 @@ public Char_OnLoaded(playerid, race)
     SetSpawnInfo(playerid, NO_TEAM, gChar[playerid][cSkin],
         gChar[playerid][cX], gChar[playerid][cY], gChar[playerid][cZ], gChar[playerid][cA]);
     TogglePlayerSpectating(playerid, false); // spawns the player
+    Inv_Load(playerid);
+    Veh_LoadOwned(playerid);
 
     new query[128];
     mysql_format(gDB, query, sizeof (query), "UPDATE characters SET last_played_at = UTC_TIMESTAMP() WHERE id = %d", gChar[playerid][cId]);
@@ -320,27 +360,62 @@ stock Char_OnSpawn(playerid)
     }
     else
     {
-        // Respawn after death. Hospitals come in Phase 2.
         SetPlayerInterior(playerid, 0);
         SetPlayerVirtualWorld(playerid, 0);
     }
-    SetPlayerSkin(playerid, gChar[playerid][cSkin]);
+    if (gChar[playerid][cDied])
+    {
+        gChar[playerid][cDied] = false;
+        gChar[playerid][cCuffed] = false;
+        SetPlayerHealth(playerid, 100.0);
+        if (gChar[playerid][cJailSeconds] == 0) Char_ChargeHospital(playerid);
+    }
+    Char_ApplySkin(playerid);
     SetPlayerScore(playerid, gChar[playerid][cLevel]);
+    SetPlayerWantedLevel(playerid, gChar[playerid][cWanted]);
     Char_SyncCash(playerid);
     SetCameraBehindPlayer(playerid);
+    if (gChar[playerid][cJailSeconds] > 0) Jail_Place(playerid);
+}
+
+// Faction uniform while on duty, otherwise the character's own outfit.
+stock Char_ApplySkin(playerid)
+{
+    if (gChar[playerid][cOnDuty]) SetPlayerSkin(playerid, Fac_DutySkin(gChar[playerid][cFaction], gChar[playerid][cGender]));
+    else SetPlayerSkin(playerid, gChar[playerid][cSkin]);
+}
+
+// Called from OnPlayerDeath: the next spawn is at the hospital (or the cell).
+stock Char_OnDeath(playerid)
+{
+    if (!Player_IsPlaying(playerid)) return;
+    gChar[playerid][cDied] = true;
+    if (gChar[playerid][cJailSeconds] > 0)
+    {
+        SetSpawnInfo(playerid, NO_TEAM, gChar[playerid][cSkin], gJailRelease[ptX], gJailRelease[ptY], gJailRelease[ptZ], gJailRelease[ptA]);
+    }
+    else
+    {
+        SetSpawnInfo(playerid, NO_TEAM, gChar[playerid][cSkin], gHospital[ptX], gHospital[ptY], gHospital[ptZ], gHospital[ptA]);
+    }
+}
+
+stock Char_ChargeHospital(playerid)
+{
+    new fee = KM_HOSPITAL_FEE;
+    if (gChar[playerid][cCash] >= fee) Money_Give(playerid, -fee, 0, "hospital");
+    else if (gChar[playerid][cBank] >= fee) Money_Give(playerid, 0, -fee, "hospital");
+    else fee = 0;
+    if (fee > 0) SendClientMessage(playerid, COLOR_INFO, "You were treated at All Saints General. Hospital bill: $%d.", fee);
+    else SendClientMessage(playerid, COLOR_INFO, "You were treated at All Saints General. You couldn't pay, so the bill was waived.");
 }
 
 // Money is server authoritative: the client's value is only a display.
+// Change it with Money_Give (economy.inc).
 stock Char_SyncCash(playerid)
 {
     ResetPlayerMoney(playerid);
     GivePlayerMoney(playerid, gChar[playerid][cCash]);
-}
-
-stock Char_GiveCash(playerid, amount)
-{
-    gChar[playerid][cCash] += amount;
-    Char_SyncCash(playerid);
 }
 
 stock Char_Save(playerid)
@@ -350,9 +425,10 @@ stock Char_Save(playerid)
     new Float:health, Float:armour;
     GetPlayerHealth(playerid, health);
     GetPlayerArmour(playerid, armour);
-    if (health < 1.0)
+    if (health < 1.0 || gChar[playerid][cJailSeconds] > 0)
     {
-        health = 100.0;
+        // Dead (respawns at the hospital) or in jail: keep the last position.
+        if (health < 1.0) health = 100.0;
     }
     else
     {
@@ -368,11 +444,12 @@ stock Char_Save(playerid)
     new played = now - gChar[playerid][cPlayedMark];
     gChar[playerid][cPlayedMark] = now;
 
-    new query[512];
+    new query[768];
     mysql_format(gDB, query, sizeof (query),
-        "UPDATE characters SET cash = %d, health = %f, armour = %f, pos_x = %f, pos_y = %f, pos_z = %f, pos_a = %f, \
-         interior = %d, virtual_world = %d, played_seconds = played_seconds + %d, last_played_at = UTC_TIMESTAMP() WHERE id = %d",
-        gChar[playerid][cCash], health, armour, gChar[playerid][cX], gChar[playerid][cY], gChar[playerid][cZ], gChar[playerid][cA],
+CHAR_SAVE_SQL,
+        gChar[playerid][cCash], gChar[playerid][cBank], gChar[playerid][cLevel], gChar[playerid][cXp], gChar[playerid][cJob],
+        gChar[playerid][cFaction], gChar[playerid][cFactionRank], gChar[playerid][cPaydaySeconds], gChar[playerid][cWanted],
+        gChar[playerid][cJailSeconds], health, armour, gChar[playerid][cX], gChar[playerid][cY], gChar[playerid][cZ], gChar[playerid][cA],
         gChar[playerid][cInterior], gChar[playerid][cWorld], played, gChar[playerid][cId]);
     mysql_tquery(gDB, query);
 }

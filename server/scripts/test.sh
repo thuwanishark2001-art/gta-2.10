@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Builds the server image and runs:
 #   1. tests/km_tests.pwn against a fresh, migrated MySQL
-#   2. a smoke test: the real gamemode boots and connects to the database
+#   2. a smoke test: the real gamemode boots, connects to the database and
+#      loads factions and properties without query errors
 # Exit code 0 means everything passed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -38,10 +39,11 @@ echo "== smoke test: gamemode boots"
 KM_SCRIPT=kingmakers "${COMPOSE[@]}" up -d --no-deps server >/dev/null 2>&1
 for i in $(seq 1 60); do
     logs=$("${COMPOSE[@]}" logs server 2>&1 || true)
-    if echo "$logs" | grep -q "\[db\] connected" && echo "$logs" | grep -q "Kingmakers RP 0"; then
-        echo "gamemode started and connected to the database"; exit 0
+    if echo "$logs" | grep -qE "connection failed|shutting down|query error"; then break; fi
+    if echo "$logs" | grep -q "\[db\] connected" && echo "$logs" | grep -q "Kingmakers RP 0" \
+        && echo "$logs" | grep -q "\[faction\] factions loaded" && echo "$logs" | grep -q "\[property\] loaded"; then
+        echo "gamemode started, connected to the database and loaded factions and properties"; exit 0
     fi
-    if echo "$logs" | grep -qE "connection failed|shutting down"; then break; fi
     sleep 2
 done
 "${COMPOSE[@]}" logs server | tail -30
