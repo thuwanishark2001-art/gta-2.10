@@ -73,6 +73,11 @@ services:
     build:
       context: .
       target: server
+    # Docker's current default seccomp profile, pinned (see seccomp/README.md).
+    # Some Docker releases ship a profile that refuses the 32-bit socketcall
+    # syscall, which the MySQL plugin needs ("Can't create TCP/IP socket (38)").
+    security_opt:
+      - seccomp=./seccomp/docker-default.json
     environment:
       KM_SERVER_NAME: ${KM_SERVER_NAME:-Kingmakers RP}
       KM_PORT: ${KM_PORT:-7777}
