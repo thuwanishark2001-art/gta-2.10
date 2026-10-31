@@ -536,6 +536,22 @@ Test_SharedQueries()
     EXPECT(mysql_errno(gDB) == 0 && cache_num_rows() == 2 && strcmp(officer, "Test_Other") == 0 && strlen(day) == 10);
     cache_delete(c);
 
+    // offline faction removal only works on lower ranks
+    format(q, sizeof (q), "UPDATE characters SET faction_id = 1, faction_rank = 2 WHERE id = %d", gTestChar2);
+    DB_Exec(q);
+    mysql_format(gDB, q, sizeof (q), FAC_ROSTER_SQL, 1);
+    c = mysql_query(gDB, q);
+    EXPECT(mysql_errno(gDB) == 0 && cache_num_rows() >= 1);
+    cache_delete(c);
+    mysql_format(gDB, q, sizeof (q), FAC_REMOVE_OFFLINE_SQL, "Test_Other", 1, 2);
+    EXPECT(DB_Affected(q) == 0);
+    mysql_format(gDB, q, sizeof (q), FAC_REMOVE_OFFLINE_SQL, "Test_Other", 2, 6);
+    EXPECT(DB_Affected(q) == 0);
+    mysql_format(gDB, q, sizeof (q), FAC_REMOVE_OFFLINE_SQL, "Test_Other", 1, 3);
+    EXPECT(DB_Affected(q) == 1);
+    format(q, sizeof (q), "SELECT faction_id IS NULL AND faction_rank = 0 FROM characters WHERE id = %d", gTestChar2);
+    EXPECT(DB_Int(q) == 1);
+
     // reports: helpers only see help requests, and can't close reports
     mysql_format(gDB, q, sizeof (q), REPORT_LIST_SQL, REPORT_CLOSED, REPORT_KIND_REPORT);
     c = mysql_query(gDB, q);
@@ -589,6 +605,17 @@ Test_StartAsync()
     EXPECT(!Inv_Remove(0, ITEM_WATER, 1));
     EXPECT(Inv_Has(0, ITEM_PHONE) && !Inv_Has(0, ITEM_WATER));
 
+    // leaving while cuffed: jail time scaled by the wanted level, a charge
+    gChar[0][cCuffed] = true;
+    gChar[0][cWanted] = 2;
+    gChar[0][cJailSeconds] = 0;
+    Fac_OnLeaveWhileCuffed(0);
+    EXPECT(!gChar[0][cCuffed] && gChar[0][cWanted] == 0 && gChar[0][cJailSeconds] == 15 * 60);
+    // not cuffed: nothing happens
+    gChar[0][cJailSeconds] = 0;
+    Fac_OnLeaveWhileCuffed(0);
+    EXPECT(gChar[0][cJailSeconds] == 0);
+
     // anti-cheat findings are logged against the account and character
     gPlayer[0][pAccountId] = gTestAccount;
     EXPECT(!AC_Report(0, "test", "from km_tests", false));
@@ -633,6 +660,8 @@ public T_CheckAsync()
         EXPECT(Prop_CountOwned(gTestChar) == 1 && Prop_CountOwned(gTestChar2) == 0);
     }
 
+    format(q, sizeof (q), "SELECT COUNT(*) FROM criminal_records WHERE character_id = %d AND officer_character_id IS NULL AND charge = '%s'", gTestChar, FLED_CUSTODY_CHARGE);
+    EXPECT(DB_Int(q) == 1);
     format(q, sizeof (q), "SELECT COUNT(*) FROM anticheat_log WHERE account_id = %d AND character_id = %d AND type = 'test' AND kicked = 0", gTestAccount, gTestChar);
     EXPECT(DB_Int(q) == 1);
 

@@ -46,7 +46,9 @@ this repo's MIT license.
 - [x] Phone screen: messages, new SMS, call a taxi, 911
 - [x] Login, character select and inventory: already mobile-friendly through the client's existing dialog renderer, so no separate screens
 - [ ] Look at all of it on a device and adjust sizes and positions
-- [ ] Rebrand the client (app name, icon, loading screen)
+- [x] Rebrand the client: "Kingmakers RP" name, placeholder gold crown icon and loading screen, other projects' logos removed
+- [ ] Replace the placeholder crown with a real logo
+- [ ] Change the package id `com.samp.mobile` (together with the game files decision: it moves the app's storage folder)
 
 ### Phase 4: quality and ops
 - [x] Server-side anti-cheat (weapons, jetpack, health/armour, teleport), logged in `anticheat_log`
@@ -59,6 +61,24 @@ this repo's MIT license.
 - [ ] Off-site copies of the backups (depends on where the server is hosted)
 
 ---
+
+## Follow-up (2026-10-31): branding and Phase 2 gaps
+
+- **Client branding.** The app is now called "Kingmakers RP". It uses a
+  vector gold crown as a placeholder adaptive icon and loading-screen logo,
+  on a dark gold background. The old icon (another project's red "S"),
+  the Telegram logo on the loading screen and five other unused
+  third-party logos are deleted. The native "TGRP" texts now say
+  Kingmakers RP. The APK builds and reports the new label. I didn't
+  change the package id, because it decides where the app keeps its files
+  and settings; see Phase 3's open items.
+- **Leaving while cuffed** now counts as fleeing custody. The player gets a
+  "Fled custody" charge and 5 minutes of jail per wanted level (plus 5,
+  at most 60), served when they come back. On-duty police are told.
+- **Offline members**: `/uninvite First_Last` removes an offline member of
+  lower rank, and `/roster` lists every member with their rank and when
+  they last played.
+- Tests: 206 server checks pass (8 new).
 
 ## Phase 4 report (2026-10-31)
 
@@ -173,10 +193,9 @@ like a typed command. Details in [docs/KMUI.md](docs/KMUI.md).
   cars, interiors) come from common SA:MP references. Some will be a few
   metres off, or inside something, until checked on a device.
 - There are no houses or shops yet: admins place them with `/createproperty`.
-- Gaps to close later: cuffs aren't saved, so a cuffed player can quit to
-  avoid arrest. Faction leaders can only manage online members. No driving
-  licences or ticketing yet. Duty status isn't saved, so players go off duty
-  when they reconnect.
+- Gaps to close later: no driving licences or ticketing yet. Duty status
+  isn't saved, so players go off duty when they reconnect. (Cuffs and
+  offline members were fixed in the follow-up below.)
 
 ## Phase 1 report (2026-10-29)
 

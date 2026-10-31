@@ -98,6 +98,7 @@ public OnPlayerDisconnect(playerid, reason)
     if (Player_IsPlaying(playerid))
     {
         Job_Stop(playerid);
+        Fac_OnLeaveWhileCuffed(playerid);
         Char_Save(playerid);
         Veh_OnOwnerLeave(playerid);
     }
@@ -240,7 +241,7 @@ CMD:help(playerid, params[])
     SendClientMessage(playerid, COLOR_WHITE, "Jobs: /jobs /takejob /quitjob /work /stopwork /calltaxi  Property: /enter /exit /buyproperty /sellproperty /myproperties /shop /till");
     if (Fac_Valid(gChar[playerid][cFaction]))
     {
-        SendClientMessage(playerid, COLOR_RADIO, "Faction: /f /duty /members /quitfaction  Leaders: /invite /uninvite /setrank");
+        SendClientMessage(playerid, COLOR_RADIO, "Faction: /f /duty /members /quitfaction  Leaders: /invite /uninvite /setrank /roster");
         switch (Fac_Type(gChar[playerid][cFaction]))
         {
             case FACTION_POLICE: SendClientMessage(playerid, COLOR_RADIO, "Police: /d /cuff /uncuff /su /clearwanted /arrest /mdt");

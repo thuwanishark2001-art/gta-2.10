@@ -125,12 +125,16 @@ mobile banking.
 six ranks each. A lead admin sets the first leader with
 `/setfaction [player] [faction id] [rank]`. Members: `/f` radio, `/duty` at
 HQ (uniform and equipment), `/members`, `/quitfaction`. Ranks 5 and 6 can
-`/invite` (the player answers `/joinfaction`), `/uninvite` and `/setrank`.
+`/invite` (the player answers `/joinfaction`), `/uninvite` (a player, or a
+`First_Last` name for someone offline), `/setrank` and `/roster` (all
+members, online or not).
 On-duty police and medics share `/d` and get `/911` calls.
 Police: `/cuff`, `/uncuff`, `/su [player] [charge]` (record + wanted level),
 `/clearwanted` (rank 3+), `/arrest [player] [minutes]` at the LSPD garage,
 and `/mdt [player or First_Last]` for wanted level, phone, plates and the
-last 10 charges. Jail time keeps counting only while you play.
+last 10 charges. Jail time keeps counting only while you play. Leaving
+the game while cuffed adds a "Fled custody" charge and jail time
+(5 minutes per wanted level plus 5), served on return.
 Medics: `/heal [player] [price]`. Dying sends you to All Saints ($100 bill).
 
 **Kingmakers client.** The Kingmakers APK announces itself with

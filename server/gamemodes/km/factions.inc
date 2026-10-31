@@ -38,7 +38,20 @@ new gFacInvite[MAX_PLAYERS];                          // pending invite: faction
 
 forward Fac_OnLoaded();
 forward Fac_OnRanksLoaded();
+// Offline members: removal by name (only lower ranks) and the roster.
+#define FAC_REMOVE_OFFLINE_SQL \
+    "UPDATE characters SET faction_id = NULL, faction_rank = 0 WHERE name = '%e' AND faction_id = %d AND faction_rank < %d"
+#define FAC_ROSTER_SQL \
+    "SELECT name, faction_rank, IFNULL(DATE_FORMAT(last_played_at, '%%Y-%%m-%%d'), '-') AS seen \
+     FROM characters WHERE faction_id = %d ORDER BY faction_rank DESC, name LIMIT 60"
+
+// Logging out while cuffed counts as fleeing custody: a charge, and jail
+// time when they come back.
+#define FLED_CUSTODY_CHARGE     "Fled custody (left while cuffed)"
+
 forward Fac_OnMdt(playerid, race);
+forward Fac_OnRemovedOffline(playerid, race, const name[]);
+forward Fac_OnRoster(playerid, race);
 forward Fac_OnMdtRecords(playerid, race, characterId);
 
 stock Fac_Load()
@@ -323,13 +336,81 @@ CMD:uninvite(playerid, params[])
 {
     new id = gChar[playerid][cFaction], targetid;
     if (!Fac_Valid(id) || !Fac_IsLeader(playerid)) return SendError(playerid, "Only faction leaders can remove members.");
-    if (sscanf(params, "u", targetid)) return SendInfo(playerid, "Usage: /uninvite [player]");
-    if (!Player_IsPlaying(targetid) || gChar[targetid][cFaction] != id) return SendError(playerid, "They're not an online member of your faction.");
+    if (isnull(params)) return SendInfo(playerid, "Usage: /uninvite [player, or First_Last for someone offline]");
+    if (sscanf(params, "u", targetid) || !Player_IsPlaying(targetid))
+    {
+        // Not online: remove by character name.
+        if (!IsValidCharacterName(params)) return SendError(playerid, "Nobody online by that name. For an offline member, use their First_Last name.");
+        new query[256];
+        mysql_format(gDB, query, sizeof (query), FAC_REMOVE_OFFLINE_SQL, params, id, gChar[playerid][cFactionRank]);
+        mysql_tquery(gDB, query, "Fac_OnRemovedOffline", "dds", playerid, gPlayerRace[playerid], params);
+        return 1;
+    }
+    if (gChar[targetid][cFaction] != id) return SendError(playerid, "They're not in your faction.");
     if (targetid != playerid && gChar[targetid][cFactionRank] >= gChar[playerid][cFactionRank]) return SendError(playerid, "You can only remove lower ranks.");
     Fac_Remove(targetid);
     SendClientMessage(targetid, COLOR_INFO, "You were removed from %s.", gFac[id][fName]);
     if (targetid != playerid) SendClientMessage(playerid, COLOR_SUCCESS, "%s was removed from the faction.", gChar[targetid][cName]);
     return 1;
+}
+
+public Fac_OnRemovedOffline(playerid, race, const name[])
+{
+    if (gPlayerRace[playerid] != race) return 1;
+    if (cache_affected_rows() == 0) return SendError(playerid, "No lower-ranked member of your faction has that name."), 1;
+    SendClientMessage(playerid, COLOR_SUCCESS, "%s was removed from the faction.", name);
+    return 1;
+}
+
+// Every member, online or not.
+CMD:roster(playerid, params[])
+{
+    new id = gChar[playerid][cFaction];
+    if (!Fac_Valid(id) || !Fac_IsLeader(playerid)) return SendError(playerid, "Only faction leaders can see the full roster.");
+    new query[256];
+    mysql_format(gDB, query, sizeof (query), FAC_ROSTER_SQL, id);
+    mysql_tquery(gDB, query, "Fac_OnRoster", "dd", playerid, gPlayerRace[playerid]);
+    return 1;
+}
+
+public Fac_OnRoster(playerid, race)
+{
+    if (gPlayerRace[playerid] != race) return 1;
+    new id = gChar[playerid][cFaction];
+    if (!Fac_Valid(id)) return 1;
+    new body[2048], line[80], name[MAX_PLAYER_NAME], rank, rankName[32], seen[12];
+    body = "Name\tRank\tLast played\n";
+    for (new i = 0, rows = cache_num_rows(); i < rows; i++)
+    {
+        cache_get_value_name(i, "name", name);
+        cache_get_value_name_int(i, "faction_rank", rank);
+        cache_get_value_name(i, "seen", seen);
+        Fac_RankName(id, rank, rankName);
+        format(line, sizeof (line), "%s\t%s\t%s\n", name, rankName, seen);
+        strcat(body, line);
+    }
+    ShowPlayerDialog(playerid, DIALOG_INFO, DIALOG_STYLE_TABLIST_HEADERS, gFac[id][fName], body, "Close", "");
+    return 1;
+}
+
+// Called on disconnect, before the character is saved.
+stock Fac_OnLeaveWhileCuffed(playerid)
+{
+    if (!gChar[playerid][cCuffed]) return;
+    gChar[playerid][cCuffed] = false;
+    new minutes = Clamp(5 * (gChar[playerid][cWanted] + 1), 5, KM_JAIL_MAX_MIN);
+    if (gChar[playerid][cJailSeconds] < minutes * 60) gChar[playerid][cJailSeconds] = minutes * 60;
+    gChar[playerid][cWanted] = 0;
+    new query[256];
+    mysql_format(gDB, query, sizeof (query), "INSERT INTO criminal_records (character_id, officer_character_id, charge) VALUES (%d, NULL, '%e')",
+        gChar[playerid][cId], FLED_CUSTODY_CHARGE);
+    mysql_tquery(gDB, query);
+    new line[128];
+    format(line, sizeof (line), "[Dispatch] %s left while cuffed and will serve %d minutes when they return.", gChar[playerid][cName], minutes);
+    for (new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if (i != playerid && Fac_IsOnDutyType(i, FACTION_POLICE)) SendClientMessage(i, COLOR_DEPARTMENT, "%s", line);
+    }
 }
 
 CMD:quitfaction(playerid, params[])
