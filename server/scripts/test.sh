@@ -4,8 +4,9 @@
 #   2. a backup, restore and retention check with scripts/backup.sh and restore.sh
 #   3. a smoke test: the real gamemode boots, connects to the database and
 #      loads factions and properties without query errors
-#   4. an end-to-end run of tools/kmbot, a headless SA:MP client, through
-#      registration, character creation, spawn, commands and login
+#   4. end-to-end runs of tools/kmbot, a headless SA:MP client: registration,
+#      character creation, spawn, commands and login; then ATM banking and a
+#      full miner job loop, checked against money_log
 # Exit code 0 means everything passed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -91,8 +92,16 @@ if [ ! -x .deps/kmbot ] || [ -n "$(find tools/kmbot ../app/src/main/cpp/samp/ven
     fi
 fi
 server_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$("${COMPOSE[@]}" ps -q server)")
-if ! "${COMPOSE[@]}" run --rm --no-deps -v "$PWD/.deps/kmbot:/kmbot:ro" --entrypoint /kmbot server \
-        "$server_ip" 7777 kmbot_e2e Bot_Tester; then
+run_bot() { "${COMPOSE[@]}" run --rm --no-deps -v "$PWD/.deps/kmbot:/kmbot:ro" --entrypoint /kmbot server "$server_ip" 7777 "$@"; }
+if ! run_bot kmbot_e2e Bot_Tester basic || ! run_bot kmbot_eco Eco_Tester economy; then
     "${COMPOSE[@]}" logs server | tail -30
     echo "end-to-end test failed"; exit 1
 fi
+# The economy run must have left exactly this money trail.
+trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
+    "SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, '/', m.bank_after) ORDER BY m.id) FROM money_log m
+     JOIN characters c ON c.id = m.character_id WHERE c.name = 'Eco_Tester'")
+if [ "$trail" != "deposit:300/200,withdraw:350/150,job:440/150" ]; then
+    echo "unexpected money_log for the economy run: $trail"; exit 1
+fi
+echo "money_log matches the economy run"

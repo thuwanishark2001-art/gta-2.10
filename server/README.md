@@ -210,9 +210,14 @@ checks that the real gamemode boots, connects and loads factions and
 properties without query errors. It exits non-zero on any failure.
 
 It then runs `tools/kmbot`, a headless SA:MP 0.3.7 client built from the
-mobile client's RakNet code, through the real server: it registers, creates
-a character, spawns, runs commands, checks the Kingmakers UI events,
-reconnects and logs in (see `tools/kmbot/kmbot.cpp`). It's built with the
+mobile client's RakNet code, through the real server, twice (see
+`tools/kmbot/kmbot.cpp`):
+- `basic`: registers, creates a character, spawns, runs commands, checks
+  the Kingmakers UI events, reconnects and logs in.
+- `economy`: sends position updates like a real client. It banks at an
+  ATM, then plays a full miner shift: it walks into the checkpoints the
+  server sets, mines, delivers the ore and gets paid. The script then
+  checks the exact `money_log` trail in the database. It's built with the
 host's `g++`, or in a `gcc` container if there is none.
 
 The test script includes every gamemode module, so it uses the real code:
