@@ -16,6 +16,8 @@ services:
   server:
     environment:
       KM_SCRIPT: ${KM_SCRIPT:-km_tests}
+      # Lets tools/kmbot's admin scenario log in to RCON. Test stack only.
+      KM_RCON_PASSWORD: kmbot-rcon-test
     ports: !reset []
     volumes: !reset []
     restart: "no"

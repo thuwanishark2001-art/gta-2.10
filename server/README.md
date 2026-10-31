@@ -217,7 +217,14 @@ mobile client's RakNet code, through the real server, twice (see
 - `economy`: sends position updates like a real client. It banks at an
   ATM, then plays a full miner shift: it walks into the checkpoints the
   server sets, mines, delivers the ore and gets paid. The script then
-  checks the exact `money_log` trail in the database. It's built with the
+  checks the exact `money_log` trail in the database.
+- `admin`: logs in to RCON (the test stack sets `KM_RCON_PASSWORD`), makes
+  itself owner, then:
+  - creates, buys, enters, leaves and sells a house;
+  - joins the LSPD, goes on duty and reads its own MDT entry;
+  - files a report, then takes and closes it.
+
+  The script checks the money trail and the staff actions in `admin_log`. It's built with the
 host's `g++`, or in a `gcc` container if there is none.
 
 The test script includes every gamemode module, so it uses the real code:

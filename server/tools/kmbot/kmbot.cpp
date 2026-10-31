@@ -8,12 +8,16 @@
 // basic:   register, create a character, spawn, commands, UI events, log in
 // economy: register, ATM deposit and withdrawal, then a full miner job loop
 //          (walk to the checkpoints the server sets, mine, deliver, get paid)
+// admin:   RCON login (KMBOT_RCON env), make itself owner, then property
+//          (create, buy, enter, exit, sell), police (faction, duty, MDT),
+//          and the report flow
 
 #include "main.h"
 
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <chrono>
+#include <cmath>
 #include <deque>
 #include <string>
 #include <thread>
@@ -357,6 +361,97 @@ static void EnterCheckpoint()
 }
 
 static const std::string kPassword = "kmbot-pass-123";
+static void RegisterAndCreate(const std::string& character);
+
+// RCON goes in packet 201 as a 32-bit length and the command text.
+static void Rcon(const std::string& command)
+{
+    RakNet::BitStream bs;
+    bs.Write((uint8_t)ID_RCON_COMMAND);
+    bs.Write((uint32_t)command.size());
+    bs.Write(command.c_str(), command.size());
+    g_client->Send(&bs, HIGH_PRIORITY, RELIABLE, 0);
+    printf("  >> rcon %s\n", command.substr(0, 5).c_str());
+}
+
+static void AdminScenario(const char* host, int port, const std::string& character)
+{
+    const char* rconPassword = getenv("KMBOT_RCON");
+    if (!rconPassword) { Fail("KMBOT_RCON isn't set"); return; }
+
+    printf("== register %s and create %s\n", g_name.c_str(), character.c_str());
+    if (!Connect(host, port)) return;
+    RegisterAndCreate(character);
+    Pump(1500);
+
+    printf("== become owner\n");
+    Rcon(std::string("login ") + rconPassword);
+    Pump(1000);
+    Command("/setadmin " + character + " 5");
+    ExpectMessage("Your admin level is now 5");
+    Command("/check " + character);
+    ExpectMessage("admin 5");
+
+    printf("== property\n");
+    Command("/createproperty 0 1000 Bot House");
+    ExpectMessage("Created property #");
+    Pump(1000);
+    Command("/buyproperty");
+    ExpectMessage("You need $1000");
+    Command("/givemoney " + character + " 2000 kmbot test");
+    ExpectMessage("Their bank balance is $2000");
+    Command("/buyproperty");
+    ExpectMessage("You bought Bot House for $1000");
+    Vec3 door = g_pos;
+    Command("/enter");
+    Pump(1500);
+    // Interior preset 0 ("Small house") is at 223.0, 1287.1, 1082.1.
+    if (fabsf(g_pos.x - 223.0f) > 2.0f || fabsf(g_pos.y - 1287.1f) > 2.0f) Fail("/enter didn't move us into the house");
+    Command("/exit");
+    Pump(1000);
+    if (fabsf(g_pos.x - door.x) > 3.0f || fabsf(g_pos.y - door.y) > 3.0f) Fail("/exit didn't put us back at the door");
+    Command("/myproperties");
+    Pump(500);
+    Command("/sellproperty confirm");
+    ExpectMessage("Sold. $600 was paid");
+    Command("/stats");
+    ExpectMessage("Bank $1600");
+
+    printf("== police\n");
+    Command("/setfaction " + character + " 1 6");
+    ExpectMessage("Los Santos Police Department at rank 6");
+    MoveTo(1553.6f, -1675.6f, 16.2f);
+    Command("/duty");
+    ExpectMessage("is now on duty");
+    g_dialogs.clear();
+    Command("/mdt " + character);
+    Dialog mdt;
+    if (ExpectDialog(8, &mdt))
+    {
+        if (mdt.text.find("Driving licence: none") == std::string::npos) Fail("MDT is missing the licence line");
+        if (mdt.text.find("Unpaid tickets: 0") == std::string::npos) Fail("MDT is missing the tickets line");
+    }
+    Command("/duty");
+    ExpectMessage("is now off duty");
+
+    printf("== reports\n");
+    Command("/report Testing the report system");
+    ExpectMessage("Request #");
+    // Use the number the server gave the request.
+    std::string id = "0";
+    for (auto& m : g_messages)
+    {
+        size_t at = m.text.find("Request #");
+        if (at != std::string::npos) id = std::to_string(atoi(m.text.c_str() + at + 9));
+    }
+    Command("/reports");
+    ExpectMessage("Testing the report system");
+    Command("/ar " + id);
+    ExpectMessage(("is handling your request #" + id).c_str());
+    Command("/cr " + id);
+    ExpectMessage(("Your request #" + id + " was closed").c_str());
+    Disconnect();
+}
 
 static void RegisterAndCreate(const std::string& character)
 {
@@ -413,7 +508,7 @@ static void EconomyScenario(const char* host, int port, const std::string& chara
 
 int main(int argc, char** argv)
 {
-    if (argc < 5) { printf("usage: kmbot <host> <port> <account> <First_Last> [basic|economy]\n"); return 2; }
+    if (argc < 5) { printf("usage: kmbot <host> <port> <account> <First_Last> [basic|economy|admin]\n"); return 2; }
     setvbuf(stdout, nullptr, _IONBF, 0);
     char host[64];
     {
@@ -426,9 +521,10 @@ int main(int argc, char** argv)
     g_name = argv[3];
     std::string character = argv[4];
     const std::string& password = kPassword;
-    if (argc > 5 && strcmp(argv[5], "economy") == 0)
+    if (argc > 5 && (strcmp(argv[5], "economy") == 0 || strcmp(argv[5], "admin") == 0))
     {
-        EconomyScenario(host, port, character);
+        if (strcmp(argv[5], "economy") == 0) EconomyScenario(host, port, character);
+        else AdminScenario(host, port, character);
         printf(g_failures ? "KMBOT DONE: %d failure(s)\n" : "KMBOT DONE: all steps passed\n", g_failures);
         return g_failures ? 1 : 0;
     }
