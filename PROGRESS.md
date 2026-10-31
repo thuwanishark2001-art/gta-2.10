@@ -14,8 +14,8 @@ this repo's MIT license.
 - [x] Remove the third-party Firebase config (`google-services.json`) and Firebase deps
 - [x] Replace third-party server IPs with a configurable Kingmakers endpoint
 - [x] Plan and risks (below)
-- [ ] Decide how players supply their own game files (see Risk 1)
-- [ ] Decide whether to purge old secrets from git history (see Risk 2)
+- [x] Decide how players supply their own game files: copied from their installed GTA:SA on first launch (see Risk 1)
+- [x] Decide whether to purge old secrets from git history: no, the old keys are simply never used (see Risk 2)
 
 ### Phase 1: server foundation (`/server`)
 - [x] open.mp server + modular Pawn gamemode, config via env (`.env`)
@@ -61,6 +61,46 @@ this repo's MIT license.
 - [ ] Off-site copies of the backups (depends on where the server is hosted)
 
 ---
+
+## Game files from the player's install (2026-10-31)
+
+Decision: players supply their own GTA: San Andreas. The APK went from
+66 MB to 33 MB and no longer contains Rockstar's engine or game data.
+
+**How it works**
+- `GameFilesActivity` is now the launcher. It checks that
+  `com.rockstargames.gtasa` is installed, at version 2.10. If it isn't,
+  it explains what's needed and links to Google Play. The check runs
+  again when the player comes back.
+- On first launch, and whenever the installed game changes, `GameFiles`
+  copies the engine libraries out of the installed game into the app's
+  private storage and marks them read-only (Android 14 requires that).
+  It handles both extracted libraries and libraries inside the APK or its
+  split APKs. The libraries are `libSCAnd.so` and `libGTASA.so`, plus
+  `libImmEmulatorJ.so` on 32-bit. Each one's SHA-256 is compared against
+  the 2.10 builds the hooks were written for and written to the log.
+- `GTASA.onCreate` loads those copies (dependencies first) before the
+  engine starts, then `libbass` and `libsamp`.
+- Game data the engine reads "from the APK" (`NvAPKFileHelper`, sounds,
+  textures) now comes from the installed game's package via
+  `createPackageContext(...).getAssets()`. Nothing is copied.
+- The manifest declares the GTA:SA package in `<queries>` (needed to see
+  it on Android 11+). The game activity is no longer exported.
+
+**What was tested**
+- `assembleDebug` builds. The APK contains no `libGTASA.so`,
+  `libSCAnd.so`, `libImmEmulatorJ.so` or Rockstar assets. Its launcher is
+  `GameFilesActivity`, and the `<queries>` entry is in the merged manifest.
+
+**Untested, needs a device with GTA:SA 2.10 installed**
+- The copy itself, and loading the engine from app storage.
+- Whether Rockstar's own 2.10 libraries match the bundled ones (the
+  hashes). If the bundled ones were patched, the official ones may need
+  the same patches, and that will show up as a crash at startup.
+- Whether every asset the engine needs is in the Play version's package,
+  including Play asset packs.
+- The game data in the storage folder (the "cache" players already
+  install) is unchanged by this.
 
 ## Follow-up (2026-10-31): branding and Phase 2 gaps
 
@@ -328,15 +368,16 @@ AGP 8.4.0. Full steps in [docs/BUILD.md](docs/BUILD.md).
 
 ## Risks
 
-1. **The APK currently ships Rockstar's files.** `libGTASA.so`, `libSCAnd.so`
-   and the game data in `assets/` are compiled into every APK. Sharing that
-   APK would break the "players supply their own copy" rule. Fix: strip
-   them from the repo and APK, and on first launch copy them from the
-   player's own installed GTA:SA (Android, version 2.10, which the hook
-   offsets require). Needs a decision before any APK is shared.
-2. **Secrets stay in git history.** Removing files on a branch doesn't erase
-   old commits. The keystore isn't ours, so the practical fix is to never use
-   it, plus optionally rewrite history (force-push, breaks forks).
+1. **Rockstar's files in the APK: fixed, but untested on a device.** The
+   APK no longer contains `libGTASA.so`, `libSCAnd.so`,
+   `libImmEmulatorJ.so` or the game data in `assets/`. They come from the
+   player's own GTA:SA 2.10 (see the game files report below). Still from
+   GTA:SA and still in the APK: the 45 HUD weapon icons
+   (`res/drawable/weapon_*.png`), which need replacing with our own art.
+   Older commits still contain the removed files.
+2. **Secrets stay in git history.** Decision: leave history alone. The
+   keystore isn't ours and is never used again, so it has no value to us;
+   rewriting history would break every fork and clone.
 3. **Engine version lock.** All hooks target GTA:SA Android 2.10. Players
    with a different version will crash.
 4. **Closed prebuilts.** `libmonetloader.so`, `libImmEmulatorJ.so` and

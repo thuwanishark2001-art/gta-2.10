@@ -22,18 +22,21 @@ public class GTASA extends WarMedia {
                 .setMode(ShadowHook.Mode.UNIQUE)
                 .build());
 
-        vmVersion = null;
+        vmVersion = System.getProperty("java.vm.version");
+    }
+
+    private static boolean sLibrariesLoaded = false;
+
+    // The engine comes from the player's own GTA: San Andreas install
+    // (GameFiles), so it can only be loaded once there's a Context.
+    // GameFilesActivity has already checked and copied it.
+    private static synchronized void loadLibraries(android.content.Context context) {
+        if (sLibrariesLoaded) return;
         System.out.println("**** Loading SO's");
-        try {
-            vmVersion = System.getProperty("java.vm.version");
-            System.out.println("vmVersion " + vmVersion);
-            System.loadLibrary("ImmEmulatorJ");
-        }
-        catch (ExceptionInInitializerError | UnsatisfiedLinkError ignored) {
-        }
-        System.loadLibrary("GTASA");
+        GameFiles.loadLibraries(context);
         System.loadLibrary("bass");
         System.loadLibrary("samp");
+        sLibrariesLoaded = true;
     }
 
     public static void staticEnterSocialClub()
@@ -90,6 +93,7 @@ public class GTASA extends WarMedia {
         //  gtasaSelf = this;
         //  wantsAccelerometer = true;
 
+        loadLibraries(this);
         super.onCreate(bundle);
     }
 

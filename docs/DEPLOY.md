@@ -99,8 +99,10 @@ before banning anyone; the teleport check in particular is a hint, not proof.
 
 ## Before going public
 
-- The client APK still contains Rockstar's game files. Don't distribute it
-  until players supply their own copy (see `PROGRESS.md`, Risk 1).
+- The client now takes GTA: San Andreas from the player's own install,
+  but that hasn't been tested on a device yet, and the HUD weapon icons
+  are still GTA:SA's (see `PROGRESS.md`, Risk 1). Test both before
+  sharing the APK.
 - Play through the jobs, vehicles and property on a device and fix map
   coordinates that are off.
 - Place houses and shops with `/createproperty`.

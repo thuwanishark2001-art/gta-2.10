@@ -21,6 +21,11 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Android 11+: lets the app see the player's GTA: San Andreas install. -->
+    <queries>
+        <package android:name="com.rockstargames.gtasa" />
+    </queries>
+
     <application
         android:gwpAsanMode="always"
         android:requestLegacyExternalStorage="true"
@@ -48,6 +53,18 @@
         </provider>
 
 
+        <!-- First screen: checks the player's GTA: San Andreas and copies its engine. -->
+        <activity
+            android:name="com.samp.mobile.game.GameFilesActivity"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name="com.samp.mobile.game.SAMP"
             android:screenOrientation="landscape"
@@ -55,11 +72,6 @@
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustPan"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false" />
     </application>
 </manifest>
