@@ -28,6 +28,7 @@ Data lives in `server/data/` (database files and logs). Delete it to start over.
 | `gamemodes/km/*.inc` | Modules: `accounts`, `characters`, `moderation`, `chat`, `economy`, `offers`, `vehicles`, `jobs`, `property`, `inventory`, `factions`, `support`, plus helpers (`antispam`, `validate`, `rpcalc`, `cmd`, `db`, `util`) |
 | `gamemodes/km/config.inc` | Gameplay numbers: pay, prices, limits, timers |
 | `gamemodes/km/places.inc` | Fixed map locations: ATMs, gas stations, dealership, hospital, jail, job sites, faction vehicles |
+| `gamemodes/km/kmui.inc` | Server side of the client UI protocol (`../docs/KMUI.md`) |
 | `gamemodes/km/ids.inc` | Job, item, faction-type and property-type ids stored in the database (never renumber) |
 | `sql/migrations/NNN_*.sql` | Database schema, applied in order by `scripts/migrate.sh` |
 | `tests/km_tests.pwn` | Unit tests plus database and bcrypt integration tests |
@@ -124,6 +125,11 @@ Police: `/cuff`, `/uncuff`, `/su [player] [charge]` (record + wanted level),
 and `/mdt [player or First_Last]` for wanted level, phone, plates and the
 last 10 charges. Jail time keeps counting only while you play.
 Medics: `/heal [player] [price]`. Dying sends you to All Saints ($100 bill).
+
+**Kingmakers client.** The Kingmakers APK announces itself with
+`/kmclient` and then gets a stats panel, speedometer, toasts and a phone
+screen (`/phone`), driven by the protocol in `../docs/KMUI.md`. Other SA:MP
+clients see the normal chat messages instead.
 
 **Help and reports.** `/report` goes to admins, `/helpme` to helpers and
 admins, with a 60-second cooldown. Both are saved, so requests sent while no

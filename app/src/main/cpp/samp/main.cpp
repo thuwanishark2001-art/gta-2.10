@@ -20,6 +20,7 @@
 #include "vendor/str_obfuscator/str_obfuscator.hpp"
 
 #include "settings.h"
+#include "kmui/kmui.h"
 
 #include "crashlytics.h"
 
@@ -353,6 +354,15 @@ extern "C" {
 			if(pSettings->Get().iAndroidKeyboard)
 				pJavaWrapper->HideKeyboard();
 		}
+	}
+	// Commands from the Kingmakers UI (phone buttons). Sent on the game thread.
+	JNIEXPORT void JNICALL Java_com_samp_mobile_game_SAMP_kmSendCommand(JNIEnv *pEnv, jobject thiz, jbyteArray command)
+	{
+		jbyte* bytes = pEnv->GetByteArrayElements(command, nullptr);
+		jsize length = pEnv->GetArrayLength(command);
+		std::string text((char*)bytes, length);
+		pEnv->ReleaseByteArrayElements(command, bytes, JNI_ABORT);
+		KMUI::QueueCommand(text);
 	}
 	JNIEXPORT void JNICALL Java_com_samp_mobile_game_ui_dialog_DialogManager_sendDialogResponse(JNIEnv* pEnv, jobject thiz, jint i3, jint i, jint i2, jbyteArray str)
 	{

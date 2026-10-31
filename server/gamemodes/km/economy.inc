@@ -81,6 +81,9 @@ stock Eco_Payday(playerid)
     SendClientMessage(playerid, COLOR_BRAND, "---- Payday ----");
     SendClientMessage(playerid, COLOR_WHITE, "Base pay $%d | Salary $%d | Interest $%d", KM_PAYDAY_BASE, salary, interest);
     SendClientMessage(playerid, COLOR_WHITE, "Deposited $%d. Bank balance: $%d", total, gChar[playerid][cBank]);
+    new toast[48];
+    format(toast, sizeof (toast), "Payday: +$%d to your bank", total);
+    KMUI_Toast(playerid, toast);
 
     gChar[playerid][cXp]++;
     new needed = Level_XpNeeded(gChar[playerid][cLevel]);
@@ -90,6 +93,8 @@ stock Eco_Payday(playerid)
         gChar[playerid][cLevel]++;
         SetPlayerScore(playerid, gChar[playerid][cLevel]);
         SendClientMessage(playerid, COLOR_SUCCESS, "You reached level %d.", gChar[playerid][cLevel]);
+        format(toast, sizeof (toast), "Level up! You're level %d", gChar[playerid][cLevel]);
+        KMUI_Toast(playerid, toast);
     }
     Char_Save(playerid);
 }

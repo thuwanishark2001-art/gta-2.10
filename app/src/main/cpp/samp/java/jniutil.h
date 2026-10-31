@@ -1,6 +1,7 @@
 #pragma once
 
 #include "main.h"
+#include <string>
 
 #define EXCEPTION_CHECK(env) \
 	if ((env)->ExceptionCheck()) \ 
@@ -48,6 +49,13 @@ public:
 	void ShowEditObject();
 	void HideEditObject();
 
+    // Kingmakers UI (kmui/kmui.cpp). Strings are UTF-8.
+    void KmHud(int cash, int bank, int level, int xp, int xpMax, const std::string& job, int wanted, int fuel);
+    void KmToast(const std::string& text);
+    void KmSms(int fromNumber, const std::string& text);
+    void KmPhone(int hasPhone, int number, int bank);
+    void KmSpeed(int kmh, int inVehicle);
+
     jobject activity;
     jmethodID s_setPauseState;
     jmethodID s_showLoadingScreen;
@@ -66,4 +74,10 @@ public:
     jmethodID s_showHud;
     jmethodID s_hideHud;
     jmethodID s_updateHudInfo;
+
+    jmethodID s_kmHud;
+    jmethodID s_kmToast;
+    jmethodID s_kmSms;
+    jmethodID s_kmPhone;
+    jmethodID s_kmSpeed;
 };

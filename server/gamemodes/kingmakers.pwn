@@ -33,6 +33,7 @@
 #include "km/inventory.inc"
 #include "km/factions.inc"
 #include "km/support.inc"
+#include "km/kmui.inc"
 
 forward KM_Tick();
 
@@ -84,6 +85,7 @@ public OnPlayerConnect(playerid)
     gFacInvite[playerid] = 0;
     gVehBuying[playerid] = false;
     gPropBuying[playerid] = false;
+    KMUI_Reset(playerid);
     Acc_OnConnect(playerid);
     return 1;
 }
@@ -105,6 +107,7 @@ public OnPlayerDisconnect(playerid, reason)
     Job_Reset(playerid);
     Offer_Reset(playerid);
     Inv_Reset(playerid);
+    KMUI_Reset(playerid);
     return 1;
 }
 
@@ -185,6 +188,8 @@ public OnPlayerText(playerid, text[])
 
 public OnPlayerCommandText(playerid, cmdtext[])
 {
+    // The Kingmakers client announces itself before logging in.
+    if (strcmp(cmdtext, "/kmclient ", false, 10) == 0) return cmd_kmclient(playerid, cmdtext[10]), 1;
     if (!Player_IsLoggedIn(playerid))
     {
         SendError(playerid, "Log in first.");
@@ -203,7 +208,8 @@ public OnPlayerCommandText(playerid, cmdtext[])
     return 1;
 }
 
-// Once a second: paydays, jail time, cuffs, and the cash display.
+// Once a second: paydays, jail time, cuffs, the cash display and the
+// Kingmakers client HUD.
 public KM_Tick()
 {
     for (new i = 0; i < MAX_PLAYERS; i++)
@@ -214,6 +220,7 @@ public KM_Tick()
         if (gChar[i][cCuffed] && GetPlayerSpecialAction(i) != SPECIAL_ACTION_CUFFED) SetPlayerSpecialAction(i, SPECIAL_ACTION_CUFFED);
         // The client's money is display only; put it back if it drifted.
         if (GetPlayerMoney(i) != gChar[i][cCash]) Char_SyncCash(i);
+        KMUI_UpdateHud(i);
     }
     return 1;
 }
@@ -222,7 +229,7 @@ CMD:help(playerid, params[])
 {
     SendClientMessage(playerid, COLOR_BRAND, "Kingmakers RP commands");
     SendClientMessage(playerid, COLOR_WHITE, "General: /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
-    SendClientMessage(playerid, COLOR_WHITE, "Chat: /me /do /b /s /low /w /pm /r /o  Phone: /number /sms /911");
+    SendClientMessage(playerid, COLOR_WHITE, "Chat: /me /do /b /s /low /w /pm /r /o  Phone: /phone /number /sms /911");
     SendClientMessage(playerid, COLOR_WHITE, "Vehicles: /engine /lights /lock /park /myvehicles /buyvehicle /sellvehicle /refuel");
     SendClientMessage(playerid, COLOR_WHITE, "Jobs: /jobs /takejob /quitjob /work /stopwork /calltaxi  Property: /enter /exit /buyproperty /sellproperty /myproperties /shop /till");
     if (Fac_Valid(gChar[playerid][cFaction]))

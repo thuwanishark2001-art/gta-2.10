@@ -7,6 +7,7 @@ import android.view.KeyEvent;
 import com.joom.paranoid.Obfuscate;
 import com.samp.mobile.game.ui.AttachEdit;
 import com.samp.mobile.game.ui.CustomKeyboard;
+import com.samp.mobile.game.ui.KmUi;
 import com.samp.mobile.game.ui.LoadingScreen;
 import com.samp.mobile.game.ui.dialog.DialogManager;
 
@@ -25,6 +26,7 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
 
     private AttachEdit mAttachEdit;
     private LoadingScreen mLoadingScreen;
+    private KmUi mKmUi;
 
     public native void sendDialogResponse(int i, int i2, int i3, byte[] str);
 
@@ -90,6 +92,54 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
     public void exitGame(){
         finishAndRemoveTask();
         System.exit(0);
+    }
+
+    // ---- Kingmakers UI (called from native, see kmui/kmui.cpp) -------------
+
+    private native void kmSendCommand(byte[] command);
+
+    private void sendKmCommand(String command) {
+        try {
+            // The server expects windows-1251, like chat input.
+            kmSendCommand(command.getBytes("windows-1251"));
+        } catch (UnsupportedEncodingException | UnsatisfiedLinkError e) {
+            Log.e(TAG, "kmSendCommand: " + e.getMessage());
+        }
+    }
+
+    public void kmHud(int cash, int bank, int level, int xp, int xpMax, byte[] job, int wanted, int fuel) {
+        final String jobText = new String(job, StandardCharsets.UTF_8);
+        runOnUiThread(() -> mKmUi.onHud(cash, bank, level, xp, xpMax, jobText, wanted, fuel));
+    }
+
+    public void kmToast(byte[] text) {
+        final String message = new String(text, StandardCharsets.UTF_8);
+        runOnUiThread(() -> mKmUi.onToast(message));
+    }
+
+    public void kmSms(int from, byte[] text) {
+        final String message = new String(text, StandardCharsets.UTF_8);
+        runOnUiThread(() -> mKmUi.onSms(from, message));
+    }
+
+    public void kmPhone(int hasPhone, int number, int bank) {
+        runOnUiThread(() -> mKmUi.onPhone(hasPhone != 0, number, bank));
+    }
+
+    public void kmSpeed(int kmh, int inVehicle) {
+        runOnUiThread(() -> mKmUi.onSpeed(kmh, inVehicle != 0));
+    }
+
+    @Override
+    public void showHud() {
+        super.showHud();
+        runOnUiThread(() -> mKmUi.setHudVisible(true));
+    }
+
+    @Override
+    public void hideHud() {
+        super.hideHud();
+        runOnUiThread(() -> mKmUi.setHudVisible(false));
     }
 
     public void showDialog(int dialogId, int dialogTypeId, byte[] bArr, byte[] bArr2, byte[] bArr3, byte[] bArr4) {
@@ -177,6 +227,8 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
 
         mLoadingScreen = new LoadingScreen(this);
 
+        mKmUi = new KmUi(this, this::sendKmCommand);
+
 
         instance = this;
 
@@ -215,6 +267,7 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
 
     @Override
     public void onBackPressed() {
+        if (mKmUi != null && mKmUi.onBack()) return;
         super.onBackPressed();
         onEventBackPressed();
     }

@@ -317,6 +317,7 @@ CMD:sms(playerid, params[])
     new targetid = Phone_FindNumber(number);
     if (targetid == INVALID_PLAYER_ID) return SendError(playerid, "The message couldn't be delivered.");
     SendClientMessage(targetid, COLOR_YELLOW, "SMS from %d: %s", gChar[playerid][cPhone], text);
+    KMUI_Sms(targetid, gChar[playerid][cPhone], text);
     SendClientMessage(playerid, COLOR_YELLOW, "SMS to %d: %s", number, text);
     Chat_Action(playerid, "types a message on their phone.");
     return 1;

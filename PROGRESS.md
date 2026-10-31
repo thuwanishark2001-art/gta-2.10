@@ -40,12 +40,57 @@ this repo's MIT license.
 - [ ] Place the first houses and shops in game (`/createproperty`)
 
 ### Phase 3: mobile UX
-- [ ] Login, character select, inventory, phone, speedometer, HUD (documented RPCs)
+- [x] UI protocol between server and client, documented in [docs/KMUI.md](docs/KMUI.md)
+- [x] HUD stats panel (level and XP bar, bank, job) and speedometer with fuel
+- [x] Toasts for job pay, paydays, level ups and SMS
+- [x] Phone screen: messages, new SMS, call a taxi, 911
+- [x] Login, character select and inventory: already mobile-friendly through the client's existing dialog renderer, so no separate screens
+- [ ] Look at all of it on a device and adjust sizes and positions
+- [ ] Rebrand the client (app name, icon, loading screen)
 
 ### Phase 4: quality and ops
 - [ ] Tests, server-side anti-cheat, logging, backups, deploy script, docs
 
 ---
+
+## Phase 3 report (2026-10-31)
+
+**Approach.** The plan was custom RPCs on packet 251, which needs a
+packet-level server plugin (Pawn.RakNet). Its release binaries can't be
+downloaded through this environment, and it would add another 32-bit
+native dependency. Since we ship the client, it can instead recognise
+tagged standard messages: UI events are client messages in a reserved
+colour (`KM1|event|k=v`), and the UI's buttons send normal commands. No
+plugin, stock clients keep working, and the server checks every button
+like a typed command. Details in [docs/KMUI.md](docs/KMUI.md).
+
+**What works**
+- Server (`km/kmui.inc`): `/kmclient` handshake (accepted before login),
+  HUD updates sent only when something changed, toasts, SMS and `/phone`.
+  Stock clients get nothing new; `/phone` falls back to the chat text.
+- Client native (`cpp/samp/kmui/`): drops UI events from chat, parses
+  them, converts the text to UTF-8 and calls Java. It sends `/kmclient 1`
+  after joining, reads the vehicle speed every 200 ms, and sends the UI's
+  commands from the game thread through a small locked queue.
+- Client Java (`game/ui/KmUi.java`): stats panel with a phone button,
+  speedometer and fuel bar while in a vehicle, toast queue, phone card.
+  It follows the existing HUD's show/hide, and Back closes the phone.
+
+**What was tested**
+- `server/scripts/test.sh`: 183 checks pass (7 new for the protocol:
+  escaping, length limit, HUD payload, nothing sent to stock clients).
+- `./gradlew assembleDebug` succeeds with the new code. The APK contains
+  `KmUi`, the `kmSendCommand` JNI export in both ABIs, and the protocol
+  strings in `libsamp.so`. JNI method signatures were checked against the
+  Java methods by hand.
+- `app/src/test/kmui/run.sh`: host test of the client's protocol parser
+  (valid events, empty and malformed pairs, non-events) passes.
+
+**Still broken or untested**
+- Not run on a device: positions, sizes and the font may need adjusting,
+  and the speed scale (x180) is the usual SA:MP one but hasn't been
+  checked against the game's own speed.
+- Client rebranding is still to do.
 
 ## Phase 2 report (2026-10-31)
 

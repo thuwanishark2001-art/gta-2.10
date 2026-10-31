@@ -37,6 +37,7 @@
 #include "km/inventory.inc"
 #include "km/factions.inc"
 #include "km/support.inc"
+#include "km/kmui.inc"
 
 new gPass, gFail;
 
@@ -65,6 +66,7 @@ public OnGameModeInit()
     Test_Commands();
     Test_Util();
     Test_Rules();
+    Test_Kmui();
 
     if (!DB_Connect())
     {
@@ -322,6 +324,36 @@ Test_Rules()
         if (gInteriors[i][intType] != PROP_HOUSE && gInteriors[i][intType] != PROP_BUSINESS) ok = false;
     }
     EXPECT(ok);
+}
+
+Test_Kmui()
+{
+    new text[64] = "a|b;c=d\te";
+    KMUI_Escape(text);
+    EXPECT(strcmp(text, "a b c d e") == 0);
+
+    new msg[KMUI_MAX_TEXT + 16];
+    KMUI_Build(msg, "toast", "text=hi");
+    EXPECT(strcmp(msg, "KM1|toast|text=hi") == 0);
+    // never longer than a client message can be
+    new longText[300];
+    for (new i = 0; i < 250; i++) longText[i] = 'x';
+    KMUI_Build(msg, "toast", longText);
+    EXPECT(strlen(msg) == KMUI_MAX_TEXT - 1);
+
+    new hud[128];
+    KMUI_HudPayload(hud, 120, 5000, 3, 2, 12, "Taxi driver", 1, -1);
+    EXPECT(strcmp(hud, "cash=120;bank=5000;lvl=3;xp=2;xpmax=12;job=Taxi driver;wanted=1;fuel=-1") == 0);
+    KMUI_HudPayload(hud, 0, 0, 1, 0, 4, "Bad;job=x", 0, 55);
+    EXPECT(strcmp(hud, "cash=0;bank=0;lvl=1;xp=0;xpmax=4;job=Bad job x;wanted=0;fuel=55") == 0);
+    // the full HUD message fits in one client message
+    KMUI_HudPayload(hud, 2000000000, 2000000000, 999, 999, 3996, "Pizza delivery", 6, 100);
+    KMUI_Build(msg, "hud", hud);
+    EXPECT(strfind(msg, "fuel=100") != -1);
+
+    // standard clients get nothing
+    gKmClient[5] = 0;
+    EXPECT(KMUI_Send(5, "toast", "text=x") == 0);
 }
 
 // Affected rows of a statement, or -1 on error.

@@ -87,6 +87,9 @@ stock Job_Pay(playerid, amount, const what[])
 {
     Money_Give(playerid, amount, 0, "job", INVALID_PLAYER_ID, what);
     GameTextForPlayer(playerid, "~g~+$%d", 2500, 1, amount);
+    new toast[64];
+    format(toast, sizeof (toast), "+$%d for %s", amount, what);
+    KMUI_Toast(playerid, toast);
 }
 
 stock Job_SpawnVehicle(playerid, model, const point[E_POINT], colour1, colour2)
