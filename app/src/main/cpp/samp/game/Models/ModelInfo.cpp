@@ -37,7 +37,7 @@ CPedModelInfo* CModelInfo::AddPedModel(int index)
 
 CDamageAtomicModelInfo* CModelInfo::AddDamageAtomicModel(int32 index)
 {
-    return CHook::CallFunction<CDamageAtomicModelInfo*>(g_libGTASA + (VER_x32 ? 0x00385F94 + 1 : 0x49BAE8), index);
+    return CHook::CallFunction<CDamageAtomicModelInfo*>(g_libGTASA + (VER_x32 ? 0x00385F94 + 1 : 0x45C994), index);
 }
 
 CAtomicModelInfo* CModelInfo::AddAtomicModel(int index)

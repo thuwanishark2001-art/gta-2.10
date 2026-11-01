@@ -49,6 +49,9 @@ jobs:
       - name: Client protocol parser test
         run: ./app/src/test/kmui/run.sh
 
+      - name: Offset porting tool test
+        run: ./tools/port-libgtasa/test/test.sh
+
       - name: Build the debug APK
         run: ./gradlew assembleDebug --no-daemon
 

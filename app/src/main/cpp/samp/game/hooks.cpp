@@ -2021,7 +2021,13 @@ void InstallHooks()
         }
     }
 
-    CHook::InlineHook("_Z17emu_glEndInternalv", (uintptr_t)emu_glEndInternal_hook, (uintptr_t*)&emu_glEndInternal); // WaterShader
+    // WaterShader (animated water) is off: WaterShader.cpp calls engine
+    // addresses that are not functions in 2.10 on either architecture
+    // (tools/port-libgtasa/port.py lists them), so the first frame with water
+    // would jump into the middle of unrelated code.
+#if KM_WATER_SHADER
+    CHook::InlineHook("_Z17emu_glEndInternalv", (uintptr_t)emu_glEndInternal_hook, (uintptr_t*)&emu_glEndInternal);
+#endif
 
     CHook::Redirect("_ZN4CHID12GetInputTypeEv", &GetInputType);
 
