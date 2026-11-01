@@ -114,16 +114,18 @@ Fixed on the way, in test order:
    translated. Both functions are hooked to translate the trace colour for
    the draw.
 8. **FPS**: `DoGameState` capped `RsGlobal.maxFPS` at 30; now 60.
-9. **Quitting from the menu** (`GamePlatformServices.quit`) now disconnects
+9. **Menu map**: the zone name, legend text and legend icons are hidden,
+   as on 2.10 (three calls in `Menu_MapRender`).
+10. **Quitting from the menu** (`GamePlatformServices.quit`) now disconnects
    from the server instead of timing out.
 
 Sound: the engine's packs can't be read, so the client's BASS stream player
 carries server audio (`/radio`, `/playstream`).
 
 Still open: SA-MP's data pack (`samp` texture database, `samp.img`
-objects, extra skins, font); hiding the menu map's legend text and zone
-name; the aim-while-walking constant in `CTaskSimpleUseGun::SetMoveAnim`;
-and a check in game that sprite icons aren't drawn black (`/testblips`).
+objects, extra skins, font); the aim-while-walking constant in `CTaskSimpleUseGun::SetMoveAnim`;
+and a look at the pause-menu map with the legend text and zone name hidden.
+`/testblips` showed blip colours and sprite icons drawn correctly.
 
 ## What carries over
 

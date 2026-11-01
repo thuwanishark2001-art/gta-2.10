@@ -147,8 +147,13 @@ void ApplySAMPPatchesInGame()
     CHook::NOP(g_libGTASA + (VER_x32 ? 0x2ABA14 : 0x71DBC8), 2); // значки легенды
     CHook::NOP(g_libGTASA + (VER_x32 ? 0x2AB4A6 : 0x36A190), 2); // название местности
 #else
-    // TODO 2.11: Menu_MapRender was rebuilt; legend text and zone name not hidden yet.
-    CHook::NOP(g_libGTASA + 0x71DBC8, 2); // значки легенды (CRadar::DrawLegend call)
+    // Menu_MapRender: CFont::PrintString for the zone name, the legend text,
+    // and the CRadar::DrawLegend icons. Only NOP what is still a BL there.
+    for (uintptr_t site : { (uintptr_t) 0x71D59C, (uintptr_t) 0x71DBB8, (uintptr_t) 0x71DBC8 }) {
+        uint32_t insn = *(uint32_t*)(g_libGTASA + site);
+        if ((insn & 0xFC000000) == 0x94000000) CHook::NOP(g_libGTASA + site, 2);
+        else FLog("map menu patch: no call at 0x%lx (0x%08x), skipped", (unsigned long) site, insn);
+    }
 #endif
 }
 
