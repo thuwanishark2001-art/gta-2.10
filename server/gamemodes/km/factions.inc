@@ -141,8 +141,10 @@ stock Fac_DutySkin(id, gender)
 {
     switch (Fac_Type(id))
     {
-        case FACTION_POLICE: return gender == 1 ? 306 : 280;
-        case FACTION_MEDICAL: return gender == 1 ? 308 : 274;
+        // GTA: San Andreas has no female police or medic uniform; 306 and 308
+        // are SA-MP-only skins the mobile client doesn't have.
+        case FACTION_POLICE: return 280;
+        case FACTION_MEDICAL: return 274;
         case FACTION_GOVERNMENT: return gender == 1 ? 141 : 147;
     }
     return 0;

@@ -56,7 +56,10 @@ new gCharListId[MAX_PLAYERS][KM_MAX_CHARACTERS];
 new gNewCharName[MAX_PLAYERS][MAX_PLAYER_NAME];
 new gNewCharGender[MAX_PLAYERS];
 
-static const gSkinsMale[] = { 2, 7, 14, 15, 20, 22, 23, 29, 46, 47, 48, 59, 60, 67, 72, 98, 101, 170, 185, 188, 250 };
+// Only skins every copy of GTA: San Andreas has: the mobile client has no SA-MP
+// data pack, so SA-MP-only skins (1-6, 8, 42, 65, 86, 119, 149, 208, 273, 289,
+// 300-311) don't exist there.
+static const gSkinsMale[] = { 21, 7, 14, 15, 20, 22, 23, 29, 46, 47, 48, 59, 60, 67, 72, 98, 101, 170, 185, 188, 250 };
 static const gSkinsFemale[] = { 12, 13, 31, 40, 41, 55, 56, 69, 76, 91, 93, 141, 148, 150, 169, 190, 192, 193, 211, 216, 233 };
 
 forward Char_OnListLoaded(playerid, race);
