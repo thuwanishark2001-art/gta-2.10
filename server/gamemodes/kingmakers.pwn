@@ -119,6 +119,7 @@ public OnPlayerDisconnect(playerid, reason)
     Inv_Reset(playerid);
     KMUI_Reset(playerid);
     Radio_Reset(playerid);
+    MapIcons_Reset(playerid);
     return 1;
 }
 

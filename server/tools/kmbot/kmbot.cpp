@@ -139,6 +139,13 @@ static void OnSetMapIcon(RPCParameters* params)
     bs.Read(id);
     if (id < 100) g_mapIcons[id] = true;
 }
+static void OnDisableMapIcon(RPCParameters* params)
+{
+    RakNet::BitStream bs(params->input, (params->numberOfBitsOfData + 7) / 8, false);
+    uint8_t id = 0;
+    bs.Read(id);
+    if (id < 100) g_mapIcons[id] = false;
+}
 static int MapIconCount()
 {
     int n = 0;
@@ -337,6 +344,7 @@ static bool Connect(const char* host, int port)
     g_client->RegisterAsRemoteProcedureCall(&RPC_SetCheckpoint, OnSetCheckpoint);
     g_client->RegisterAsRemoteProcedureCall(&RPC_DisableCheckpoint, OnDisableCheckpoint);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetMapIcon, OnSetMapIcon);
+    g_client->RegisterAsRemoteProcedureCall(&RPC_ScrDisableMapIcon, OnDisableMapIcon);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetInterior, OnSetInterior);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrPutPlayerInVehicle, OnPutInVehicle);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrRemovePlayerFromVehicle, OnRemoveFromVehicle);
@@ -816,6 +824,17 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     Pump(500);
     Command("/sellproperty confirm");
     ExpectMessage("Sold. $600 was paid");
+
+    printf("== shop on the map\n");
+    MoveTo(door.x + 12.0f, door.y, door.z);
+    Command("/createproperty 5 5000 Bot Shop");
+    ExpectMessage("Created property #");
+    Pump(1000);
+    if (!g_mapIcons[20]) Fail("a new shop didn't get a map icon");
+    Command("/deleteproperty");
+    ExpectMessage("Property deleted.");
+    Pump(1000);
+    if (g_mapIcons[20]) Fail("a deleted shop kept its map icon");
     Command("/stats");
     ExpectMessage("Bank $1600");
 
