@@ -115,8 +115,17 @@ static _Unwind_Reason_Code frame(struct _Unwind_Context *ctx, void *arg) {
 static const int kSignals[] = { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT, SIGTRAP };
 static struct sigaction g_old[32];
 
+static volatile int g_crashing;
+
 static void on_crash(int sig, siginfo_t *info, void *uc_void) {
     ucontext_t *uc = uc_void;
+    // Report once: the re-raise below can come back here through ART's
+    // signal chain.
+    if (g_crashing++) {
+        signal(sig, SIG_DFL);
+        syscall(SYS_tgkill, getpid(), syscall(SYS_gettid), sig);
+        return;
+    }
     stamp();
     outf("\n*** fatal signal %d (code %d) fault address %p, thread %d\n",
          sig, info->si_code, info->si_addr, (int) syscall(SYS_gettid));

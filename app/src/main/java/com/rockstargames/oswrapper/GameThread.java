@@ -56,8 +56,12 @@ public final class GameThread {
                 float seconds = (now - last) / 1000f;
                 last = now;
                 if (services.view.hasGameFocus() && GameNative.implIsInitialized()) {
-                    if (frames++ % 600 == 0) Log.i(TAG, "frame " + frames);
+                    if (frames++ % 3600 == 0) Log.i(TAG, "frame " + frames);
+                    long start = SystemClock.uptimeMillis();
                     GameNative.implOnDrawFrame(seconds);
+                    // The engine paces itself and often returns at once
+                    // between its frames; don't spin a core meanwhile.
+                    if (SystemClock.uptimeMillis() - start < 1) SystemClock.sleep(1);
                 } else {
                     // Nothing to draw: don't spin a core.
                     SystemClock.sleep(5);

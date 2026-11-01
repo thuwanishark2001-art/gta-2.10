@@ -43,6 +43,7 @@ public class Engine211Activity extends Activity {
                 Log.i(TAG, "loading engine libraries");
                 GameFiles.loadLibraries(this, GameFiles.Engine.GTA_211);
                 Log.i(TAG, "engine libraries loaded");
+                Engine211Patches.applyAll();
                 sLoaded = true;
             }
         }
