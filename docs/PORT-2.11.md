@@ -15,6 +15,24 @@ written for **2.10**. This is what moving to 2.11 involves, based on the
 | Input | NVEvent queue | inside oswrapper; `NVEventGetNextEvent` is gone |
 | Audio | Java (`WarMedia`) | native OpenAL + mpg123 |
 
+## Blocker: where the game data lives
+
+2.11's APKs (`base.apk`, `split_config.arm64_v8a.apk`) hold no game
+data: no `texdb`, `gta3.img`, scripts or audio. The launcher activity is
+`com.rockstargames.gtasa.DownloaderActivity`. On first run it downloads
+the data with Play Asset Delivery (`downloadAssetPacks`, `getPackLocation`),
+and Play Core stores those packs in the game's private storage
+(`files/assetpacks`).
+
+Android doesn't let another app read that folder, and `adb` can't
+either without root. The client's model, "use the player's own
+install", reaches the engine code but not the data in 2.11, unless some of
+it comes as install-time packs, which become readable split APKs.
+`adb shell pm path com.rockstargames.gtasa` on a phone answers that.
+
+Also in 2.11: a Flutter UI (`libflutter.so`, `libapp.so`), Sentry crash
+reporting, and Play licensing (`CHECK_LICENSE`).
+
 ## What carries over
 
 `tools/port-libgtasa/port.py port` on the arm64 build:
