@@ -42,6 +42,30 @@ public final class CrashLog {
         new File(context.getFilesDir(), MARK).delete();
     }
 
+    private static final String LAST_SESSION = "kingmakers-last-session.txt";
+
+    /**
+     * Saves this session's log so far to Downloads/kingmakers-last-session.txt,
+     * replacing the previous one, so a test that got stuck without crashing
+     * still has a log. Call when the game goes to the background; runs on
+     * its own thread.
+     */
+    public static void saveSessionLog(Context context) {
+        final Context app = context.getApplicationContext();
+        new Thread(() -> {
+            try {
+                if (Build.VERSION.SDK_INT >= 29) {
+                    // Our own earlier copy: delete it so the name stays the same.
+                    app.getContentResolver().delete(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                        MediaStore.Downloads.DISPLAY_NAME + "=?", new String[] { LAST_SESSION });
+                }
+                write(app, LAST_SESSION);
+            } catch (Exception e) {
+                Log.w(TAG, "can't save the session log", e);
+            }
+        }, "SessionLog").start();
+    }
+
     /**
      * If the last session crashed, saves the log and returns where it went
      * (for the player to see); otherwise returns null.
@@ -52,39 +76,41 @@ public final class CrashLog {
         mark.delete();
         String name = "kingmakers-log-" + new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(new Date()) + ".txt";
         try {
-            Process logcat = new ProcessBuilder("logcat", "-d", "-v", "threadtime", "-b", "main,system,crash")
-                .redirectErrorStream(true).start();
-            // logcat first (empty on phones that hide it from apps), then the
-            // diagnostics file kmdiag wrote during the session.
-            File diag = Diag.file(context);
-            InputStream logcatIn = logcat.getInputStream();
-            InputStream all = diag.isFile()
-                ? new java.io.SequenceInputStream(logcatIn, new java.io.SequenceInputStream(
-                    new java.io.ByteArrayInputStream("\n--------- kmdiag session file\n".getBytes()),
-                    new java.io.FileInputStream(diag)))
-                : logcatIn;
-            try (InputStream in = all) {
-                if (Build.VERSION.SDK_INT >= 29) {
-                    ContentValues values = new ContentValues();
-                    values.put(MediaStore.Downloads.DISPLAY_NAME, name);
-                    values.put(MediaStore.Downloads.MIME_TYPE, "text/plain");
-                    Uri uri = context.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
-                    if (uri == null) throw new IOException("can't create " + name + " in Downloads");
-                    try (OutputStream out = context.getContentResolver().openOutputStream(uri)) {
-                        copy(in, out);
-                    }
-                    return Environment.DIRECTORY_DOWNLOADS + "/" + name;
-                }
-                File dir = context.getExternalFilesDir(null);
-                File file = new File(dir, name);
-                try (OutputStream out = new FileOutputStream(file)) {
-                    copy(in, out);
-                }
-                return file.getAbsolutePath();
-            }
+            return write(context, name);
         } catch (Exception e) {
             Log.e(TAG, "can't save the log", e);
             return null;
+        }
+    }
+
+    /** Writes logcat (empty on phones that hide it) and the kmdiag file to Downloads/name. */
+    private static String write(Context context, String name) throws Exception {
+        Process logcat = new ProcessBuilder("logcat", "-d", "-v", "threadtime", "-b", "main,system,crash")
+            .redirectErrorStream(true).start();
+        File diag = Diag.file(context);
+        InputStream logcatIn = logcat.getInputStream();
+        InputStream all = diag.isFile()
+            ? new java.io.SequenceInputStream(logcatIn, new java.io.SequenceInputStream(
+                new java.io.ByteArrayInputStream("\n--------- kmdiag session file\n".getBytes()),
+                new java.io.FileInputStream(diag)))
+            : logcatIn;
+        try (InputStream in = all) {
+            if (Build.VERSION.SDK_INT >= 29) {
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Downloads.DISPLAY_NAME, name);
+                values.put(MediaStore.Downloads.MIME_TYPE, "text/plain");
+                Uri uri = context.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                if (uri == null) throw new IOException("can't create " + name + " in Downloads");
+                try (OutputStream out = context.getContentResolver().openOutputStream(uri)) {
+                    copy(in, out);
+                }
+                return Environment.DIRECTORY_DOWNLOADS + "/" + name;
+            }
+            File file = new File(context.getExternalFilesDir(null), name);
+            try (OutputStream out = new FileOutputStream(file)) {
+                copy(in, out);
+            }
+            return file.getAbsolutePath();
         }
     }
 

@@ -1441,6 +1441,9 @@ static bool SameGamePath(const char* path, const char* want, size_t len)
     return path[len] == '\0';
 }
 
+// Whether the engine loaded SA-MP's main.scm (from <storage>/SAMP/).
+static bool g_bSampMainScript = false;
+
 stFile* NvFOpen211(const char* path)
 {
     if (path) {
@@ -1451,6 +1454,7 @@ stFile* NvFOpen211(const char* path)
             snprintf(ours, sizeof(ours), "%s%s", g_pszStorage ? g_pszStorage : "", f.ours);
             if (FILE* fp = fopen(ours, "rb")) {
                 FLog("NvFOpen: %s -> %s", path, ours);
+                if (f.ours == kSampFiles[0].ours) g_bSampMainScript = true;
                 auto* st = (stFile*)calloc(1, 0x10);
                 st->isFileExist = 1; // 2.11's "disk file" kind, as its own fopen branch sets
                 st->f = fp;
@@ -1459,6 +1463,16 @@ stFile* NvFOpen211(const char* path)
         }
     }
     return NvFOpen211_orig(path);
+}
+// Without SA-MP's main.scm the engine runs Rockstar's story script: the
+// intro mission starts ("Francis Intl. Airport, 1992") and, with cutscene
+// loading disabled, waits forever. SA-MP's own main.scm is all but empty,
+// and the client runs its script commands through its own thread
+// (scripting.cpp), so the story script just doesn't run.
+void (*CTheScripts__Process211)();
+void CTheScripts__Process211_hook()
+{
+    if (g_bSampMainScript) CTheScripts__Process211();
 }
 #endif
 
@@ -2006,6 +2020,7 @@ void InstallSpecialHooks()
 
 #if KM_GTA211
     CHook::InlineHook("_Z7NvFOpenPKc", &NvFOpen211, &NvFOpen211_orig);
+    CHook::InlineHook("_ZN11CTheScripts7ProcessEv", &CTheScripts__Process211_hook, &CTheScripts__Process211);
 #else
     CHook::Redirect("_Z7NvFOpenPKcS0_bb", &NvFOpen);
 #endif

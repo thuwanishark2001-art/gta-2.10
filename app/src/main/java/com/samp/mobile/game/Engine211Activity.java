@@ -141,6 +141,7 @@ public class Engine211Activity extends Activity {
     @Override
     protected void onStop() {
         CrashLog.sessionEnded(this);
+        CrashLog.saveSessionLog(this);
         super.onStop();
     }
 
