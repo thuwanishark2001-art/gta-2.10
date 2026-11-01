@@ -35,7 +35,7 @@ if [ "$(id -u)" = 0 ] && command -v ufw >/dev/null && ufw status | grep -q "Stat
 fi
 
 # Start-screen art: the defaults, unless you've put your own in content/.
-mkdir -p content/sounds
+mkdir -p content/sounds content/models
 [ -e content/logo.png ] || cp content-defaults/logo.png content/
 [ -e content/background.jpg ] || [ -e content/background.png ] || cp content-defaults/background.jpg content/
 

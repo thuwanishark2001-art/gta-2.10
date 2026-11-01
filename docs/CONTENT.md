@@ -17,6 +17,7 @@ Put files in `server/content/` on the server:
 | `logo.png` | the logo on the start screen (square, about 512x512) |
 | `background.jpg` or `background.png` | the start screen background (landscape, about 1920x1080) |
 | `sounds/<name>.mp3` (or `.ogg`, `.wav`) | `/playsound`, and the welcome sound |
+| `models/<id>.dff` + `models/<id>.txd` | a custom skin (or vehicle) that replaces model `<id>` |
 
 `./scripts/deploy.sh` puts a default Kingmakers RP logo and background into
 `content/` (from `server/content-defaults/`) if there isn't one there yet.
@@ -105,9 +106,48 @@ The app finds the content service at the server address it was built with
    (`audiostream.cpp`). If it has one, it plays that copy instead of
    streaming.
 
-## Not yet: custom skins and vehicles
+## Custom skins
 
-Custom character skins and vehicle models need the game engine to load new
-models. That's the next stage of this feature (adding model archives to the
-2.11 engine's streaming). For now, content covers the start screen and
-sounds.
+A custom skin replaces one of the game's skin ids for everyone. Put the
+skin's two files in `content/models/`, named after the id it replaces:
+
+```
+content/models/230.dff
+content/models/230.txd
+```
+
+Then restart the content service. Players get the files the next time they
+open the app. Anyone with skin 230 then looks like your custom skin:
+`/setskin <player> 230`, or put the id in the character creation lists in
+`gamemodes/km/characters.inc`.
+
+What works:
+- **Files:** a PC San Andreas skin (`.dff` + `.txd`), the format skin
+  sites share.
+- **Textures:** PC textures (DXT1, DXT3, DXT5, 32/24/16-bit, paletted).
+  The app converts them for the phone. Textures from other platforms (PS2,
+  mobile) are skipped.
+- **Choosing an id:** pick a skin nobody uses, and keep the replacement the
+  same kind (a man's skin for a man's id) so it uses the right walk and
+  voice. Ids 1-6, 8, 42, 65, 74, 86, 119, 149, 208, 273 and 289 aren't in
+  every copy of the game, so they can't be used.
+- **If a file is broken:** the stock skin stays. The phone's log says
+  `CustomModels: model <id>: <id>.dff didn't load`.
+- **Vehicles:** these work the same way (`models/<vehicle id>.dff/.txd`),
+  but treat them as experimental. A vehicle model with the wrong parts or
+  collision can behave oddly.
+
+Only use skins whose authors allow you to share them, and never files taken
+from the game itself.
+
+## How custom models work
+
+`CFileLoader::LoadClumpFile` is the engine function that builds each skin
+or vehicle when it streams in. The client hooks it
+(`app/src/main/cpp/samp/game/custommodels.cpp`). When a downloaded
+`models/<id>.dff` exists, the client:
+1. hands that file to the engine instead of the stock model
+2. decodes the `.txd` to RGBA (`txddecode.h`, tested by
+   `app/src/test/txd/run.sh`)
+3. serves its textures by name while the model loads, falling back to the
+   game's textures for any it doesn't have

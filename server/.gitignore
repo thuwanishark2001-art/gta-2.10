@@ -7,3 +7,6 @@ content/*
 !content/sounds/
 content/sounds/*
 !content/sounds/.gitkeep
+!content/models/
+content/models/*
+!content/models/.gitkeep

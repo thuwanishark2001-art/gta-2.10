@@ -18,6 +18,7 @@
 #include "game/Collision/Collision.h"
 #include "TxdStore.h"
 #include "util/CUtil.h"
+#include "custommodels.h"
 #include "Coronas.h"
 #include "multitouch.h"
 #include "Streaming.h"
@@ -2089,6 +2090,8 @@ void InstallSpecialHooks()
     CHook::InlineHook("_Z7NvFOpenPKc", &NvFOpen211, &NvFOpen211_orig);
     CHook::InlineHook("_ZN11CTheScripts7ProcessEv", &CTheScripts__Process211_hook, &CTheScripts__Process211);
     CHook::InlineHook("_ZN5CGame10InitialiseEPKc", &CGame__Initialise211_hook, &CGame__Initialise211);
+    // Server content can replace skin and vehicle models (docs/CONTENT.md).
+    CustomModels_InstallHooks();
 #else
     CHook::Redirect("_Z7NvFOpenPKcS0_bb", &NvFOpen);
 #endif
