@@ -41,6 +41,7 @@
 #include "km/kmui.inc"
 #include "km/anticheat.inc"
 #include "km/licence.inc"
+#include "km/radio.inc"
 
 new gPass, gFail;
 
@@ -94,6 +95,17 @@ Test_Validation()
     EXPECT(!IsValidAccountName("waytoolongaccountname1"));
     EXPECT(!IsValidAccountName("bad name"));
     EXPECT(!IsValidAccountName("bad[tag]"));
+
+    EXPECT(Radio_IsValidUrl("http://stream.radioparadise.com/mp3-128"));
+    EXPECT(Radio_IsValidUrl("https://ice1.somafm.com/groovesalad-128-mp3"));
+    EXPECT(!Radio_IsValidUrl("ftp://example.com/stream"));
+    EXPECT(!Radio_IsValidUrl("http://bad url"));
+    EXPECT(!Radio_IsValidUrl("http://example.com/a\"b"));
+    EXPECT(!Radio_IsValidUrl("http://x"));
+    EXPECT(Radio_StationCount() > 0);
+    EXPECT(Radio_IsValidStation(0));
+    EXPECT(!Radio_IsValidStation(RADIO_OFF));
+    EXPECT(!Radio_IsValidStation(Radio_StationCount()));
 
     EXPECT(IsValidCharacterName("Marcus_Reed"));
     EXPECT(IsValidCharacterName("Al_Li"));

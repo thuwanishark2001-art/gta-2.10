@@ -61,6 +61,7 @@ stock Veh_Create(E_VEH_TYPE:type, model, Float:x, Float:y, Float:z, Float:a, col
     gVeh[vehicleid][vType] = type;
     gVeh[vehicleid][vOwner] = INVALID_PLAYER_ID;
     gVeh[vehicleid][vFuel] = 100.0;
+    Radio_OnVehicleSpawn(vehicleid); // a reused id starts with the radio off
     SetVehicleParamsEx(vehicleid, 0, 0, 0, 0, 0, 0, 0);
     return vehicleid;
 }
@@ -69,6 +70,7 @@ stock Veh_Destroy(vehicleid)
 {
     if (!(0 < vehicleid < MAX_VEHICLES)) return;
     gVeh[vehicleid][vType] = VEH_NONE;
+    Radio_OnVehicleSpawn(vehicleid);
     DestroyVehicle(vehicleid);
 }
 

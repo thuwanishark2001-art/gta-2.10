@@ -28,7 +28,12 @@ void* audioStreamThread(void*)
 	}
 
 	bassStream = BASS_StreamCreateURL(g_szAudioStreamUrl, 0, 0x940000, 0,0);
-	BASS_ChannelPlay(bassStream, 0);
+	if (!bassStream)
+		FLog("AudioStream: can't open %s (BASS error %d)", g_szAudioStreamUrl, BASS_ErrorGetCode());
+	else if (!BASS_ChannelPlay(bassStream, 0))
+		FLog("AudioStream: can't play (BASS error %d)", BASS_ErrorGetCode());
+	else
+		FLog("AudioStream: playing");
 
 	//BASS_ChannelSetSync(bassStream, 4, 0, 0, 0);
 	//BASS_ChannelSetSync(bassStream, 12, 0, 0, 0);
@@ -87,6 +92,16 @@ bool CAudioStream::Play(const char* szUrl, float fX, float fY, float fZ, float f
 
 	if (!m_bInited) return false;
 	Stop(true);
+
+	// BASS is normally started by the voice module; start it here if that
+	// didn't happen, so server audio streams still play.
+	if (BASS_GetDevice() == (DWORD) -1)
+	{
+		if (BASS_Init(-1, 44100, 0, nullptr, nullptr))
+			FLog("AudioStream: started BASS");
+		else
+			FLog("AudioStream: BASS_Init failed (BASS error %d)", BASS_ErrorGetCode());
+	}
 
 	if (bassStream)
 	{

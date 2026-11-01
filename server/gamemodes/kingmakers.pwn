@@ -37,6 +37,7 @@
 #include "km/kmui.inc"
 #include "km/anticheat.inc"
 #include "km/licence.inc"
+#include "km/radio.inc"
 
 forward KM_Tick();
 
@@ -116,6 +117,7 @@ public OnPlayerDisconnect(playerid, reason)
     Offer_Reset(playerid);
     Inv_Reset(playerid);
     KMUI_Reset(playerid);
+    Radio_Reset(playerid);
     return 1;
 }
 
@@ -159,7 +161,11 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 
 public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstate)
 {
-    if (Player_IsPlaying(playerid)) Veh_OnStateChange(playerid, newstate);
+    if (Player_IsPlaying(playerid))
+    {
+        Veh_OnStateChange(playerid, newstate);
+        Radio_OnStateChange(playerid, newstate);
+    }
     return 1;
 }
 
@@ -172,6 +178,7 @@ public OnPlayerEnterCheckpoint(playerid)
 public OnVehicleSpawn(vehicleid)
 {
     Veh_OnSpawn(vehicleid);
+    Radio_OnVehicleSpawn(vehicleid);
     return 1;
 }
 
@@ -189,6 +196,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
     if (Veh_OnDialog(playerid, dialogid, response, listitem)) return 1;
     if (Job_OnDialog(playerid, dialogid, response, listitem)) return 1;
     if (Inv_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+    if (Radio_OnDialog(playerid, dialogid, response, listitem)) return 1;
     return 0;
 }
 
@@ -244,7 +252,7 @@ CMD:help(playerid, params[])
     SendClientMessage(playerid, COLOR_BRAND, "Kingmakers RP commands");
     SendClientMessage(playerid, COLOR_WHITE, "General: /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
     SendClientMessage(playerid, COLOR_WHITE, "Chat: /me /do /b /s /low /w /pm /r /o  Phone: /phone /number /sms /911");
-    SendClientMessage(playerid, COLOR_WHITE, "Vehicles: /engine /lights /lock /park /myvehicles /buyvehicle /sellvehicle /refuel /drivingtest /licence /showlicence /tickets /paytickets");
+    SendClientMessage(playerid, COLOR_WHITE, "Vehicles: /engine /lights /lock /radio /park /myvehicles /buyvehicle /sellvehicle /refuel /drivingtest /licence /showlicence /tickets /paytickets");
     SendClientMessage(playerid, COLOR_WHITE, "Jobs: /jobs /takejob /quitjob /work /stopwork /calltaxi  Property: /enter /exit /buyproperty /sellproperty /myproperties /shop /till");
     if (Fac_Valid(gChar[playerid][cFaction]))
     {
@@ -259,7 +267,7 @@ CMD:help(playerid, params[])
     if (gChar[playerid][cJob] == JOB_MECHANIC) SendClientMessage(playerid, COLOR_WHITE, "Mechanic: /repair /refill");
     if (Sup_IsStaff(playerid)) SendClientMessage(playerid, COLOR_INFO, "Staff: /reports /ar /cr /h");
     if (gPlayer[playerid][pAdmin] >= ADMIN_MOD) SendClientMessage(playerid, COLOR_ADMIN, "Moderator: /a /kick /mute /unmute /goto /gethere /freeze /unfreeze /check /ajail /togooc");
-    if (gPlayer[playerid][pAdmin] >= ADMIN_ADMIN) SendClientMessage(playerid, COLOR_ADMIN, "Admin: /ban /unban /veh /dveh");
+    if (gPlayer[playerid][pAdmin] >= ADMIN_ADMIN) SendClientMessage(playerid, COLOR_ADMIN, "Admin: /ban /unban /veh /dveh /playstream /stopstream");
     if (gPlayer[playerid][pAdmin] >= ADMIN_LEAD) SendClientMessage(playerid, COLOR_ADMIN, "Lead: /givemoney /setfaction /sethelper /createproperty /deleteproperty");
     if (gPlayer[playerid][pAdmin] >= ADMIN_OWNER) SendClientMessage(playerid, COLOR_ADMIN, "Owner: /setadmin");
     return 1;

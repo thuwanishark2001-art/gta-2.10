@@ -231,7 +231,9 @@ bool Playback::BassInitHookFunc() noexcept
     LogVoice("[sv:dbg:playback:bassinithook] : calling function BASS_Init(device:-1, "
         "freq:%u, flags:0x%x)...", SV::kFrequency, BASS_DEVICE_MONO | BASS_DEVICE_3D);
 
-    if(BASS_Init(-1, SV::kFrequency, BASS_DEVICE_MONO | BASS_DEVICE_3D, nullptr, nullptr) == 0)
+    // Stereo output: the same device plays the server's radio and music
+    // streams (voice is mixed in 3D either way).
+    if(BASS_Init(-1, SV::kFrequency, BASS_DEVICE_3D, nullptr, nullptr) == 0)
     {
         LogVoice("[sv:err:playback:bassinithook] : failed to init bass library (code:%d)", BASS_ErrorGetCode());
         return false;
