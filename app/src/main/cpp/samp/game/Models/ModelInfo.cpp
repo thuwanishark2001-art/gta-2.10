@@ -55,8 +55,10 @@ CAtomicModelInfo* CModelInfo::AddAtomicModel(int index)
 }
 
 void CModelInfo::Initialise() {
+#if !KM_GTA211
+    // On 2.11 the table belongs to the engine, which clears it itself.
     memset(ms_modelInfoPtrs, 0, sizeof(ms_modelInfoPtrs));
-
+#endif
 }
 
 void CModelInfo::injectHooks()
@@ -67,7 +69,14 @@ void CModelInfo::injectHooks()
     // so they only replaced a destructor pointer with a data pointer. The
     // engine's stores are file-local statics; the client gets its own through
     // the AddPedModel/AddVehicleModel redirects below. Removed.
+#if KM_GTA211
+    // Share the engine's table (see ModelInfo.h). The Add*Model redirects
+    // below then register into the same table the engine reads.
+    ms_modelInfoPtrs = reinterpret_cast<CBaseModelInfo**>(CHook::getSym("_ZN10CModelInfo16ms_modelInfoPtrsE"));
+    FLog("2.11: using the engine's model table at %p", ms_modelInfoPtrs);
+#else
     CHook::Write(g_libGTASA + (VER_x32 ? 0x6796CC : 0x8373A8), &CModelInfo::ms_modelInfoPtrs);
+#endif
 
     CHook::Redirect("_ZN10CModelInfo11AddPedModelEi", &CModelInfo::AddPedModel);
     CHook::Redirect("_ZN10CModelInfo15AddVehicleModelEi", &CModelInfo::AddVehicleModel);

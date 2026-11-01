@@ -14,7 +14,15 @@
 class CModelInfo {
 public:
     static constexpr int32 NUM_MODEL_INFOS = TOTAL_DFF_MODEL_IDS;
+#if KM_GTA211
+    // 2.11 is built with LTO and reads its model table directly (adrp), not
+    // through the GOT slot 2.10 used, so swapping that slot left the client
+    // with a second, mostly empty table. Use the engine's own table instead
+    // (same size, 20000 entries); set in injectHooks().
+    static inline CBaseModelInfo** ms_modelInfoPtrs = nullptr;
+#else
     static inline CBaseModelInfo* ms_modelInfoPtrs[NUM_MODEL_INFOS];
+#endif
 
     static void injectHooks();
 
