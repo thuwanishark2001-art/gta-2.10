@@ -153,9 +153,24 @@ static void report_context(ucontext_t *uc) {
         for (int j = 1; j < 4 && i + j < 29; j++) outf(" x%-2d %016lx", i + j, (unsigned long) uc->uc_mcontext.regs[i + j]);
         out("\n", 1);
     }
+    outf("  x29 %016lx sp %016lx\n", (unsigned long) uc->uc_mcontext.regs[29], (unsigned long) sp);
     out("backtrace:\n", 11);
     struct trace t = { 0 };
     _Unwind_Backtrace(frame, &t);
+    // Frame-pointer chain from the crashed context: still works when pc/lr
+    // are garbage (a jump to 0) and the unwinder stops at the signal frame.
+    // Each frame record is {previous fp, return address}; stop when it leaves
+    // the stack (it must grow upward from sp, by less than 1 MiB).
+    out("frame chain:\n", 13);
+    uintptr_t fp = uc->uc_mcontext.regs[29];
+    for (int i = 0; i < 32 && fp > sp && fp < sp + (1 << 20) && !(fp & 7); i++) {
+        const uintptr_t *rec = (const uintptr_t *) fp;
+        char label[16];
+        snprintf(label, sizeof label, "f%02d", i);
+        where(label, rec[1]);
+        if (rec[0] <= fp) break;
+        fp = rec[0];
+    }
     out("code addresses on the stack:\n", 29);
     const uintptr_t *stack = (const uintptr_t *) sp;
     int found = 0;

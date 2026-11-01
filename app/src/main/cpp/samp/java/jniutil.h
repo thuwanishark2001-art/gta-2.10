@@ -11,6 +11,9 @@
 		return; \
 	}
 
+// The calling thread's JNIEnv, attaching the thread if needed (jniutil.cpp).
+JNIEnv* JavaEnv();
+
 class CJavaWrapper
 {
 public:
@@ -37,8 +40,8 @@ public:
 	void exitGame();
 
     jbyteArray as_byte_array(unsigned char* buf, int len) {
-        JNIEnv* p;
-        javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+        JNIEnv* p = JavaEnv();
+        if (!p) return nullptr;
 		jbyteArray array = p->NewByteArray (len);
 		p->SetByteArrayRegion (array, 0, len, reinterpret_cast<jbyte*>(buf));
 		return array;
