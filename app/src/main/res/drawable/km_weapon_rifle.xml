@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HUD weapon icon (rifle), Kingmakers RP original art. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M2,20 h12 l4,-3 h22 v6 h-12 l-2,12 h-5 l1,-12 h-8 l-6,6 h-6 z M40,18 h6 v3 h-6 z" />
+</vector>

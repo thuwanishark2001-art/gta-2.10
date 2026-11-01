@@ -1,0 +1,23 @@
+# Test overrides: throwaway database, test gamemode, no restart, no ports.
+# Used by scripts/test.sh.
+services:
+  db:
+    volumes: !reset []
+    tmpfs:
+      - /var/lib/mysql
+    restart: "no"
+  backup:
+    volumes: !override
+      - ./scripts/backup.sh:/scripts/backup.sh:ro
+      - ./scripts/restore.sh:/scripts/restore.sh:ro
+    tmpfs:
+      - /backups
+    restart: "no"
+  server:
+    environment:
+      KM_SCRIPT: ${KM_SCRIPT:-km_tests}
+      # Lets tools/kmbot's admin scenario log in to RCON. Test stack only.
+      KM_RCON_PASSWORD: kmbot-rcon-test
+    ports: !reset []
+    volumes: !reset []
+    restart: "no"

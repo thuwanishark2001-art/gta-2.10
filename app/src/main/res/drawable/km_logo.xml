@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Loading screen logo: the crown on a dark disc with a gold ring. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#141418" />
+            <stroke android:width="3dp" android:color="#D4AF37" />
+        </shape>
+    </item>
+    <item android:drawable="@drawable/ic_km_crown" />
+</layer-list>

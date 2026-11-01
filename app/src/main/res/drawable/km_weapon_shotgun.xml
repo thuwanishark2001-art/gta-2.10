@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HUD weapon icon (shotgun), Kingmakers RP original art. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M2,18 h40 v5 h-26 l-6,10 h-7 l5,-10 h-6 z M42,18 h4 v3 h-4 z M18,23 h10 v3 h-10 z" />
+</vector>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kingmakers RP placeholder mark: a gold crown. Sized for the 108dp
+     adaptive-icon canvas, inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- crown -->
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M31,68 L31,45 L43,55 L54,38 L65,55 L77,45 L77,68 Z" />
+    <!-- band -->
+    <path
+        android:fillColor="#B8952B"
+        android:pathData="M31,70 L77,70 L77,77 L31,77 Z" />
+    <!-- jewels -->
+    <path
+        android:fillColor="#F2D675"
+        android:pathData="M31,42 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 M54,35 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0 M77,42 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+    <path
+        android:fillColor="#141418"
+        android:pathData="M54,62 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+</vector>

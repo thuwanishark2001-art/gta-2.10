@@ -124,7 +124,8 @@ public class AudioHelper
 		
 		try 
 		{
-			FD = context.getAssets().openFd(filename);
+			// Game sounds are in the player's installed GTA: San Andreas.
+			FD = com.samp.mobile.game.GameFiles.assets(context).openFd(filename);
 		} 
 		catch (IOException e) 
 		{		

@@ -146,8 +146,11 @@ void Render2dStuff_hook()
     return;
 }*/
 
+#include "../kmui/kmui.h"
+
 void ShowHud()
 {
+    KMUI::Process();
     CLocalPlayer *pLocalPlayer = pNetGame->GetPlayerPool()->GetLocalPlayer();
     CPlayerPed *pPed = pGame->FindPlayerPed();
     if(pGame)
