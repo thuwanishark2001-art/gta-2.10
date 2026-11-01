@@ -1487,6 +1487,17 @@ void CGame__Initialise211_hook(const char* datFile)
     g_bInGameInitialise = true;
     CGame__Initialise211(datFile);
     g_bInGameInitialise = false;
+
+    // The main script's first pass fades the screen to black for the intro,
+    // which is what would fade it back in. Without SA-MP's main.scm the
+    // story doesn't run, so fade in here, or the client sits on a black
+    // screen. TheCamera.Fade(0 s, FADE_IN).
+    if (!g_bSampMainScript)
+    {
+        auto camera = CHook::getSym("TheCamera");
+        CHook::CallFunction<void>("_ZN7CCamera4FadeEfs", camera, 0.0f, (int16_t) 1);
+        FLog("2.11: faded in after CGame::Initialise");
+    }
 }
 #endif
 
