@@ -1,4 +1,5 @@
 #include "../main.h"
+#include <strings.h>
 #include "../game/game.h"
 #include "netgame.h"
 #include "../gui/gui.h"
@@ -990,6 +991,21 @@ void CNetGame::SendChatMessage(const char* szMsg)
 void CNetGame::SendChatCommand(const char* szCommand)
 {
 	if (GetGameState() != GAMESTATE_CONNECTED) return;
+
+	// "/rcon <command>" goes to the server's RCON, not the gamemode: packet
+	// 201 with a 32-bit length and the text, as the PC client sends it.
+	if (!strncasecmp(szCommand, "/rcon ", 6))
+	{
+		const char* rcon = szCommand + 6;
+		uint32_t len = (uint32_t) strlen(rcon);
+		if (len == 0) return;
+		RakNet::BitStream bsRcon;
+		bsRcon.Write((uint8_t) 201); // ID_RCON_COMMAND
+		bsRcon.Write(len);
+		bsRcon.Write(rcon, len);
+		m_pRakClient->Send(&bsRcon, HIGH_PRIORITY, RELIABLE, 0);
+		return;
+	}
 
 	RakNet::BitStream bsParams;
 	int iStrlen = strlen(szCommand);

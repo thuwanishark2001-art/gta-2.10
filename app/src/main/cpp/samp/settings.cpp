@@ -80,7 +80,8 @@ CSettings::CSettings()
 	m_Settings.iAndroidKeyboard = reader.GetBoolean("gui", "androidkeyboard", false);
 	m_Settings.iFirstPerson = reader.GetBoolean("gui", "firstperson", true);
 	m_Settings.iCutout = reader.GetBoolean("gui", "cutout", false);
-	m_Settings.iFPSCounter = reader.GetBoolean("gui", "fps", true);
+	// Developer overlay (FPS, memory, position, build); off for players.
+	m_Settings.iFPSCounter = reader.GetBoolean("gui", "fps", false);
 	m_Settings.iFPSCount = reader.GetInteger("gui", "FPSLimit", 60);
 	m_Settings.iHPArmourText = reader.GetBoolean("gui", "hparmourtext", false);
 	m_Settings.iOutfitGuns = reader.GetBoolean("gui", "outfitguns", false);
