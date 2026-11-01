@@ -138,6 +138,18 @@ A two-player run (`suspect` and `officer`, two processes at once):
   player as "First_Last". Nine actions (pay, cuff, uncuff, ticket, show
   licence, give item, repair, refill, heal) now use `Chat_Name`.
 
+The last jobs (2026-11-01):
+- `jobs` runs one pizza delivery (with the speed tip) and one taxi fare
+  (pickup, then drop-off).
+- The `mechanic` and `customer` pair runs a repair offer (accepted and
+  paid) and a refill offer (declined), and checks both cash balances.
+- **Bug found:** after a drop-off, the next taxi fare could start at the
+  same stop, so it was picked up without driving. `Job_NextFare` now
+  excludes the driver's current stop, like the pizza and trucker jobs
+  already did, and the bot checks for it.
+
+Every job is now covered end to end.
+
 `test.sh` then checks the exact `money_log` trail. The anti-cheat logged
 the bot's 3 km jump to the quarry as a teleport and, as designed, didn't
 kick.

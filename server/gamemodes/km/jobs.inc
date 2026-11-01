@@ -181,7 +181,9 @@ stock Job_NextPizza(playerid)
 
 stock Job_NextFare(playerid)
 {
-    new target = random(sizeof (gTaxiStops));
+    // Never the stop the driver is at (the last drop-off): the fare would be
+    // picked up without driving.
+    new target = RandomOther(sizeof (gTaxiStops), gJob[playerid][jsTarget]);
     gJob[playerid][jsStage] = JS_PICKUP;
     gJob[playerid][jsTarget] = target;
     Job_SetCheckpoint(playerid, gTaxiStops[target]);

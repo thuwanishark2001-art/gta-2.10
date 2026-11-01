@@ -13,6 +13,10 @@
 // suspect / officer: run together (two processes). The officer (RCON
 //          owner, LSPD on duty) pays, tickets, charges, cuffs and arrests
 //          the suspect, who checks each step and serves the jail time.
+// jobs:    one pizza delivery, then one taxi fare (pickup and drop-off)
+// mechanic / customer: run together. The customer (RCON owner) sits in an
+//          admin car; the mechanic starts a shift and offers a repair,
+//          which the customer accepts and pays for.
 // admin:   RCON login (KMBOT_RCON env), make itself owner, then property
 //          (create, buy, enter, exit, sell), police (faction, duty, MDT),
 //          and the report flow
@@ -638,6 +642,123 @@ static void OfficerScenario(const char* host, int port, const std::string& chara
     Disconnect();
 }
 
+static void JobsScenario(const char* host, int port, const std::string& character)
+{
+    printf("== register %s and create %s\n", g_name.c_str(), character.c_str());
+    if (!Connect(host, port)) return;
+    RegisterAndCreate(character);
+    Pump(1000);
+
+    printf("== pizza delivery (Idlewood)\n");
+    MoveTo(2105.0f, -1806.5f, 13.6f);
+    Command("/takejob");
+    ExpectMessage("You're now working as: Pizza delivery");
+    g_haveCheckpoint = false;
+    Command("/work");
+    ExpectMessage("Shift started as Pizza delivery");
+    if (g_vehicle == 0) Fail("not put on the pizza bike");
+    if (ExpectCheckpoint())
+    {
+        EnterCheckpoint();
+        ExpectMessage("for pizza delivery", kKmuiColour, 5000);
+        ExpectCheckpoint();                     // next house, 4 pizzas left
+    }
+    Command("/stopwork");
+    ExpectMessage("Shift ended");
+    Pump(500);
+
+    printf("== taxi fare (Unity Station)\n");
+    MoveTo(1777.0f, -1932.0f, 13.4f);
+    Command("/takejob");
+    ExpectMessage("You're now working as: Taxi driver");
+    g_haveCheckpoint = false;
+    Command("/work");
+    ExpectMessage("Shift started as Taxi driver");
+    if (g_vehicle == 0) Fail("not put in the taxi");
+    if (ExpectCheckpoint())
+    {
+        EnterCheckpoint();                      // pick up the fare
+        ExpectMessage("The passenger got in");
+        if (ExpectCheckpoint())
+        {
+            EnterCheckpoint();                  // drop them off
+            ExpectMessage("for taxi fare", kKmuiColour, 5000);
+            // The next fare waits somewhere else, not where we dropped off.
+            Vec3 here = g_pos;
+            if (ExpectCheckpoint() && fabsf(g_checkpoint.x - here.x) < 5.0f && fabsf(g_checkpoint.y - here.y) < 5.0f)
+                Fail("the next fare is at the drop-off point");
+        }
+    }
+    Command("/stopwork");
+    ExpectMessage("Shift ended");
+    Command("/stats");
+    ExpectMessage("Job Taxi driver");
+    Disconnect();
+}
+
+// The mechanic's garage, where both bots meet.
+static const Vec3 kGarage = {2071.4f, -1831.4f, 13.5f};
+
+static void CustomerScenario(const char* host, int port, const std::string& character)
+{
+    printf("== register %s and create %s\n", g_name.c_str(), character.c_str());
+    if (!Connect(host, port)) return;
+    RegisterAndCreate(character);
+    Pump(1000);
+    if (!BecomeOwner(character)) return;
+    MoveTo(kGarage.x + 4.0f, kGarage.y, kGarage.z);
+    Command("/veh 411");
+    Pump(1500);
+    if (g_vehicle == 0) { Fail("not put in the admin car"); return; }
+
+    printf("== waiting for the mechanic's offer\n");
+    g_messages.clear();
+    if (!WaitForMessage("offers you a vehicle repair for $75", 120000)) { Fail("no repair offer"); return; }
+    Command("/accept");
+    ExpectMessage("You paid $75 for a vehicle repair");
+    if (!WaitForMessage("offers you a fuel refill for $25", 30000)) { Fail("no refill offer"); return; }
+    Command("/decline");
+    ExpectMessage("Offer declined");
+    Command("/stats");
+    ExpectMessage("Cash $425");
+    Disconnect();
+}
+
+static void MechanicScenario(const char* host, int port, const std::string& character, const std::string& customer)
+{
+    printf("== register %s and create %s\n", g_name.c_str(), character.c_str());
+    if (!Connect(host, port)) return;
+    RegisterAndCreate(character);
+    Pump(1000);
+    MoveTo(kGarage.x, kGarage.y, kGarage.z);
+    Command("/takejob");
+    ExpectMessage("You're now working as: Mechanic");
+    Command("/repair " + customer + " 75");
+    ExpectMessage("You need to be on a mechanic shift");
+    Command("/work");
+    ExpectMessage("Shift started as Mechanic");
+    if (g_vehicle == 0) Fail("not put in the tow truck");
+    ExitVehicle();
+
+    printf("== offer a repair\n");
+    bool offered = false;
+    for (int i = 0; i < 60 && !offered; i++)
+    {
+        Command("/repair " + customer + " 75");
+        offered = WaitForMessage("You offered", 1500);
+    }
+    if (!offered) { Fail("the customer never got in their car"); return; }
+    if (!WaitForMessage("paid you $75", 30000)) Fail("the customer didn't pay");
+    Command("/refill " + customer + " 25");
+    ExpectMessage("You offered");
+    if (!WaitForMessage("declined your offer", 30000)) Fail("no answer to the refill offer");
+    Command("/stopwork");
+    ExpectMessage("Shift ended");
+    Command("/stats");
+    ExpectMessage("Cash $575");
+    Disconnect();
+}
+
 static void AdminScenario(const char* host, int port, const std::string& character)
 {
     const char* rconPassword = getenv("KMBOT_RCON");
@@ -772,7 +893,7 @@ static void EconomyScenario(const char* host, int port, const std::string& chara
 
 int main(int argc, char** argv)
 {
-    if (argc < 5) { printf("usage: kmbot <host> <port> <account> <First_Last> [basic|economy|admin|driving|suspect|officer <suspect>]\n"); return 2; }
+    if (argc < 5) { printf("usage: kmbot <host> <port> <account> <First_Last> [basic|economy|admin|driving|jobs|suspect|officer <suspect>|customer|mechanic <customer>]\n"); return 2; }
     setvbuf(stdout, nullptr, _IONBF, 0);
     char host[64];
     {
@@ -792,6 +913,9 @@ int main(int argc, char** argv)
         else if (strcmp(argv[5], "driving") == 0) DrivingScenario(host, port, character);
         else if (strcmp(argv[5], "suspect") == 0) SuspectScenario(host, port, character);
         else if (strcmp(argv[5], "officer") == 0 && argc > 6) OfficerScenario(host, port, character, argv[6]);
+        else if (strcmp(argv[5], "jobs") == 0) JobsScenario(host, port, character);
+        else if (strcmp(argv[5], "customer") == 0) CustomerScenario(host, port, character);
+        else if (strcmp(argv[5], "mechanic") == 0 && argc > 6) MechanicScenario(host, port, character, argv[6]);
         else { printf("unknown scenario %s\n", argv[5]); return 2; }
         printf(g_failures ? "KMBOT DONE: %d failure(s)\n" : "KMBOT DONE: all steps passed\n", g_failures);
         return g_failures ? 1 : 0;

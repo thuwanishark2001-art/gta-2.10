@@ -8,8 +8,9 @@
 #      character creation, spawn, commands and login; then ATM banking and a
 #      full miner job loop; RCON, property, police and reports as an admin;
 #      driving: the licence test, the dealership and a trucker delivery;
-#      and two players at once (officer arrests suspect, who serves the
-#      time); each checked against the database
+#      pizza and taxi shifts; and two players at once (officer arrests
+#      suspect; mechanic repairs a customer's car); each checked against the
+#      database
 # Exit code 0 means everything passed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -155,3 +156,25 @@ if [ "$police" != "records=1 tickets=1 paid=1 jail=0 wanted=0" ]; then
     echo "unexpected database state after the two-player run: $police"; exit 1
 fi
 echo "database matches the two-player run"
+
+echo "== end-to-end: pizza and taxi; mechanic and customer"
+if ! run_bot kmbot_job Jobs_Bot jobs; then
+    "${COMPOSE[@]}" logs server | tail -30
+    echo "jobs run failed"; exit 1
+fi
+run_bot kmbot_cust Customer_Bot customer & customer_pid=$!
+sleep 2
+mechanic_ok=1; run_bot kmbot_mech Mechanic_Bot mechanic Customer_Bot || mechanic_ok=0
+customer_ok=1; wait "$customer_pid" || customer_ok=0
+if [ "$mechanic_ok" != 1 ] || [ "$customer_ok" != 1 ]; then
+    "${COMPOSE[@]}" logs server | tail -30
+    echo "mechanic run failed"; exit 1
+fi
+services=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
+    "SELECT CONCAT('jobs=', (SELECT GROUP_CONCAT(m.details ORDER BY m.id) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Jobs_Bot'),
+                   ' paid=', (SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_delta)) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Customer_Bot'),
+                   ' earned=', (SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_delta)) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Mechanic_Bot'))")
+if [ "$services" != "jobs=pizza delivery,taxi fare paid=service_paid:-75 earned=service_earned:75" ]; then
+    echo "unexpected database state after the jobs and mechanic runs: $services"; exit 1
+fi
+echo "database matches the jobs and mechanic runs"
