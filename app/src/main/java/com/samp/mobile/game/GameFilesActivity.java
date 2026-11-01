@@ -31,10 +31,14 @@ public class GameFilesActivity extends Activity {
     private TextView action;
     private boolean copying = false;
 
+    /** Set when the last game session crashed and its log was saved. */
+    private String savedLog;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         buildLayout();
+        savedLog = CrashLog.saveIfLastSessionCrashed(this);
     }
 
     @Override
@@ -46,10 +50,20 @@ public class GameFilesActivity extends Activity {
 
     private void checkAndStart() {
         if (copying) return;
+        if (savedLog != null) {
+            String where = savedLog;
+            showProblem("The game closed unexpectedly last time.\n\nA log was saved to " + where
+                + ". Please send it to the Kingmakers team so we can fix it.",
+                "Continue", v -> {
+                    savedLog = null;
+                    checkAndStart();
+                });
+            return;
+        }
         GameFiles.Status status = GameFiles.check(this);
         switch (status.state) {
             case READY:
-                startGame();
+                startGame(status.engine);
                 break;
             case NEEDS_COPY:
                 copyThenStart();
@@ -62,6 +76,11 @@ public class GameFilesActivity extends Activity {
             case WRONG_VERSION:
                 showProblem("Kingmakers RP needs GTA: San Andreas version " + GameFiles.requiredVersion()
                     + ".\nYou have version " + status.installedVersion + ".",
+                    "Check again", v -> checkAndStart());
+                break;
+            case MISSING_DATA:
+                showProblem("Your GTA: San Andreas " + status.installedVersion + " is missing its game data.\n\n"
+                    + "Open GTA: San Andreas once so it finishes installing, then come back.",
                     "Check again", v -> checkAndStart());
                 break;
         }
@@ -78,7 +97,7 @@ public class GameFilesActivity extends Activity {
                 if (!known) Log.w(TAG, "Copied libraries aren't a known build; continuing");
                 runOnUiThread(() -> {
                     copying = false;
-                    startGame();
+                    startGame(GameFiles.check(this).engine);
                 });
             } catch (Exception e) {
                 Log.e(TAG, "copy failed", e);
@@ -88,8 +107,10 @@ public class GameFilesActivity extends Activity {
         }, "GameFilesCopy").start();
     }
 
-    private void startGame() {
-        startActivity(new Intent(this, SAMP.class));
+    private void startGame(GameFiles.Engine engine) {
+        // 2.11 runs as an engine boot test until the client is ported to it.
+        Class<?> activity = engine == GameFiles.Engine.GTA_211 ? Engine211Activity.class : SAMP.class;
+        startActivity(new Intent(this, activity));
         finish();
     }
 

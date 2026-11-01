@@ -18,3 +18,11 @@ add_subdirectory(samp)
 
 target_compile_options(opus PRIVATE -O3)
 
+
+# Logs and crash reports for phones whose logcat apps can't read (kmdiag/kmdiag.c).
+add_library(kmdiag SHARED kmdiag/kmdiag.c)
+target_link_libraries(kmdiag log dl shadowhook::shadowhook)
+
+# Patches the GTA:SA 2.11 engine needs in the launcher (km211/km211.c).
+add_library(km211 SHARED km211/km211.c)
+target_link_libraries(km211 log shadowhook::shadowhook)
