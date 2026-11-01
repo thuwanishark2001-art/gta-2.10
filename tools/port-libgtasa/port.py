@@ -265,6 +265,125 @@ def same_code(old, new, osym, nsym, word):
     return shape(a) == shape(b)
 
 
+# ---- arm64 fallbacks: pattern match and cross-references --------------------
+# For builds that changed a function or dropped a static symbol (a stripped
+# build exports far fewer names). arm64 only.
+
+def _a64_refs(code, base):
+    """{instruction index: address} for each ADD/LDR/STR that completes an
+    ADRP (the global it touches), and each BL (the function it calls)."""
+    refs, page = {}, {}
+    for i, (insn,) in enumerate(struct.iter_unpack("<I", code[:len(code) // 4 * 4])):
+        pc = base + i * 4
+        rd, rn = insn & 0x1F, (insn >> 5) & 0x1F
+        if insn & 0x9F000000 == 0x90000000:                    # ADRP
+            imm = ((insn >> 29) & 3) | (((insn >> 5) & 0x7FFFF) << 2)
+            if imm & (1 << 20):
+                imm -= 1 << 21
+            page[rd] = (pc & ~0xFFF) + (imm << 12)
+            continue
+        if insn & 0xFC000000 == 0x94000000:                    # BL
+            imm = insn & 0x3FFFFFF
+            if imm & (1 << 25):
+                imm -= 1 << 26
+            refs[i] = pc + imm * 4
+            continue
+        if rn in page:
+            if insn & 0xFF800000 == 0x91000000:                # ADD Xd, Xn, #imm{, lsl 12}
+                refs[i] = page[rn] + (((insn >> 10) & 0xFFF) << (12 if insn & (1 << 22) else 0))
+            elif insn & 0x3B000000 == 0x39000000:              # LDR/STR Xt, [Xn, #imm]
+                scale = insn >> 30
+                if insn & (1 << 26) and insn & (1 << 23):      # 128-bit SIMD
+                    scale = 4
+                refs[i] = page[rn] + (((insn >> 10) & 0xFFF) << scale)
+        is_store = insn & 0x3B000000 == 0x39000000 and not insn & (1 << 22)
+        if not is_store:
+            page.pop(rd, None)  # rd overwritten (conservative for other encodings)
+    return refs
+
+
+class Arm64:
+    """Per-function shapes and references, computed on demand."""
+
+    def __init__(self, lib):
+        self.lib = lib
+        self.funcs = {}
+        for start, size, kind, name in lib.syms:
+            if kind == "FUNC" and size >= 4:
+                self.funcs.setdefault(name, (start, size))
+
+    def shape(self, start, size):
+        return _shape_a64(self.lib.read(start, size) or b"")
+
+    def refs(self, start, size):
+        return _a64_refs(self.lib.read(start, size) or b"", start)
+
+
+def match_index(old_shape, idx, new_shape, minimum=6):
+    """Index in new_shape of the instruction at old_shape[idx], found by a
+    window of instructions around it that occurs exactly once. None if no
+    window of at least `minimum` instructions is unique."""
+    for before, after in ((8, 8), (6, 6), (4, 4), (12, 0), (0, 12), (8, 0), (0, 8), (3, 3), (6, 0), (0, 6)):
+        lo, hi = max(0, idx - before), min(len(old_shape), idx + after + 1)
+        if hi - lo < minimum:
+            continue
+        window = old_shape[lo:hi]
+        hits = [j for j in range(len(new_shape) - len(window) + 1) if new_shape[j:j + len(window)] == window]
+        if len(hits) == 1:
+            return hits[0] + (idx - lo)
+        if len(hits) > 1:
+            continue
+    return None
+
+
+def pattern_port(old, new, osym, nsym, delta):
+    """New address of old function+delta inside a changed function."""
+    if delta % 4:
+        return None
+    a, b = Arm64(old), Arm64(new)
+    os_, ns_ = a.shape(osym[0], osym[1]), b.shape(nsym[0], nsym[1])
+    j = match_index(os_, delta // 4, ns_)
+    if j is None:
+        return None
+    if old.read(osym[0] + delta, 4) != new.read(nsym[0] + j * 4, 4) and os_[delta // 4] != ns_[j]:
+        return None
+    return nsym[0] + j * 4
+
+
+_XREF_CACHE = {}
+
+
+def xref_port(old, new, target):
+    """New address of a static old target, through code that uses it: each
+    exported function in both builds that loads or calls it votes for the
+    address the same instruction uses in the new build."""
+    key = (id(old), id(new))
+    if key not in _XREF_CACHE:
+        a, b = Arm64(old), Arm64(new)
+        users = {}
+        for name, (start, size) in a.funcs.items():
+            if name in b.funcs:
+                for i, addr in a.refs(start, size).items():
+                    users.setdefault(addr, []).append((name, i))
+        _XREF_CACHE[key] = (a, b, users)
+    a, b, users = _XREF_CACHE[key]
+    votes = Counter()
+    for name, i in users.get(target, [])[:40]:
+        ostart, osize = a.funcs[name]
+        nstart, nsize = b.funcs[name]
+        os_, ns_ = a.shape(ostart, osize), b.shape(nstart, nsize)
+        j = i if os_ == ns_ else match_index(os_, i, ns_)
+        if j is None:
+            continue
+        addr = b.refs(nstart, nsize).get(j)
+        if addr is not None:
+            votes[addr] += 1
+    if not votes:
+        return None, 0, 0
+    best, n = votes.most_common(1)[0]
+    return best, n, sum(votes.values())
+
+
 # ---- source scan ---------------------------------------------------------------
 
 def sites():
@@ -355,10 +474,26 @@ def resolve(old, new, anc, word):
     _, name, delta = anc
     osym = old.by_name.get(name)
     nsym = new.by_name.get(name)
+    if not nsym and name in old.by_name and old.by_name[name][2] == "FUNC":
+        r = renamed(new, name)
+        if r and r[1]:
+            nsym = new.by_name[r[0]]
+            if delta:
+                return None, f"{name} is now {r[0]}; patch site inside it needs a human"
+            return nsym[0], f"renamed to {r[0]}"
+        if r:
+            return None, f"{name} is now {r[0]} (parameters changed)"
     if not nsym:
+        if word == 8:
+            moved = _xref_symbol(old, new, osym, delta)
+            if moved is not None:
+                return moved, "xref"
         return None, f"{name} is not in the new build"
     if delta and osym[2] == "FUNC" and not same_code(old, new, osym, nsym, word):
-        return None, f"{name}+{delta:#x}: function body changed"
+        moved = pattern_port(old, new, osym, nsym, delta) if word == 8 else None
+        if moved is None:
+            return None, f"{name}+{delta:#x}: function body changed"
+        return moved, "pattern"
     if delta and osym[2] == "OBJECT" and delta >= nsym[1]:
         return None, f"{name}+{delta:#x}: object is smaller now"
     moved = nsym[0] + delta
@@ -367,9 +502,106 @@ def resolve(old, new, anc, word):
     was = old.relocs.get(osym[0] + delta)
     if was and was[1]:
         now = new.relocs.get(moved)
-        if not now or now[1] != was[1]:
+        # D1/D2 (or C1/C2) are often one function under two names.
+        same = now and (now[1] == was[1] or (
+            now[1] in new.by_name and was[1] in new.by_name
+            and new.by_name[now[1]][0] == new.by_name[was[1]][0]))
+        if not same:
             return None, f"{name}+{delta:#x} held {was[1]}, now {now[1] if now else 'nothing'}"
     return moved, None
+
+
+def mangled_prefix(name):
+    """The qualified-name part of an Itanium mangled name (no parameters):
+    _ZN5CFont11PrintStringEffPt -> _ZN5CFont11PrintStringE."""
+    m = re.match(r"_Z(N[KVr]*)?", name)
+    if not m:
+        return None
+    i, nested = m.end(), bool(m.group(1))
+    while True:
+        d = re.match(r"\d+", name[i:])
+        if not d:
+            break
+        i = d.end() + i + int(d.group())
+        if not nested:
+            return name[:i]
+        if name[i:i + 1] == "E":
+            return name[:i + 1]
+    return None
+
+
+def renamed(new, name):
+    """(new name, benign) for a function whose parameter types changed,
+    when the new build has exactly one function of that qualified name.
+    Benign when the only change is unsigned short <-> short (GTA's text
+    character type), which has the same size and calling convention."""
+    prefix = mangled_prefix(name)
+    if not prefix:
+        return None
+    cands = {n for n in new.by_name if n.startswith(prefix) and mangled_prefix(n) == prefix}
+    if len(cands) != 1:
+        return None
+    cand = cands.pop()
+    norm = lambda n: n[len(prefix):].replace("t", "s")
+    return cand, norm(name) == norm(cand)
+
+
+def elim_port(old, new, target):
+    """New address of a static target, by elimination, independent of code
+    shape. In each function that uses the target, map every other address
+    it touches through the symbol tables. If exactly one address is left
+    unexplained on each side, the new one is the target. Votes across users."""
+    key = ("elim", id(old), id(new))
+    if key not in _XREF_CACHE:
+        a, b = Arm64(old), Arm64(new)
+        users = {}
+        for name, (start, size) in a.funcs.items():
+            if name in b.funcs:
+                for addr in set(a.refs(start, size).values()):
+                    users.setdefault(addr, []).append(name)
+        _XREF_CACHE[key] = (a, b, users)
+    a, b, users = _XREF_CACHE[key]
+    votes = Counter()
+    for name in users.get(target, [])[:60]:
+        old_refs = set(a.refs(*a.funcs[name]).values())
+        new_refs = set(b.refs(*b.funcs[name]).values())
+        unknown_old = set()
+        for r in old_refs:
+            hit = old.containing(r)
+            if hit and hit[0][3] in new.by_name:
+                new_refs.discard(new.by_name[hit[0][3]][0] + hit[1])
+            elif r in old.relocs and old.relocs[r][1]:
+                for o in new.slots.get(old.relocs[r], []):
+                    new_refs.discard(o)
+            else:
+                unknown_old.add(r)
+        if unknown_old == {target} and len(new_refs) == 1:
+            votes[next(iter(new_refs))] += 1
+    if not votes:
+        return None, 0, 0
+    best, n = votes.most_common(1)[0]
+    return best, n, sum(votes.values())
+
+
+def _xref_symbol(old, new, osym, delta):
+    """A symbol the new build doesn't export: find its start through code
+    that uses it, then check the code at the new start has the same shape
+    (for functions) before applying delta."""
+    start, n, total = xref_port(old, new, osym[0])
+    # A clear majority of the code that uses it agrees on the new address.
+    if start is None or n * 2 <= total and not (n == total == 1):
+        start, n, total = elim_port(old, new, osym[0])
+        if start is None or n * 2 <= total or n < 2 and osym[2] == "FUNC":
+            return None
+    if osym[2] == "FUNC":
+        a = _shape_a64(old.read(osym[0], osym[1]) or b"")
+        b = _shape_a64(new.read(start, osym[1]) or b"")
+        if a != b:
+            if delta % 4:
+                return None
+            j = match_index(a, delta // 4, b)
+            return None if j is None else start + j * 4
+    return start + delta
 
 
 def site_arch(libs, arch, value):
@@ -563,7 +795,7 @@ def structs(lib64, lib32):
 def port(old64, old32, new64, new32, write):
     old = {64: Lib(old64), 32: Lib(old32)}
     new = {a: (Lib(p) if p != "-" else None) for a, p in ((64, new64), (32, new32))}
-    edits, status, review = {}, Counter(), []
+    edits, status, review, fallback = {}, Counter(), [], []
     for path, n, arch, value, span in sites():
         arch = site_arch(old, arch, value)
         if arch is None or new[arch] is None:
@@ -581,18 +813,28 @@ def port(old64, old32, new64, new32, write):
             status["changed"] += 1
             review.append((path, n, arch, value, why))
             continue
+        if why:  # found by a fallback: applied, but listed for a look
+            status["moved (" + why.split(" ")[0] + ")"] += 1
+            fallback.append((path, n, arch, value, moved + thumb, why))
         moved += thumb
-        status["same" if moved == value else "moved"] += 1
+        if not why:
+            status["same" if moved == value else "moved"] += 1
         if moved != value:
             width = span[1] - span[0] - 2
             edits.setdefault(path, []).append((n, span, f"0x{moved:0{width}X}"))
     for path, n, arch, name in check_names(old, new):
         status["name gone"] += 1
-        review.append((path, n, arch, 0, f"hooked by name, but {name} is not in the new build"))
+        r = renamed(new[arch], name)
+        hint = f"; now {r[0]}" + ("" if r[1] else " (parameters changed)") if r else ""
+        review.append((path, n, arch, 0, f"hooked by name, but {name} is not in the new build{hint}"))
     total = sum(status.values())
     print(f"{total} addresses and names checked")
     for k, v in status.most_common():
         print(f"  {k:10} {v:5}")
+    if fallback:
+        print("\nMoved by pattern match or cross-reference (check these in game first):")
+        for path, n, a, value, moved, why in fallback:
+            print(f"  {os.path.relpath(path, REPO)}:{n} arm{a} 0x{value:x} -> 0x{moved:x}  ({why})")
     if review:
         print("\nNeed a human (left unchanged):")
         for path, n, a, value, why in review:
@@ -613,8 +855,8 @@ def port(old64, old32, new64, new32, write):
             abi = "arm64-v8a" if arch == 64 else "armeabi-v7a"
             const = "REQUIRED_VERSION_ARM64" if arch == 64 else "REQUIRED_VERSION_ARMV7"
             print(f"  {const} = the new game version (versionName from the Play Store)")
-            print(f'  KNOWN_GOOD {{ "{abi}/libGTASA.so", "{hashlib.sha256(lib.data).hexdigest()}" }}')
-            print(f"  (and {abi}/libSCAnd.so from the same APK)")
+            print(f'  KNOWN_GOOD {{ "{abi}/<engine library>", "{hashlib.sha256(lib.data).hexdigest()}" }}')
+            print("  (plus every other library it needs from the same APK; 2.11 renamed the engine libGame.so)")
     return 0 if not review else 1
 
 
