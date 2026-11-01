@@ -46,6 +46,7 @@
 #include "km/admintools.inc"
 #include "km/spectate.inc"
 #include "km/gps.inc"
+#include "km/guide.inc"
 
 new gPass, gFail;
 

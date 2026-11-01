@@ -31,7 +31,8 @@ enum E_CHAR
     bool:cDied,         // respawn at the hospital
     bool:cOnDuty,
     bool:cCuffed,
-    bool:cDrivingLicence
+    bool:cDrivingLicence,
+    bool:cNewPlayer         // no time played yet: show the guide on the first spawn
 }
 
 new gChar[MAX_PLAYERS][E_CHAR];
@@ -40,7 +41,7 @@ new gChar[MAX_PLAYERS][E_CHAR];
 #define CHAR_SELECT_SQL \
     "SELECT id, name, gender, skin, level, xp, cash, bank, job, IFNULL(faction_id, 0) AS faction_id, faction_rank, \
      payday_seconds, wanted, jail_seconds, IFNULL(phone_number, 0) AS phone_number, driving_licence, \
-     health, armour, pos_x, pos_y, pos_z, pos_a, interior, virtual_world \
+     health, armour, pos_x, pos_y, pos_z, pos_a, interior, virtual_world, played_seconds \
      FROM characters WHERE id = %d AND account_id = %d"
 
 #define CHAR_SAVE_SQL \
@@ -296,6 +297,9 @@ public Char_OnLoaded(playerid, race)
     cache_get_value_name(0, "name", gChar[playerid][cName], MAX_PLAYER_NAME);
     cache_get_value_name_int(0, "gender", gChar[playerid][cGender]);
     cache_get_value_name_int(0, "skin", gChar[playerid][cSkin]);
+    new playedSeconds;
+    cache_get_value_name_int(0, "played_seconds", playedSeconds);
+    gChar[playerid][cNewPlayer] = playedSeconds == 0;
     cache_get_value_name_int(0, "level", gChar[playerid][cLevel]);
     cache_get_value_name_int(0, "xp", gChar[playerid][cXp]);
     cache_get_value_name_int(0, "cash", gChar[playerid][cCash]);
@@ -364,6 +368,11 @@ stock Char_OnSpawn(playerid)
         SetPlayerHealth(playerid, gChar[playerid][cHealth] < 1.0 ? 100.0 : gChar[playerid][cHealth]);
         SetPlayerArmour(playerid, gChar[playerid][cArmour]);
         SendClientMessage(playerid, COLOR_BRAND, "You are now playing as %s. Type /help for commands.", gChar[playerid][cName]);
+        if (gChar[playerid][cNewPlayer])
+        {
+            gChar[playerid][cNewPlayer] = false;
+            Guide_Show(playerid);
+        }
     }
     else
     {

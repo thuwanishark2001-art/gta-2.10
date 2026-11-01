@@ -948,6 +948,11 @@ static void EconomyScenario(const char* host, int port, const std::string& chara
     if (MapIconCount() < 19) { Fail("expected the 19 place icons on the map"); return; }
     printf("  map icons: %d\n", MapIconCount());
 
+    printf("== guide\n");
+    if (!ExpectDialog(17)) return;                  // shown on a new character's first spawn
+    Command("/guide");
+    ExpectDialog(17);
+
     printf("== gps\n");
     g_haveCheckpoint = false;
     Command("/gps");
