@@ -67,6 +67,8 @@ CNetGame::CNetGame(const char* szHostOrIp, int iPort, const char *szPlayerName, 
 	InitializePools();
 
 	GetPlayerPool()->SetLocalPlayerName(szPlayerName);
+	strncpy(m_szLoginName, szPlayerName, sizeof(m_szLoginName) - 1);
+	m_szLoginName[sizeof(m_szLoginName) - 1] = '\0';
 
 	RegisterRPCs(m_pRakClient);
 	RegisterScriptRPCs(m_pRakClient);
@@ -589,6 +591,8 @@ void CNetGame::Packet_ConnectionSucceeded(Packet *pkt)
 
 	SetGameState(GAMESTATE_AWAIT_JOIN);
 
+	// Always join as the login name, not a name the server set last session.
+	GetPlayerPool()->SetLocalPlayerName(m_szLoginName);
 	uint8_t byteNameLen = strlen(GetPlayerPool()->GetLocalPlayerName());
 	uint8_t byteAuthBSLen = strlen(AUTH_BS);
 	uint8_t byteClientVerLen = strlen(SAMP_VERSION);
