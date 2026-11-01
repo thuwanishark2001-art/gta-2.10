@@ -269,7 +269,7 @@ CMD:help(playerid, params[])
     if (gPlayer[playerid][pAdmin] >= ADMIN_MOD) SendClientMessage(playerid, COLOR_ADMIN, "Moderator: /a /kick /mute /unmute /goto /gethere /freeze /unfreeze /check /ajail /togooc");
     if (gPlayer[playerid][pAdmin] >= ADMIN_ADMIN) SendClientMessage(playerid, COLOR_ADMIN, "Admin: /ban /unban /veh /dveh /playstream /stopstream");
     if (gPlayer[playerid][pAdmin] >= ADMIN_LEAD) SendClientMessage(playerid, COLOR_ADMIN, "Lead: /givemoney /setfaction /sethelper /createproperty /deleteproperty");
-    if (gPlayer[playerid][pAdmin] >= ADMIN_OWNER) SendClientMessage(playerid, COLOR_ADMIN, "Owner: /setadmin");
+    if (gPlayer[playerid][pAdmin] >= ADMIN_OWNER) SendClientMessage(playerid, COLOR_ADMIN, "Owner: /setadmin /testblips");
     return 1;
 }
 

@@ -224,3 +224,32 @@ CMD:setadmin(playerid, params[])
     if (targetid != playerid) SendClientMessage(playerid, COLOR_ADMIN, "Admin level set to %d.", level);
     return 1;
 }
+
+// Owner tool: puts test map icons and a checkpoint around you, to check how
+// the client draws radar blips (coloured squares and sprite icons).
+//   /testblips      show them        /testblips off   remove them
+CMD:testblips(playerid, params[])
+{
+    if (gPlayer[playerid][pAdmin] < ADMIN_OWNER) return SendError(playerid, "You don't have permission to use this command.");
+    if (!isnull(params) && strcmp(params, "off", true) == 0)
+    {
+        for (new i = 90; i <= 95; i++) RemovePlayerMapIcon(playerid, i);
+        DisablePlayerCheckpoint(playerid);
+        SendClientMessage(playerid, COLOR_ADMIN, "Test blips removed.");
+        return 1;
+    }
+    new Float:x, Float:y, Float:z;
+    GetPlayerPos(playerid, x, y, z);
+    // Coloured squares: the colour is sent as RGBA, like player markers.
+    SetPlayerMapIcon(playerid, 90, x + 60.0, y, z, 0, 0xFF0000FF, MAPICON_GLOBAL);   // red
+    SetPlayerMapIcon(playerid, 91, x, y + 60.0, z, 0, 0x00FF00FF, MAPICON_GLOBAL);   // green
+    SetPlayerMapIcon(playerid, 92, x - 60.0, y, z, 0, 0x3399FFFF, MAPICON_GLOBAL);   // blue
+    // Sprite icons: should keep their own colours.
+    SetPlayerMapIcon(playerid, 93, x, y - 60.0, z, 6, 0, MAPICON_GLOBAL);            // Ammu-Nation
+    SetPlayerMapIcon(playerid, 94, x + 45.0, y + 45.0, z, 10, 0, MAPICON_GLOBAL);    // Burger Shot
+    SetPlayerMapIcon(playerid, 95, x - 45.0, y - 45.0, z, 52, 0, MAPICON_GLOBAL);    // cash
+    SetPlayerCheckpoint(playerid, x + 20.0, y + 20.0, z, 3.0);
+    SendClientMessage(playerid, COLOR_ADMIN, "Test blips: red east, green north, blue west; gun shop south; burger NE; cash SW; checkpoint nearby.");
+    SendClientMessage(playerid, COLOR_ADMIN, "Screenshot the radar and the pause-menu map. /testblips off removes them.");
+    return 1;
+}
