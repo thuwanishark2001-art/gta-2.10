@@ -54,7 +54,16 @@ public final class CrashLog {
         try {
             Process logcat = new ProcessBuilder("logcat", "-d", "-v", "threadtime", "-b", "main,system,crash")
                 .redirectErrorStream(true).start();
-            try (InputStream in = logcat.getInputStream()) {
+            // logcat first (empty on phones that hide it from apps), then the
+            // diagnostics file kmdiag wrote during the session.
+            File diag = Diag.file(context);
+            InputStream logcatIn = logcat.getInputStream();
+            InputStream all = diag.isFile()
+                ? new java.io.SequenceInputStream(logcatIn, new java.io.SequenceInputStream(
+                    new java.io.ByteArrayInputStream("\n--------- kmdiag session file\n".getBytes()),
+                    new java.io.FileInputStream(diag)))
+                : logcatIn;
+            try (InputStream in = all) {
                 if (Build.VERSION.SDK_INT >= 29) {
                     ContentValues values = new ContentValues();
                     values.put(MediaStore.Downloads.DISPLAY_NAME, name);

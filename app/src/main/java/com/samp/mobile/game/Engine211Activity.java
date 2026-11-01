@@ -33,6 +33,7 @@ public class Engine211Activity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         CrashLog.sessionStarted(this);
+        Diag.start(this);
         Log.i(TAG, "onCreate");
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideSystemUi();
@@ -79,6 +80,7 @@ public class Engine211Activity extends Activity {
             Log.i(TAG, "implOnActivityCreated initialized=" + initialized);
             GameNative.implOnActivityCreated(services, initialized);
             Log.i(TAG, "activity created");
+            Diag.reinstall();
         });
 
         Toast.makeText(this, "GTA:SA 2.11 engine test: multiplayer isn't connected yet.", Toast.LENGTH_LONG).show();

@@ -18,3 +18,7 @@ add_subdirectory(samp)
 
 target_compile_options(opus PRIVATE -O3)
 
+
+# Logs and crash reports for phones whose logcat apps can't read (kmdiag/kmdiag.c).
+add_library(kmdiag SHARED kmdiag/kmdiag.c)
+target_link_libraries(kmdiag log dl shadowhook::shadowhook)
