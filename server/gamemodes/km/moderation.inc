@@ -2,6 +2,7 @@
 // Every action is written to admin_log.
 
 forward Mod_OnUnban(playerid, race, const target[]);
+forward Mod_OnRenameAccount(playerid, race, const oldName[], const newName[]);
 
 // Admin account id for logging, 0 for console / system.
 stock Mod_ActorId(playerid)
@@ -222,6 +223,46 @@ CMD:setadmin(playerid, params[])
     Log_Admin(Mod_ActorId(playerid), "set_admin", gPlayer[targetid][pAccountId], details);
     SendClientMessage(targetid, COLOR_ADMIN, "Your admin level is now %d.", level);
     if (targetid != playerid) SendClientMessage(playerid, COLOR_ADMIN, "Admin level set to %d.", level);
+    return 1;
+}
+
+// Owner tool: renames an account (its characters, money and admin level stay).
+// The player has to be offline; they log in with the new name and the same password.
+CMD:renameaccount(playerid, params[])
+{
+    new oldName[MAX_PLAYER_NAME], newName[MAX_PLAYER_NAME];
+    if (sscanf(params, "s[24]s[24]", oldName, newName)) return SendInfo(playerid, "Usage: /renameaccount [old account name] [new account name]");
+    if (!Mod_CanAct(playerid, INVALID_PLAYER_ID, ADMIN_OWNER)) return 1;
+    if (!IsValidAccountName(newName)) return SendError(playerid, "The new name must be 3-20 letters, digits or underscores.");
+    for (new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if (IsPlayerConnected(i) && strcmp(gPlayer[i][pUsername], oldName, true) == 0)
+            return SendError(playerid, "That account is in use. It can only be renamed while its player is offline.");
+    }
+    new query[256];
+    // The derived table lets MariaDB check the new name in the same table.
+    mysql_format(gDB, query, sizeof (query),
+        "UPDATE accounts SET username = '%e' WHERE username = '%e' \
+         AND NOT EXISTS (SELECT 1 FROM (SELECT id FROM accounts WHERE username = '%e') taken)",
+        newName, oldName, newName);
+    mysql_tquery(gDB, query, "Mod_OnRenameAccount", "ddss", playerid, gPlayerRace[playerid], oldName, newName);
+    return 1;
+}
+
+public Mod_OnRenameAccount(playerid, race, const oldName[], const newName[])
+{
+    new renamed = cache_affected_rows();
+    if (gPlayerRace[playerid] == race)
+    {
+        if (renamed > 0) SendClientMessage(playerid, COLOR_ADMIN, "Renamed account %s to %s.", oldName, newName);
+        else SendError(playerid, "No account has the old name, or the new name is already taken.");
+    }
+    if (renamed > 0)
+    {
+        new details[64];
+        format(details, sizeof (details), "%s -> %s", oldName, newName);
+        Log_Admin(gPlayerRace[playerid] == race ? Mod_ActorId(playerid) : 0, "rename_account", 0, details);
+    }
     return 1;
 }
 

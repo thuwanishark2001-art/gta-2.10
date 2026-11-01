@@ -801,6 +801,10 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     ExpectMessage("Your admin level is now 5");
     Command("/check " + character);
     ExpectMessage("admin 5");
+    Command("/renameaccount " + g_name + " kmbot_renamed");
+    ExpectMessage("can only be renamed while its player is offline");
+    Command("/renameaccount kmbot_nobody kmbot_renamed");
+    ExpectMessage("No account has the old name");
 
     printf("== property\n");
     Command("/createproperty 0 1000 Bot House");
