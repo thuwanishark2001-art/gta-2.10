@@ -512,18 +512,24 @@ bool IsPedModel(unsigned int iModelID)
     if(iModelID < 0 || iModelID > 20000) return false;
     auto dwModelArray = CModelInfo::ms_modelInfoPtrs;
 
-    uintptr_t ModelInfo = reinterpret_cast<uintptr_t>(dwModelArray[iModelID]);
-    if(ModelInfo && *(uintptr_t*)ModelInfo == (uintptr_t)g_libGTASA + (VER_x32 ? 0x00667658 : 0x822858))
-        return true;
-
-    return false;
+    auto* info = dwModelArray[iModelID];
+    if(!info) return false;
+    // Ask the model info its type (virtual) rather than comparing its vtable
+    // with CPedModelInfo's: the engine's ped entries don't always carry that
+    // exact vtable, and a false "not a ped" turned every skin into model 0.
+    return info->GetModelType() == MODEL_INFO_PED;
 }
 // 0.3.7
 void CPlayerPed::SetModelIndex(uint uiModel)
 {
     if(!GamePool_Ped_GetAt(m_dwGTAId)) return;
     if(!IsPedModel(uiModel))
+    {
+        auto* info = uiModel < CModelInfo::NUM_MODEL_INFOS ? CModelInfo::ms_modelInfoPtrs[uiModel] : nullptr;
+        FLog("SetModelIndex: %u is not a ped model (info %p, type %d); using 0",
+             uiModel, info, info ? (int) info->GetModelType() : -1);
         uiModel = 0;
+    }
 
     if(m_pPed)
     {

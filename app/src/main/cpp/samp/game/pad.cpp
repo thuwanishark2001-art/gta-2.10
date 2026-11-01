@@ -695,6 +695,24 @@ bool CPad__GetTurretLeft_hook(uintptr_t *thiz)
 }
 
 extern uint8_t byteInternalPlayer;
+#if KM_GTA211
+// 2.11: the original ProcessControl of each vehicle class, keyed by the
+// class's vtable, read from the vtable slots before HookCPad() replaces them
+// (the 64-bit table below holds 2.10 addresses; on 2.11 nothing matched and
+// the hook called address 0 the first time a vehicle was processed).
+static struct { uintptr_t vtable, original; } g_vehicleProcessControl[16];
+static int g_vehicleProcessControlCount = 0;
+
+static void HookVehicleProcessControl(uintptr_t slot, void* hook)
+{
+    if (g_vehicleProcessControlCount < 16) {
+        // ProcessControl is entry 11 (+0x58) after the vtable's address point.
+        g_vehicleProcessControl[g_vehicleProcessControlCount++] = { slot - 0x58, *(uintptr_t*)slot };
+    }
+    CHook::InstallPLT(slot, hook);
+}
+#endif
+
 void AllVehicles__ProcessControl_hook(uintptr_t thiz)
 {
     auto* pVehicle = (CVehicleGTA*)thiz;
@@ -838,7 +856,22 @@ void AllVehicles__ProcessControl_hook(uintptr_t thiz)
     }
 
     // VEHTYPE::ProcessControl()
+#if KM_GTA211
+    uintptr_t original = 0;
+    for (int i = 0; i < g_vehicleProcessControlCount; i++) {
+        if (g_vehicleProcessControl[i].vtable == *(uintptr_t*)pVehicle) {
+            original = g_vehicleProcessControl[i].original;
+            break;
+        }
+    }
+    if (!original) {
+        FLog("AllVehicles__ProcessControl: unknown vehicle vtable +0x%lx", (unsigned long) this_vtable);
+        return;
+    }
+    (( void (*)(CVehicleGTA*))original)(pVehicle);
+#else
     (( void (*)(CVehicleGTA*))(g_libGTASA + call_addr + (VER_x32 ? 1 : 0)))(pVehicle);
+#endif
 }
 
 //const char* newLightingColorString = "Out_LightingColor = AmbientLightColor * 3.0 * MaterialAmbient.xyz";
@@ -969,6 +1002,18 @@ void HookCPad()
     // CPedSamp::ProcessControl
     CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x6692A4 : 0x825E28), &CPed__ProcessControl_hook, &CPed__ProcessControl);
 
+#if KM_GTA211
+    // all vehicles ProcessControl
+    HookVehicleProcessControl(g_libGTASA + (VER_x32 ? 0x66D6A4 : 0x830520), (void*)&AllVehicles__ProcessControl_hook); // CAutomobile::ProcessControl
+    HookVehicleProcessControl(g_libGTASA + (VER_x32 ? 0x66DA4C : 0x830CD0), (void*)&AllVehicles__ProcessControl_hook); // CBoat::ProcessControl
+    HookVehicleProcessControl(g_libGTASA + (VER_x32 ? 0x66D81C : 0x830840), (void*)&AllVehicles__ProcessControl_hook); // CBike::ProcessControl
+    HookVehicleProcessControl(g_libGTASA + (VER_x32 ? 0x66DDB0 : 0x8313E0), (void*)&AllVehicles__ProcessControl_hook); // CPlane::ProcessControl
+    HookVehicleProcessControl(g_libGTASA + (VER_x32 ? 0x66DB60 : 0x830F10), (void*)&AllVehicles__ProcessControl_hook); // CHeli::ProcessControl
+    HookVehicleProcessControl(g_libGTASA + (VER_x32 ? 0x66D934 : 0x830A88), (void*)&AllVehicles__ProcessControl_hook); // CBmx::ProcessControl
+    HookVehicleProcessControl(g_libGTASA + (VER_x32 ? 0x66DC88 : 0x831178), (void*)&AllVehicles__ProcessControl_hook); // CMonsterTruck::ProcessControl
+    HookVehicleProcessControl(g_libGTASA + (VER_x32 ? 0x66DED8 : 0x831648), (void*)&AllVehicles__ProcessControl_hook); // CQuadBike::ProcessControl
+    HookVehicleProcessControl(g_libGTASA + (VER_x32 ? 0x66E128 : 0x831B18), (void*)&AllVehicles__ProcessControl_hook); // CTrain::ProcessControl
+#else
     // all vehicles ProcessControl
     CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x66D6A4 : 0x830520), &AllVehicles__ProcessControl_hook); // CAutomobile::ProcessControl
     CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x66DA4C : 0x830CD0), &AllVehicles__ProcessControl_hook); // CBoat::ProcessControl
@@ -979,6 +1024,7 @@ void HookCPad()
     CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x66DC88 : 0x831178), &AllVehicles__ProcessControl_hook); // CMonsterTruck::ProcessControl
     CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x66DED8 : 0x831648), &AllVehicles__ProcessControl_hook); // CQuadBike::ProcessControl
     CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x66E128 : 0x831B18), &AllVehicles__ProcessControl_hook); // CTrain::ProcessControl
+#endif
 
     CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x66968C : 0x826A88), &TaskUseGun);
     CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x66CF4C : 0x82F5C0), &CPad__TaskProcess);

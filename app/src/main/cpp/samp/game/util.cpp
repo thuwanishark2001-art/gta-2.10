@@ -1963,11 +1963,12 @@ bool IsValidPedModel(uint modelID)
     if(modelID < 0 || modelID > 20000) return false;
     auto dwModelArray = CModelInfo::ms_modelInfoPtrs;
 
-    uintptr_t ModelInfo = reinterpret_cast<uintptr_t>(dwModelArray[modelID]);
-    if(ModelInfo && *(uintptr_t*)ModelInfo == (uintptr_t)g_libGTASA + (VER_x32 ? 0x00667658 : 0x822858))
-        return true;
-
-    return false;
+    auto* info = dwModelArray[modelID];
+    if(!info) return false;
+    // Ask the model info its type (virtual) rather than comparing its vtable
+    // with CPedModelInfo's: the engine's ped entries don't always carry that
+    // exact vtable, and a false "not a ped" turned every skin into model 0.
+    return info->GetModelType() == MODEL_INFO_PED;
 }
 
 uintptr_t GetModelRWObject(uint uiModel)
