@@ -4,7 +4,8 @@
 # Copies the model to content/models/<id>.dff. With a .txd, copies it to
 # content/models/<id>.txd. With a folder of PNGs, reads which textures the
 # model uses and copies each matching picture to content/models/<id>/<name>.png
-# (it matches names loosely: "Body4 (1).png" is texture "body4"). Then
+# (it matches names loosely: "Body4 (1).png" is texture "body4"), saved
+# under that loose name, which the app matches the same way. Then
 # restarts the content service so players download it.
 #   add-skin.sh --remove <id>    takes a custom model away again
 set -euo pipefail
@@ -101,10 +102,13 @@ for name in names:
     src = pngs.get(key(name))
     if not src:
         missing.append(name); continue
-    if not re.fullmatch(r'[A-Za-z0-9_.-]+', name):
-        print(f"  ! texture \"{name}\" has characters the content service can't serve; skipped")
+    # Saved under the loose key (the client matches the same way), so names
+    # with spaces or brackets still work: "23 1" -> 231.png.
+    k = key(name)
+    if not k:
+        print(f"  ! texture \"{name}\" has no letters or digits; skipped")
         missing.append(name); continue
-    shutil.copyfile(src, f'{out}/{model_id}/{name}.png')
+    shutil.copyfile(src, f'{out}/{model_id}/{k}.png')
     print(f"  texture {name} <- {os.path.relpath(src, tex)}")
 if missing:
     print(f"  not found in {tex}: {', '.join(missing)}")

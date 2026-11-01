@@ -67,17 +67,35 @@ struct CustomModel {
     bool loaded = false;      // files read and textures built (once)
     bool usable = false;
     std::vector<uint8_t> dff;
-    std::unordered_map<std::string, void*> textures;  // lower-case name -> RwTexture*
+    std::unordered_map<std::string, void*> textures;  // Key(name) -> RwTexture*
 };
 
 std::unordered_map<unsigned int, CustomModel> g_models;
 CustomModel* g_current = nullptr;   // the model being loaded, for FindTexture
 FindCB g_gameFind = nullptr;
 
-std::string Lower(const char* s)
+// Texture names are matched loosely, the same way scripts/add-skin.sh names
+// the files: lower case, a trailing " (n)" from repeat downloads dropped, and
+// only letters and digits kept. So texture "Sneakerprowht (5)" is file
+// sneakerprowht.png, and "23 1" is 231.png.
+std::string Key(const char* s)
 {
-    std::string out(s);
-    for (auto& c : out) c = (char) tolower((unsigned char) c);
+    std::string in(s ? s : "");
+    size_t end = in.size();
+    if (end && in[end - 1] == ')') {
+        size_t open = in.rfind('(');
+        bool digits = open != std::string::npos && open + 1 < end - 1;
+        for (size_t i = open + 1; digits && i < end - 1; i++) digits = isdigit((unsigned char) in[i]) != 0;
+        if (digits) {
+            end = open;
+            while (end && in[end - 1] == ' ') end--;
+        }
+    }
+    std::string out;
+    for (size_t i = 0; i < end; i++) {
+        unsigned char c = (unsigned char) in[i];
+        if (isalnum(c)) out += (char) tolower(c);
+    }
     return out;
 }
 
@@ -117,7 +135,7 @@ void* MakeTexture(const std::string& name, int w, int h, const std::vector<uint8
 int LoadTxd(const std::vector<uint8_t>& file, CustomModel& model)
 {
     return kmtxd::ForEachTexture(file.data(), file.size(), [&](const std::string& name, int w, int h, const std::vector<uint8_t>& rgba) {
-        if (void* t = MakeTexture(name, w, h, rgba)) model.textures[Lower(name.c_str())] = t;
+        if (void* t = MakeTexture(name, w, h, rgba)) model.textures[Key(name.c_str())] = t;
         else FLog("CustomModels: texture %s couldn't be created", name.c_str());
     }, [](const std::string& name) {
         FLog("CustomModels: skipped texture %s (unsupported format)", name.c_str());
@@ -135,7 +153,7 @@ int LoadPngDir(const std::string& dir, CustomModel& model)
         std::string file = e->d_name;
         if (file.size() < 5 || file[0] == '.' || strcasecmp(file.c_str() + file.size() - 4, ".png") != 0) continue;
         std::string name = file.substr(0, file.size() - 4);
-        if (model.textures.count(Lower(name.c_str()))) continue;
+        if (model.textures.count(Key(name.c_str()))) continue;
         std::vector<uint8_t> png, rgba;
         int w = 0, h = 0;
         if (!ReadFile(dir + "/" + file, png, 16u << 20) || !kmpng::Decode(png.data(), png.size(), w, h, rgba)) {
@@ -143,7 +161,7 @@ int LoadPngDir(const std::string& dir, CustomModel& model)
             continue;
         }
         if (void* t = MakeTexture(name, w, h, rgba)) {
-            model.textures[Lower(name.c_str())] = t;
+            model.textures[Key(name.c_str())] = t;
             made++;
         }
     }
@@ -180,7 +198,7 @@ CustomModel* Find(unsigned int modelId)
 void* FindTexture(const char* name)
 {
     if (g_current && name) {
-        auto it = g_current->textures.find(Lower(name));
+        auto it = g_current->textures.find(Key(name));
         if (it != g_current->textures.end()) return it->second;
     }
     void* found = g_gameFind ? g_gameFind(name) : nullptr;

@@ -125,7 +125,8 @@ For those, give the folder of pictures instead:
 
 The script:
 - reads which textures the model uses, copies each matching picture
-  (it matches names loosely: `Body4 (1).png` counts as texture `body4`)
+  (it matches names loosely: `Body4 (1).png` counts as texture `body4`, and
+  a texture named `23 1` is saved as `231.png`)
 - lists any it can't find
 - restarts the content service
 
