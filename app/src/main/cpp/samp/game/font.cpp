@@ -43,7 +43,7 @@ void CFont::SetCentreSize(float size)
 }
 void Font_SetRightJustifyWrap(float wrap)
 {
-	((int (*)(float))(g_libGTASA + (VER_x32 ? 0x05AB268 + 1 : 0x0053384C)))(wrap);
+	((int (*)(float))(g_libGTASA + (VER_x32 ? 0x05AB268 + 1 : 0x006CF0D0)))(wrap);
 	//0053384C
 }
 
@@ -64,7 +64,7 @@ void CFont::SetProportional(uint8_t prop)
 
 void CFont::SetDropColor(uint32_t* dwColor)
 {
-	return ((void(*)(uint32_t*))(g_libGTASA + (VER_x32 ? 0x005AB320 + 1 : 0x6CF0F0)))(dwColor);
+	return ((void(*)(uint32_t*))(g_libGTASA + (VER_x32 ? 0x005AB288 + 1 : 0x6CF0F0)))(dwColor);
 }
 
 void CFont::SetDropShadowPosition(uint8_t pos)

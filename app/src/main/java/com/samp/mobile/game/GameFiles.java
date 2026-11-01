@@ -31,16 +31,21 @@ import java.util.zip.ZipFile;
  * <li>Game data the engine reads from "the APK" is read straight from the
  *     installed game's package through {@link #assets(Context)}.</li>
  * </ul>
- * The client's hooks target GTA:SA for Android 2.10, so only that version is
- * accepted.
+ * The client's hooks target one GTA:SA version per architecture (the
+ * addresses in app/src/main/cpp/samp are per ABI), so only that version is
+ * accepted. tools/port-libgtasa moves the addresses to another version;
+ * when it does, update {@link #requiredVersion()} and {@link #KNOWN_GOOD}
+ * for the ported ABI only.
  */
 public final class GameFiles {
     private static final String TAG = "GameFiles";
 
     public static final String GTA_PACKAGE = "com.rockstargames.gtasa";
-    public static final String REQUIRED_VERSION = "2.10";
+    /** Game version the native addresses are written for, per ABI. */
+    private static final String REQUIRED_VERSION_ARM64 = "2.10";
+    private static final String REQUIRED_VERSION_ARMV7 = "2.10";
 
-    /** SHA-256 of the 2.10 libraries the hooks were written against. */
+    /** SHA-256 of the libraries the hooks were written against. */
     private static final String[][] KNOWN_GOOD = {
         { "arm64-v8a/libGTASA.so", "12527bfdb63889c02d24366629e808cb446d354a2b380348bd661da4edc6af11" },
         { "arm64-v8a/libSCAnd.so", "523e9326cb911ca71227c0e5d40d4b8e30e4b1062fa3ddbc6a5db4b1c886d880" },
@@ -63,6 +68,15 @@ public final class GameFiles {
     private static AssetManager sGameAssets;
 
     private GameFiles() {}
+
+    public static String requiredVersion() {
+        return android.os.Process.is64Bit() ? REQUIRED_VERSION_ARM64 : REQUIRED_VERSION_ARMV7;
+    }
+
+    /** "2.10" accepts 2.10 and 2.10.x, not 2.100. */
+    static boolean versionMatches(String installed, String required) {
+        return installed.equals(required) || installed.startsWith(required + ".");
+    }
 
     public static String abi() {
         return android.os.Process.is64Bit() ? "arm64-v8a" : "armeabi-v7a";
@@ -91,7 +105,7 @@ public final class GameFiles {
             return new Status(State.NOT_INSTALLED, null);
         }
         String version = info.versionName == null ? "" : info.versionName;
-        if (!version.startsWith(REQUIRED_VERSION)) return new Status(State.WRONG_VERSION, version);
+        if (!versionMatches(version, requiredVersion())) return new Status(State.WRONG_VERSION, version);
 
         // Copied before from this exact install?
         String expected = markerText(info);
@@ -115,7 +129,7 @@ public final class GameFiles {
 
     /**
      * Copies the engine libraries out of the installed game. Returns true if
-     * every copied library matches a known 2.10 build. Throws if one is missing.
+     * every copied library matches a known build. Throws if one is missing.
      */
     public static boolean copyLibraries(Context context) throws Exception {
         PackageInfo info = context.getPackageManager().getPackageInfo(GTA_PACKAGE, 0);
@@ -133,7 +147,7 @@ public final class GameFiles {
             String hash = sha256(tmp);
             boolean known = isKnown(abi() + "/" + lib, hash);
             allKnown &= known || lib.equals("libImmEmulatorJ.so");
-            Log.i(TAG, lib + " sha256 " + hash + (known ? " (known 2.10 build)" : " (not a known build)"));
+            Log.i(TAG, lib + " sha256 " + hash + (known ? " (known build)" : " (not a known build)"));
             target.setWritable(true);
             target.delete();
             if (!tmp.renameTo(target)) throw new IOException("can't write " + target);

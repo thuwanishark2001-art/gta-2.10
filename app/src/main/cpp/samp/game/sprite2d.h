@@ -7,8 +7,7 @@
 class CSprite2d
 {
 public:
-	RwTexture* m_pTexture;
-    RwTexture* m_pRwTexture;
+	RwTexture* m_pTexture; // the engine's CSprite2d is just this pointer
 
 //	static inline int32 nextBufferIndex = *(int32*)0xC80458;
 //	static inline int32 nextBufferVertex = *(int32*)0xC8045C;

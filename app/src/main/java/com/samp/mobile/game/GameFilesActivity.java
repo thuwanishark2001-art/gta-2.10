@@ -18,7 +18,7 @@ import android.widget.TextView;
 import com.samp.mobile.R;
 
 /**
- * First screen of the app. Makes sure the player's own GTA: San Andreas 2.10
+ * First screen of the app. Makes sure the player's own GTA: San Andreas
  * is installed, copies its engine libraries on first launch (or after the
  * game was updated), then starts the game.
  */
@@ -56,11 +56,11 @@ public class GameFilesActivity extends Activity {
                 break;
             case NOT_INSTALLED:
                 showProblem("Kingmakers RP runs on your own copy of GTA: San Andreas.\n\n"
-                    + "Install GTA: San Andreas (version " + GameFiles.REQUIRED_VERSION + ") from Google Play, then come back.",
+                    + "Install GTA: San Andreas (version " + GameFiles.requiredVersion() + ") from Google Play, then come back.",
                     "Open Google Play", v -> openStore());
                 break;
             case WRONG_VERSION:
-                showProblem("Kingmakers RP needs GTA: San Andreas version " + GameFiles.REQUIRED_VERSION
+                showProblem("Kingmakers RP needs GTA: San Andreas version " + GameFiles.requiredVersion()
                     + ".\nYou have version " + status.installedVersion + ".",
                     "Check again", v -> checkAndStart());
                 break;
@@ -75,7 +75,7 @@ public class GameFilesActivity extends Activity {
         new Thread(() -> {
             try {
                 boolean known = GameFiles.copyLibraries(this);
-                if (!known) Log.w(TAG, "Copied libraries aren't a known 2.10 build; continuing");
+                if (!known) Log.w(TAG, "Copied libraries aren't a known build; continuing");
                 runOnUiThread(() -> {
                     copying = false;
                     startGame();
