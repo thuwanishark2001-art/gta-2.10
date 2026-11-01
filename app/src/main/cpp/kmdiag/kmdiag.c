@@ -96,9 +96,33 @@ static void where(const char *label, uintptr_t addr) {
     }
 }
 
-static int in_engine(uintptr_t addr) {
+// Code we can name on a crashed thread's stack: the engine, the client,
+// the Java runtime, libc and our own libraries. The unwinder can't walk
+// through Java frames, so this shows who was running when it can't.
+static int in_known_code(uintptr_t addr) {
+    static const char *const kLibs[] = { "libGame.so", "libsamp.so", "libart.so", "libc.so",
+                                         "libkm", "libandroid_runtime.so", "libGTASA.so" };
     Dl_info info;
-    return addr && dladdr((void *) addr, &info) && info.dli_fname && strstr(info.dli_fname, "libGame.so");
+    if (!addr || !dladdr((void *) addr, &info) || !info.dli_fname) return 0;
+    for (size_t i = 0; i < sizeof kLibs / sizeof kLibs[0]; i++) {
+        if (strstr(info.dli_fname, kLibs[i])) return 1;
+    }
+    return 0;
+}
+
+static void thread_name(char *out, size_t size) {
+    char path[64];
+    snprintf(path, sizeof path, "/proc/self/task/%d/comm", (int) syscall(SYS_gettid));
+    out[0] = 0;
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return;
+    ssize_t n = read(fd, out, size - 1);
+    close(fd);
+    if (n > 0) {
+        out[n] = 0;
+        char *nl = strchr(out, '\n');
+        if (nl) *nl = 0;
+    }
 }
 
 struct trace { int n; };
@@ -132,11 +156,11 @@ static void report_context(ucontext_t *uc) {
     out("backtrace:\n", 11);
     struct trace t = { 0 };
     _Unwind_Backtrace(frame, &t);
-    out("engine addresses on the stack:\n", 31);
+    out("code addresses on the stack:\n", 29);
     const uintptr_t *stack = (const uintptr_t *) sp;
     int found = 0;
-    for (int i = 0; i < 2048 && found < 32; i++) {
-        if (in_engine(stack[i])) {
+    for (int i = 0; i < 2048 && found < 40; i++) {
+        if (in_known_code(stack[i])) {
             char label[16];
             snprintf(label, sizeof label, "sp+%03x", i * 8);
             where(label, stack[i]);
@@ -159,8 +183,10 @@ static void on_crash(int sig, siginfo_t *info, void *uc_void) {
         return;
     }
     stamp();
-    outf("\n*** fatal signal %d (code %d) fault address %p, thread %d\n",
-         sig, info->si_code, info->si_addr, (int) syscall(SYS_gettid));
+    char name[32];
+    thread_name(name, sizeof name);
+    outf("\n*** fatal signal %d (code %d) fault address %p, thread %d \"%s\"\n",
+         sig, info->si_code, info->si_addr, (int) syscall(SYS_gettid), name);
     report_context(uc_void);
     out("*** end\n", 8);
     fsync(g_fd);
