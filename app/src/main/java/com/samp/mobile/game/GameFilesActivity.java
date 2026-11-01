@@ -31,10 +31,14 @@ public class GameFilesActivity extends Activity {
     private TextView action;
     private boolean copying = false;
 
+    /** Set when the last game session crashed and its log was saved. */
+    private String savedLog;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         buildLayout();
+        savedLog = CrashLog.saveIfLastSessionCrashed(this);
     }
 
     @Override
@@ -46,6 +50,16 @@ public class GameFilesActivity extends Activity {
 
     private void checkAndStart() {
         if (copying) return;
+        if (savedLog != null) {
+            String where = savedLog;
+            showProblem("The game closed unexpectedly last time.\n\nA log was saved to " + where
+                + ". Please send it to the Kingmakers team so we can fix it.",
+                "Continue", v -> {
+                    savedLog = null;
+                    checkAndStart();
+                });
+            return;
+        }
         GameFiles.Status status = GameFiles.check(this);
         switch (status.state) {
             case READY:

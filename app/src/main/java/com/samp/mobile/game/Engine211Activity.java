@@ -32,12 +32,16 @@ public class Engine211Activity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        CrashLog.sessionStarted(this);
+        Log.i(TAG, "onCreate");
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideSystemUi();
 
         synchronized (Engine211Activity.class) {
             if (!sLoaded) {
+                Log.i(TAG, "loading engine libraries");
                 GameFiles.loadLibraries(this, GameFiles.Engine.GTA_211);
+                Log.i(TAG, "engine libraries loaded");
                 sLoaded = true;
             }
         }
@@ -60,14 +64,22 @@ public class Engine211Activity extends Activity {
 
         final DeviceInfo device = new DeviceInfo(this);
         GameThread.post(() -> {
+            Log.i(TAG, "implOnInitialSetup");
             // Only the install-time pack: the audio packs are downloaded into
             // the game's private storage, which this app can't read.
             GameNative.implOnInitialSetup(device, GameFiles.assets(this),
                 new String[] { "data_main" }, new String[] { null });
+            Log.i(TAG, "implOnRockstarSetup");
             GameNative.implOnRockstarSetup("prod", "");
+            Log.i(TAG, "setup done");
         });
         view.setup();
-        GameThread.post(() -> GameNative.implOnActivityCreated(services, GameNative.implIsInitialized()));
+        GameThread.post(() -> {
+            boolean initialized = GameNative.implIsInitialized();
+            Log.i(TAG, "implOnActivityCreated initialized=" + initialized);
+            GameNative.implOnActivityCreated(services, initialized);
+            Log.i(TAG, "activity created");
+        });
 
         Toast.makeText(this, "GTA:SA 2.11 engine test: multiplayer isn't connected yet.", Toast.LENGTH_LONG).show();
     }
@@ -122,6 +134,7 @@ public class Engine211Activity extends Activity {
     protected void onDestroy() {
         GameThread.post(GameNative::implOnActivityDestroyed);
         GameThread.stop();
+        CrashLog.sessionEnded(this);
         super.onDestroy();
     }
 }

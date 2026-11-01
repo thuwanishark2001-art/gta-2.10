@@ -3,6 +3,7 @@ package com.rockstargames.oswrapper;
 import android.content.Context;
 import android.graphics.PixelFormat;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
@@ -43,16 +44,19 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
+        Log.i("GameView", "surfaceCreated");
         GameThread.post(GameNative::implOnSurfaceCreated);
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        Log.i("GameView", "surfaceChanged " + width + "x" + height);
         GameThread.post(() -> GameNative.implOnSurfaceChanged(holder.getSurface(), width, height));
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
+        Log.i("GameView", "surfaceDestroyed");
         // The engine must let go of the surface before this returns.
         final Object done = new Object();
         final boolean[] finished = { false };

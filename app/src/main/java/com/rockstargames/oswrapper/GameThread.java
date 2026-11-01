@@ -46,7 +46,9 @@ public final class GameThread {
 
         @Override
         public void run() {
+            Log.i(TAG, "started");
             long last = SystemClock.elapsedRealtime();
+            long frames = 0;
             while (!exit.get()) {
                 Runnable r;
                 while ((r = queue.poll()) != null) r.run();
@@ -54,6 +56,7 @@ public final class GameThread {
                 float seconds = (now - last) / 1000f;
                 last = now;
                 if (services.view.hasGameFocus() && GameNative.implIsInitialized()) {
+                    if (frames++ % 600 == 0) Log.i(TAG, "frame " + frames);
                     GameNative.implOnDrawFrame(seconds);
                 } else {
                     // Nothing to draw: don't spin a core.
