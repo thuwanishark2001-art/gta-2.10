@@ -38,6 +38,7 @@
 #include "km/anticheat.inc"
 #include "km/licence.inc"
 #include "km/radio.inc"
+#include "km/content.inc"
 #include "km/mapicons.inc"
 #include "km/admintools.inc"
 #include "km/spectate.inc"
@@ -68,6 +69,7 @@ public OnGameModeInit()
     Fac_Load();
     Prop_Load();
     Owner_Load();
+    Content_Load();
     Eco_Init();
     Veh_Init();
     Job_Init();
@@ -281,7 +283,7 @@ CMD:help(playerid, params[])
     if (gChar[playerid][cJob] == JOB_MECHANIC) SendClientMessage(playerid, COLOR_WHITE, "Mechanic: /repair /refill");
     if (Sup_IsStaff(playerid)) SendClientMessage(playerid, COLOR_INFO, "Staff: /reports /ar /cr /h");
     if (gPlayer[playerid][pAdmin] >= ADMIN_MOD) SendClientMessage(playerid, COLOR_ADMIN, "Moderator: /a /kick /mute /unmute /goto /gethere /freeze /unfreeze /check /ajail /togooc /spec /specoff");
-    if (gPlayer[playerid][pAdmin] >= ADMIN_ADMIN) SendClientMessage(playerid, COLOR_ADMIN, "Admin: /ban /unban /veh /dveh /announce /sethealth /setskin /playstream /stopstream");
+    if (gPlayer[playerid][pAdmin] >= ADMIN_ADMIN) SendClientMessage(playerid, COLOR_ADMIN, "Admin: /ban /unban /veh /dveh /announce /sethealth /setskin /playstream /playsound /stopstream");
     if (gPlayer[playerid][pAdmin] >= ADMIN_LEAD) SendClientMessage(playerid, COLOR_ADMIN, "Lead: /givemoney /setfaction /sethelper /createproperty /deleteproperty /settime /setweather");
     if (gPlayer[playerid][pAdmin] >= ADMIN_OWNER) SendClientMessage(playerid, COLOR_ADMIN, "Owner: /setadmin /renameaccount /testblips");
     return 1;

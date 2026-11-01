@@ -152,7 +152,7 @@ CMD:radio(playerid, params[])
 }
 
 // Admin streams: "/playstream all <url>" or "/playstream <player> <url>".
-static Radio_AdminPlay(targetid, const url[])
+stock Radio_AdminPlay(targetid, const url[])
 {
     gAdminStream[targetid] = true;
     gRadioOn[targetid] = false;

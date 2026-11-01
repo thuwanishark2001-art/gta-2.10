@@ -82,6 +82,22 @@ if [ -z "${booted:-}" ]; then
     echo "smoke test failed"; exit 1
 fi
 
+echo "== content service"
+# Serves tests/content with a manifest of sizes and SHA-256 sums (docs/CONTENT.md).
+"${COMPOSE[@]}" up -d --wait content >/dev/null
+get() { "${COMPOSE[@]}" exec -T content wget -q -O - "http://127.0.0.1/$1"; }
+manifest=$(get manifest.json)
+wav_sha=$(sha256sum tests/content/sounds/test.wav | cut -d' ' -f1)
+wav_size=$(wc -c < tests/content/sounds/test.wav | tr -d ' ')
+echo "$manifest" | grep -q "\"path\": \"sounds/test.wav\", \"size\": $wav_size, \"sha256\": \"$wav_sha\"" \
+    || { echo "manifest is missing sounds/test.wav: $manifest"; exit 1; }
+echo "$manifest" | grep -q '"path": "hello.txt"' || { echo "manifest is missing hello.txt: $manifest"; exit 1; }
+if echo "$manifest" | grep -q "gitkeep"; then echo "manifest lists hidden files"; exit 1; fi
+[ "$(get sounds/test.wav | sha256sum | cut -d' ' -f1)" = "$wav_sha" ] || { echo "sounds/test.wav download doesn't match"; exit 1; }
+if get sounds/.gitkeep >/dev/null 2>&1; then echo "content service serves hidden files"; exit 1; fi
+if get ../etc/passwd >/dev/null 2>&1; then echo "content service serves files outside the folder"; exit 1; fi
+echo "content service serves the files and manifest"
+
 echo "== end-to-end: kmbot plays through the game as a SA:MP client"
 # tools/kmbot is a headless client built from the mobile client's RakNet.
 # It registers, creates a character, spawns, runs commands, checks the UI

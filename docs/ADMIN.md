@@ -45,6 +45,9 @@ You can only give levels below your own, unless you're logged into RCON
   8, 42, 65, 74, 86, 119, 149, 208, 273, 289).
 - `/playstream [player/all] [http(s) url]`, `/stopstream [player/all]`:
   play music or an announcement through players' speakers.
+- `/playsound [player/all] [file]`: play a sound from the server's content
+  folder, e.g. `/playsound all sounds/welcome.mp3`. Stop it with
+  `/stopstream`. See [CONTENT.md](CONTENT.md).
 
 **Lead (4)**
 - `/givemoney [player] [amount] [reason]`: paid into the bank. A negative

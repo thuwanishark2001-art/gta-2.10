@@ -11,6 +11,8 @@ set -eu
 : "${KM_SCRIPT:=kingmakers}"
 : "${KM_WEBSITE:=}"
 : "${KM_OWNER_ACCOUNT:=}"
+: "${KM_CONTENT_URL:=}"
+: "${KM_WELCOME_SOUND:=}"
 : "${DB_HOST:=db}" "${DB_PORT:=3306}" "${DB_NAME:?}" "${DB_USER:?}" "${DB_PASSWORD:?}"
 
 json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
@@ -67,6 +69,8 @@ INI
 # The owner account (KM_OWNER_ACCOUNT), read by the gamemode at start.
 mkdir -p scriptfiles
 printf '%s\n' "$KM_OWNER_ACCOUNT" > scriptfiles/owner.cfg
+# The content server's public URL and the welcome sound (km/content.inc).
+printf '%s\n%s\n' "$KM_CONTENT_URL" "$KM_WELCOME_SOUND" > scriptfiles/content.cfg
 
 # Start each run with a fresh server.log; keep the last 10.
 mkdir -p logs

@@ -1,3 +1,9 @@
 .deps/
 .env
 data/
+# Server content is the operator's own files; only the README and folders are tracked.
+content/*
+!content/README.md
+!content/sounds/
+content/sounds/*
+!content/sounds/.gitkeep

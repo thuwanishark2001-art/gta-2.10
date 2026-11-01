@@ -1,6 +1,9 @@
 #include <memory>
+#include <string>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "audiostream.h"
+#include "servers.h"
 #include "log.h"
 #include "game/game.h"
 #include "../main.h"
@@ -18,6 +21,46 @@ bool g_audioStreamUsePos;
 bool g_bAudioStreamStop;
 bool g_bAudioStreamThreadWorked;
 
+// A path inside the content folder: letters, digits, _ - . / only, no
+// hidden parts, no "..". Same rule as the launcher's ContentSync.isSafePath.
+static bool IsSafeContentPath(const std::string& path)
+{
+	if (path.empty() || path.size() > 128 || path.back() == '/') return false;
+	size_t partStart = 0;
+	for (size_t i = 0; i <= path.size(); i++)
+	{
+		if (i == path.size() || path[i] == '/')
+		{
+			if (i == partStart || path[partStart] == '.') return false;
+			partStart = i + 1;
+			continue;
+		}
+		char c = path[i];
+		bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.';
+		if (!ok) return false;
+	}
+	return path.find("..") == std::string::npos;
+}
+
+// A stream from the server's content service (http://host:KM_CONTENT_PORT/path)
+// that the launcher has already downloaded: the local file's path, else "".
+std::string AudioStream_LocalContentPath(const char* url)
+{
+	if (!url || !g_pszStorage || strncmp(url, "http://", 7) != 0) return "";
+	const char* host = url + 7;
+	const char* slash = strchr(host, '/');
+	if (!slash) return "";
+	std::string hostPort(host, slash - host);
+	size_t colon = hostPort.rfind(':');
+	if (colon == std::string::npos || hostPort.substr(colon + 1) != std::to_string(KM_CONTENT_PORT)) return "";
+	std::string path(slash + 1);
+	if (!IsSafeContentPath(path)) return "";
+	std::string local = std::string(g_pszStorage) + "content/" + path;
+	struct stat st;
+	if (stat(local.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) return "";
+	return local;
+}
+
 void* audioStreamThread(void*)
 {
 	g_bAudioStreamThreadWorked = true;
@@ -27,7 +70,15 @@ void* audioStreamThread(void*)
 		bassStream = 0;
 	}
 
-	bassStream = BASS_StreamCreateURL(g_szAudioStreamUrl, 0, 0x940000, 0,0);
+	std::string local = AudioStream_LocalContentPath(g_szAudioStreamUrl);
+	if (!local.empty())
+	{
+		bassStream = BASS_StreamCreateFile(FALSE, local.c_str(), 0, 0, 0);
+		if (bassStream) FLog("AudioStream: playing the downloaded %s", local.c_str());
+		else FLog("AudioStream: can't open %s (BASS error %d); streaming instead", local.c_str(), BASS_ErrorGetCode());
+	}
+	if (!bassStream)
+		bassStream = BASS_StreamCreateURL(g_szAudioStreamUrl, 0, 0x940000, 0,0);
 	if (!bassStream)
 		FLog("AudioStream: can't open %s (BASS error %d)", g_szAudioStreamUrl, BASS_ErrorGetCode());
 	else if (!BASS_ChannelPlay(bassStream, 0))

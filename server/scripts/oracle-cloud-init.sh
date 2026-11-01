@@ -31,6 +31,7 @@ if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
     # Vultr and similar images enable ufw with only SSH allowed.
     ufw allow 22/tcp
     ufw allow "$PORT"/udp
+    ufw allow 7780/tcp   # content service (docs/CONTENT.md)
 else
     # Oracle's Ubuntu images ship iptables rules that reject everything except
     # SSH, on top of the cloud Security List. Allow the game port in the VM too.
@@ -38,6 +39,9 @@ else
     apt-get install -y iptables-persistent
     if ! iptables -C INPUT -p udp --dport "$PORT" -j ACCEPT 2>/dev/null; then
         iptables -I INPUT 1 -p udp --dport "$PORT" -j ACCEPT
+    fi
+    if ! iptables -C INPUT -p tcp --dport 7780 -j ACCEPT 2>/dev/null; then
+        iptables -I INPUT 1 -p tcp --dport 7780 -j ACCEPT
     fi
     netfilter-persistent save || true
 fi

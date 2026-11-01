@@ -296,6 +296,7 @@ public Acc_OnLoginVerify(playerid, bool:success, race)
 stock Acc_StartSession(playerid)
 {
     Owner_OnSession(playerid);
+    Content_OnSession(playerid);
     if (gPlayer[playerid][pLoginTimer] != -1)
     {
         KillTimer(gPlayer[playerid][pLoginTimer]);

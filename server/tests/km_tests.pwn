@@ -42,6 +42,7 @@
 #include "km/anticheat.inc"
 #include "km/licence.inc"
 #include "km/radio.inc"
+#include "km/content.inc"
 #include "km/mapicons.inc"
 #include "km/admintools.inc"
 #include "km/spectate.inc"
@@ -105,6 +106,16 @@ Test_Validation()
     EXPECT(Radio_IsValidUrl("http://stream.radioparadise.com/mp3-128"));
     EXPECT(Radio_IsValidUrl("https://ice1.somafm.com/groovesalad-128-mp3"));
     EXPECT(!Radio_IsValidUrl("ftp://example.com/stream"));
+    EXPECT(Content_IsValidSoundPath("sounds/welcome.mp3"));
+    EXPECT(Content_IsValidSoundPath("sounds/Bell_2.ogg"));
+    EXPECT(Content_IsValidSoundPath("horn.wav"));
+    EXPECT(!Content_IsValidSoundPath("../secret.mp3"));
+    EXPECT(!Content_IsValidSoundPath("sounds/../../x.mp3"));
+    EXPECT(!Content_IsValidSoundPath("/etc/x.mp3"));
+    EXPECT(!Content_IsValidSoundPath("sounds//x.mp3"));
+    EXPECT(!Content_IsValidSoundPath("sounds/x y.mp3"));
+    EXPECT(!Content_IsValidSoundPath("manifest.json"));
+    EXPECT(!Content_IsValidSoundPath("sounds/x.mp3?a=1"));
     EXPECT(!Radio_IsValidUrl("http://bad url"));
     EXPECT(!Radio_IsValidUrl("http://example.com/a\"b"));
     EXPECT(!Radio_IsValidUrl("http://x"));

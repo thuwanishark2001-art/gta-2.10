@@ -2,6 +2,11 @@ plugins {
     id 'com.android.application'
 }
 
+// Game server the client joins. Override with
+// ./gradlew -PkmServerHost=1.2.3.4 -PkmServerPort=7777 -PkmContentPort=7780 ...
+def kmServerHost = project.findProperty('kmServerHost') ?: '65.20.88.67'
+def kmContentPort = (project.findProperty('kmContentPort') ?: '7780') as int
+
 android {
     signingConfigs {
         // Release signing comes from keystore.properties (never committed).
@@ -32,6 +37,11 @@ android {
 
         multiDexEnabled true
 
+        // The game server, and its content service (docs/CONTENT.md), which
+        // the launcher downloads the server's logo, background and sounds from.
+        buildConfigField "String", "KM_SERVER_HOST", "\"${kmServerHost}\""
+        buildConfigField "int", "KM_CONTENT_PORT", "${kmContentPort}"
+
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
@@ -42,10 +52,9 @@ android {
             cmake {
                 // shadowhook's prefab package is only published for the shared STL
                 arguments "-DANDROID_STL=c++_shared",
-                        // Game server the client joins. Override with
-                        // ./gradlew -PkmServerHost=1.2.3.4 -PkmServerPort=7777 ...
-                        "-DKM_SERVER_HOST=${project.findProperty('kmServerHost') ?: '65.20.88.67'}",
-                        "-DKM_SERVER_PORT=${project.findProperty('kmServerPort') ?: '7777'}"
+                        "-DKM_SERVER_HOST=${kmServerHost}",
+                        "-DKM_SERVER_PORT=${project.findProperty('kmServerPort') ?: '7777'}",
+                        "-DKM_CONTENT_PORT=${kmContentPort}"
             }
         }
     }
@@ -98,6 +107,7 @@ android {
     }
     buildFeatures {
         prefab true
+        buildConfig true
     }
 }
 

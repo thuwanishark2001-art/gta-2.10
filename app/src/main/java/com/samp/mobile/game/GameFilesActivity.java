@@ -2,7 +2,10 @@ package com.samp.mobile.game;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
@@ -17,9 +20,12 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.samp.mobile.R;
+
+import java.io.File;
 
 /**
  * First screen of the app. Makes sure the player's own GTA: San Andreas
@@ -34,7 +40,12 @@ public class GameFilesActivity extends Activity {
     private ProgressBar progress;
     private TextView action;
     private EditText nameInput;
+    private ImageView logo;
+    private View background;
     private boolean copying = false;
+    /** Server content (ContentSync) is checked once per launch. */
+    private boolean contentChecked = false;
+    private boolean syncing = false;
 
     /** Set when the last game session crashed and its log was saved. */
     private String savedLog;
@@ -43,6 +54,7 @@ public class GameFilesActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         buildLayout();
+        applyServerArt();
         savedLog = CrashLog.saveIfLastSessionCrashed(this);
     }
 
@@ -54,7 +66,7 @@ public class GameFilesActivity extends Activity {
     }
 
     private void checkAndStart() {
-        if (copying) return;
+        if (copying || syncing) return;
         if (savedLog != null) {
             String where = savedLog;
             showProblem("The game closed unexpectedly last time.\n\nA log was saved to " + where
@@ -119,10 +131,71 @@ public class GameFilesActivity extends Activity {
             askName(engine);
             return;
         }
+        if (!contentChecked) {
+            syncContentThenStart(engine);
+            return;
+        }
         // 2.11 (arm64): the 2.11 host with the client; 2.10 (armv7): the original.
         Class<?> activity = engine == GameFiles.Engine.GTA_211 ? SAMP211.class : SAMP.class;
         startActivity(new Intent(this, activity));
         finish();
+    }
+
+    /** Downloads the server's content (logo, background, sounds); a failure isn't fatal. */
+    private void syncContentThenStart(GameFiles.Engine engine) {
+        syncing = true;
+        message.setText("Checking for server updates…");
+        progress.setIndeterminate(true);
+        progress.setVisibility(View.VISIBLE);
+        action.setVisibility(View.GONE);
+        new Thread(() -> {
+            ContentSync.Result result = ContentSync.sync(this, (done, total, files, totalFiles) -> runOnUiThread(() -> {
+                message.setText(String.format(java.util.Locale.US, "Downloading server content…\n%d of %d files (%.1f of %.1f MB)",
+                    files, totalFiles, done / 1048576.0, total / 1048576.0));
+                if (total > 0) {
+                    progress.setIndeterminate(false);
+                    progress.setMax(1000);
+                    progress.setProgress((int) (done * 1000 / total));
+                }
+            }));
+            if (!result.reachedServer) Log.w(TAG, "server content not updated: " + result.error);
+            runOnUiThread(() -> {
+                syncing = false;
+                contentChecked = true;
+                progress.setIndeterminate(true);
+                applyServerArt();
+                startGame(engine);
+            });
+        }, "ContentSync").start();
+    }
+
+    /** The server's logo and background from its content, if it has them. */
+    private void applyServerArt() {
+        Bitmap logoArt = loadBitmap(ContentSync.file(this, "logo.png"), 512);
+        if (logoArt != null) logo.setImageBitmap(logoArt);
+        File bg = ContentSync.file(this, "background.jpg");
+        if (bg == null) bg = ContentSync.file(this, "background.png");
+        int longSide = Math.max(getResources().getDisplayMetrics().widthPixels, getResources().getDisplayMetrics().heightPixels);
+        Bitmap bgArt = loadBitmap(bg, Math.max(longSide, 640));
+        if (bgArt != null) background.setBackground(new BitmapDrawable(getResources(), bgArt));
+    }
+
+    /** Decodes an image no larger than about maxSide pixels; null if it isn't one. */
+    private static Bitmap loadBitmap(File file, int maxSide) {
+        if (file == null) return null;
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(file.getPath(), bounds);
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+        BitmapFactory.Options opts = new BitmapFactory.Options();
+        opts.inSampleSize = 1;
+        while (Math.max(bounds.outWidth, bounds.outHeight) / (opts.inSampleSize * 2) >= maxSide) opts.inSampleSize *= 2;
+        try {
+            return BitmapFactory.decodeFile(file.getPath(), opts);
+        } catch (OutOfMemoryError e) {
+            Log.w(TAG, "image too large: " + file);
+            return null;
+        }
     }
 
     private void askName(GameFiles.Engine engine) {
@@ -178,9 +251,10 @@ public class GameFilesActivity extends Activity {
         root.setBackgroundResource(R.drawable.km_loading_bg);
         root.setPadding(dp(32), dp(24), dp(32), dp(24));
 
-        ImageView logo = new ImageView(this);
+        logo = new ImageView(this);
         logo.setImageResource(R.drawable.km_logo);
-        root.addView(logo, new LinearLayout.LayoutParams(dp(120), dp(120)));
+        logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        root.addView(logo, new LinearLayout.LayoutParams(dp(110), dp(110)));
 
         TextView title = new TextView(this);
         title.setText(R.string.app_name);
@@ -226,7 +300,14 @@ public class GameFilesActivity extends Activity {
         action.setVisibility(View.GONE);
         root.addView(action);
 
-        setContentView(root);
+        // Scrolls on short screens, so the button is never cut off.
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundResource(R.drawable.km_loading_bg);
+        root.setBackground(null);
+        scroll.addView(root, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.MATCH_PARENT));
+        background = scroll;
+        setContentView(scroll);
     }
 
     private int dp(int value) {

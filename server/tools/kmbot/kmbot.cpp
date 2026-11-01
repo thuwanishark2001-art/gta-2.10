@@ -147,6 +147,19 @@ static void OnDisableMapIcon(RPCParameters* params)
     bs.Read(id);
     if (id < 100) g_mapIcons[id] = false;
 }
+// The last audio stream URL the server played for us (PlayAudioStreamForPlayer).
+static std::string g_audioUrl;
+static void OnPlayAudioStream(RPCParameters* params)
+{
+    RakNet::BitStream bs(params->input, (params->numberOfBitsOfData + 7) / 8, false);
+    uint8_t len = 0;
+    char url[256] = {};
+    bs.Read(len);
+    bs.Read(url, len);
+    g_audioUrl = url;
+    printf("  << audio stream %s\n", url);
+}
+
 static int MapIconCount()
 {
     int n = 0;
@@ -346,6 +359,7 @@ static bool Connect(const char* host, int port)
     g_client->RegisterAsRemoteProcedureCall(&RPC_DisableCheckpoint, OnDisableCheckpoint);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetMapIcon, OnSetMapIcon);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrDisableMapIcon, OnDisableMapIcon);
+    g_client->RegisterAsRemoteProcedureCall(&RPC_ScrPlayAudioStream, OnPlayAudioStream);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetInterior, OnSetInterior);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrPutPlayerInVehicle, OnPutInVehicle);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrRemovePlayerFromVehicle, OnRemoveFromVehicle);
@@ -854,6 +868,17 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     ExpectMessage("set the time to 12:00");
     Command("/setweather 1");
     ExpectMessage("changed the weather");
+
+    printf("== content sounds\n");
+    Command("/playsound all ../secret.mp3");
+    ExpectMessage("inside the content folder");
+    Command("/playsound all sounds/test.wav");
+    ExpectMessage("Playing sounds/test.wav for");
+    Pump(500);
+    // KM_CONTENT_URL in docker-compose.test.yml.
+    if (g_audioUrl != "http://content.test:7780/sounds/test.wav") Fail(("/playsound sent " + g_audioUrl).c_str());
+    Command("/stopstream all");
+    Pump(300);
 
     printf("== property\n");
     Command("/createproperty 0 1000 Bot House");
