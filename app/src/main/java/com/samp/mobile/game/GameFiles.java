@@ -45,23 +45,47 @@ public final class GameFiles {
     private static final String REQUIRED_VERSION_ARM64 = "2.10";
     private static final String REQUIRED_VERSION_ARMV7 = "2.10";
 
+    /**
+     * Which engine an install has. 2.10 is what the client is built for.
+     * 2.11 (arm64) is a different engine, libGame.so with Rockstar's new
+     * oswrapper Java interface (docs/OSWRAPPER-2.11.md). For now it only
+     * runs as an engine boot test, without the multiplayer client.
+     */
+    public enum Engine { GTA_210, GTA_211 }
+
+    public static final String VERSION_211 = "2.11";
+    /** Install-time asset pack with the 2.11 game data (split_data_main.apk). */
+    static final String DATA_PACK_211 = "data_main";
+
     /** SHA-256 of the libraries the hooks were written against. */
     private static final String[][] KNOWN_GOOD = {
         { "arm64-v8a/libGTASA.so", "12527bfdb63889c02d24366629e808cb446d354a2b380348bd661da4edc6af11" },
         { "arm64-v8a/libSCAnd.so", "523e9326cb911ca71227c0e5d40d4b8e30e4b1062fa3ddbc6a5db4b1c886d880" },
         { "armeabi-v7a/libGTASA.so", "798751ae5cc0f3b7a65f63b70e23879bc1d4c6c28af914f539fcb47ee553adb7" },
         { "armeabi-v7a/libSCAnd.so", "d3b6a78c6d2267bb045af2fd0108b3b332c64f6c0e6431aeae36e1573373542c" },
+        // 2.11.311
+        { "arm64-v8a/libGame.so", "4c6a7445e30b27afdda781302e4db9bac89c28fc1181b68b1eef16f84d6a282e" },
+        { "arm64-v8a/libc++_shared.so", "c4c2fe5cbcb1fba0003a31fc7ab29a9bb12df6cc187ec45a806462540e83d93b" },
+        { "arm64-v8a/libopenal.so", "d49804fa74d9c4d5e311251e1b8f2428ea25ea6c2dd98121a8aaf5b49533695c" },
+        { "arm64-v8a/libVendor_mpg123.so", "932ed9c1fa1df1d68283c019b0ef1f411e8732d77c1dabde0e358f956b6c784e" },
     };
 
-    public enum State { READY, NEEDS_COPY, NOT_INSTALLED, WRONG_VERSION }
+    public enum State { READY, NEEDS_COPY, NOT_INSTALLED, WRONG_VERSION, MISSING_DATA }
 
     public static final class Status {
         public final State state;
         public final String installedVersion;
+        /** The engine to start, or null for NOT_INSTALLED and WRONG_VERSION. */
+        public final Engine engine;
 
         Status(State state, String installedVersion) {
+            this(state, installedVersion, null);
+        }
+
+        Status(State state, String installedVersion, Engine engine) {
             this.state = state;
             this.installedVersion = installedVersion;
+            this.engine = engine;
         }
     }
 
@@ -82,8 +106,20 @@ public final class GameFiles {
         return android.os.Process.is64Bit() ? "arm64-v8a" : "armeabi-v7a";
     }
 
+    /** The engine an installed version runs on, or null if unsupported. */
+    static Engine engineFor(String version) {
+        if (versionMatches(version, requiredVersion())) return Engine.GTA_210;
+        if (android.os.Process.is64Bit() && versionMatches(version, VERSION_211)) return Engine.GTA_211;
+        return null;
+    }
+
     /** Libraries to load, in order (each one's dependencies come first). */
-    static List<String> libraries() {
+    static List<String> libraries(Engine engine) {
+        if (engine == Engine.GTA_211) {
+            // The game's own C++ runtime first: it's newer than ours, and this
+            // app's libsamp then reuses it (same soname).
+            return Arrays.asList("libc++_shared.so", "libopenal.so", "libVendor_mpg123.so", "libGame.so");
+        }
         if (android.os.Process.is64Bit()) return Arrays.asList("libSCAnd.so", "libGTASA.so");
         // The 32-bit engine also links against Immersion's haptics library.
         return Arrays.asList("libImmEmulatorJ.so", "libSCAnd.so", "libGTASA.so");
@@ -105,21 +141,25 @@ public final class GameFiles {
             return new Status(State.NOT_INSTALLED, null);
         }
         String version = info.versionName == null ? "" : info.versionName;
-        if (!versionMatches(version, requiredVersion())) return new Status(State.WRONG_VERSION, version);
+        Engine engine = engineFor(version);
+        if (engine == null) return new Status(State.WRONG_VERSION, version);
+        if (engine == Engine.GTA_211 && !hasSplit(info.applicationInfo, DATA_PACK_211)) {
+            return new Status(State.MISSING_DATA, version, engine);
+        }
 
         // Copied before from this exact install?
         String expected = markerText(info);
         try {
             if (expected.equals(readText(marker(context)))) {
-                for (String lib : libraries()) {
-                    if (!new File(libDir(context), lib).isFile()) return new Status(State.NEEDS_COPY, version);
+                for (String lib : libraries(engine)) {
+                    if (!new File(libDir(context), lib).isFile()) return new Status(State.NEEDS_COPY, version, engine);
                 }
-                return new Status(State.READY, version);
+                return new Status(State.READY, version, engine);
             }
         } catch (IOException ignored) {
             // no marker yet
         }
-        return new Status(State.NEEDS_COPY, version);
+        return new Status(State.NEEDS_COPY, version, engine);
     }
 
     private static String markerText(PackageInfo info) {
@@ -134,12 +174,14 @@ public final class GameFiles {
     public static boolean copyLibraries(Context context) throws Exception {
         PackageInfo info = context.getPackageManager().getPackageInfo(GTA_PACKAGE, 0);
         ApplicationInfo app = info.applicationInfo;
+        Engine engine = engineFor(info.versionName == null ? "" : info.versionName);
+        if (engine == null) throw new IOException("unsupported GTA: San Andreas version " + info.versionName);
         File dir = libDir(context);
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("can't create " + dir);
         marker(context).delete();
 
         boolean allKnown = true;
-        for (String lib : libraries()) {
+        for (String lib : libraries(engine)) {
             File target = new File(dir, lib);
             File tmp = new File(dir, lib + ".tmp");
             tmp.delete();
@@ -159,9 +201,9 @@ public final class GameFiles {
     }
 
     /** Loads the engine libraries copied by {@link #copyLibraries}. */
-    public static void loadLibraries(Context context) {
+    public static void loadLibraries(Context context, Engine engine) {
         File dir = libDir(context);
-        for (String lib : libraries()) {
+        for (String lib : libraries(engine)) {
             System.load(new File(dir, lib).getAbsolutePath());
         }
     }
@@ -180,6 +222,17 @@ public final class GameFiles {
     }
 
     // ---- helpers -----------------------------------------------------------
+
+    /** Whether the install has a split (an install-time asset pack, say) of that name. */
+    private static boolean hasSplit(ApplicationInfo app, String name) {
+        if (app.splitNames == null) return false;
+        Log.i(TAG, "splits: " + Arrays.toString(app.splitNames));
+        for (String split : app.splitNames) {
+            // An asset pack's split is normally named after the pack.
+            if (split.equals(name) || split.contains(name)) return true;
+        }
+        return false;
+    }
 
     private static boolean isKnown(String name, String hash) {
         for (String[] entry : KNOWN_GOOD) {
