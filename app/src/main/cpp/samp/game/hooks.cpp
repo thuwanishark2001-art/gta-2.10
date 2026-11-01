@@ -173,7 +173,10 @@ void ShowHud()
                             pGame->GetWantedLevel()
                     );
                 }
-                *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009F13E8)) = 0;
+                // The Java HUD replaces the game's; without it, keep the
+                // game's HUD (CTheScripts::bDisplayHud) as DisplayHUD set it.
+                if (pSettings && pSettings->GetReadOnly().iHud)
+                    *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009F13E8)) = 0;
             }
         }
     }

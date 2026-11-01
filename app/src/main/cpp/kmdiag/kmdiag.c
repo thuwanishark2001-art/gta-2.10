@@ -223,6 +223,8 @@ static void on_crash(int sig, siginfo_t *info, void *uc_void) {
 
 static volatile pid_t g_game_tid;
 static volatile int64_t g_heartbeat_ms;
+// Set while the activity is paused: the game thread then waits on purpose.
+static volatile int g_paused;
 static volatile int g_hang_snapshot;
 
 static int64_t now_ms(void) {
@@ -247,6 +249,7 @@ static void *watchdog(void *arg) {
     for (;;) {
         sleep(1);
         if (!g_game_tid || !g_heartbeat_ms) continue;
+        if (g_paused) { g_heartbeat_ms = now_ms(); continue; }
         int64_t idle = now_ms() - g_heartbeat_ms;
         if (idle < HANG_SECONDS * 1000) {
             g_hang_snapshot = 0;
@@ -268,6 +271,12 @@ JNIEXPORT void JNICALL Java_com_samp_mobile_game_Diag_registerGameThread(JNIEnv 
     g_heartbeat_ms = now_ms();
     g_game_tid = (pid_t) syscall(SYS_gettid);
     outf("game thread is %d\n", (int) g_game_tid);
+}
+
+JNIEXPORT void JNICALL Java_com_samp_mobile_game_Diag_setPausedNative(JNIEnv *env, jclass cls, jboolean paused) {
+    (void) env; (void) cls;
+    g_heartbeat_ms = now_ms();
+    g_paused = paused ? 1 : 0;
 }
 
 JNIEXPORT void JNICALL Java_com_samp_mobile_game_Diag_heartbeatNative(JNIEnv *env, jclass cls) {

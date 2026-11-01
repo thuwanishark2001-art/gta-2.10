@@ -149,12 +149,14 @@ public class Engine211Activity extends Activity {
     protected void onResume() {
         super.onResume();
         Log.i(TAG, "onResume");
+        Diag.setPaused(false);
         GameThread.post(GameNative::implOnResume);
     }
 
     @Override
     protected void onPause() {
         Log.i(TAG, "onPause");
+        Diag.setPaused(true);
         GameThread.post(GameNative::implOnPause);
         super.onPause();
     }

@@ -62,6 +62,12 @@ public final class Diag {
         if (sStarted) heartbeatNative();
     }
 
+    /** While paused the game thread waits on purpose, so don't report it as a hang. */
+    public static void setPaused(boolean paused) {
+        if (sStarted) setPausedNative(paused);
+    }
+
+    private static native void setPausedNative(boolean paused);
     private static native void registerGameThread();
     @SuppressWarnings("JniMissingFunction")
     private static native void heartbeatNative();
