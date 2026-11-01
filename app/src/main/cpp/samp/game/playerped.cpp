@@ -527,9 +527,15 @@ void CPlayerPed::SetModelIndex(uint uiModel)
     if(!IsPedModel(uiModel))
     {
         auto* info = uiModel < CModelInfo::NUM_MODEL_INFOS ? CModelInfo::ms_modelInfoPtrs[uiModel] : nullptr;
-        FLog("SetModelIndex: %u is not a ped model (info %p, type %d); using 0",
-             uiModel, info, info ? (int) info->GetModelType() : -1);
-        uiModel = 0;
+        // Skins that only SA-MP's data pack defines (1-6, 8, 42, 65, 86, 119,
+        // 149, 208, 273, 289, 300-311) don't exist without it. Model 0 (CJ)
+        // renders with no body unless his clothes are built, so fall back to
+        // an ordinary pedestrian that every copy of the game has.
+        const uint kFallback = 7; // male01
+        uint fallback = IsPedModel(kFallback) ? kFallback : 0;
+        FLog("SetModelIndex: %u is not a ped model (info %p, type %d); using %u",
+             uiModel, info, info ? (int) info->GetModelType() : -1, fallback);
+        uiModel = fallback;
     }
 
     if(m_pPed)
