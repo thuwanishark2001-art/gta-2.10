@@ -17,7 +17,7 @@ Put files in `server/content/` on the server:
 | `logo.png` | the logo on the start screen (square, about 512x512) |
 | `background.jpg` or `background.png` | the start screen background (landscape, about 1920x1080) |
 | `sounds/<name>.mp3` (or `.ogg`, `.wav`) | `/playsound`, and the welcome sound |
-| `models/<id>.dff` + `models/<id>.txd` | a custom skin (or vehicle) that replaces model `<id>` |
+| `models/<id>.dff` + `models/<id>.txd` (or `models/<id>/<texture>.png`) | a custom skin (or vehicle) that replaces model `<id>` |
 
 `./scripts/deploy.sh` puts a default Kingmakers RP logo and background into
 `content/` (from `server/content-defaults/`) if there isn't one there yet.
@@ -108,15 +108,38 @@ The app finds the content service at the server address it was built with
 
 ## Custom skins
 
-A custom skin replaces one of the game's skin ids for everyone. Put the
-skin's two files in `content/models/`, named after the id it replaces:
+A custom skin replaces one of the game's skin ids for everyone. The easiest
+way to add one is the script, on the VPS:
+
+```
+cd /opt/kingmakers/server
+./scripts/add-skin.sh 230 /root/skins/myskin.dff /root/skins/myskin.txd
+```
+
+Some skin packs ship their textures as `.png` pictures instead of a `.txd`.
+For those, give the folder of pictures instead:
+
+```
+./scripts/add-skin.sh 230 /root/skins/myskin.dff /root/skins/textures
+```
+
+The script:
+- reads which textures the model uses, copies each matching picture
+  (it matches names loosely: `Body4 (1).png` counts as texture `body4`)
+- lists any it can't find
+- restarts the content service
+
+To undo, run `./scripts/add-skin.sh --remove 230`.
+
+By hand, the files are:
 
 ```
 content/models/230.dff
-content/models/230.txd
+content/models/230.txd          (or content/models/230/<texture name>.png)
+content/models/textures/*.png   (optional: pictures every custom model can use)
 ```
 
-Then restart the content service. Players get the files the next time they
+After changing them by hand, restart the content service. Players get the files the next time they
 open the app. Anyone with skin 230 then looks like your custom skin:
 `/setskin <player> 230`, or put the id in the character creation lists in
 `gamemodes/km/characters.inc`.
@@ -124,9 +147,11 @@ open the app. Anyone with skin 230 then looks like your custom skin:
 What works:
 - **Files:** a PC San Andreas skin (`.dff` + `.txd`), the format skin
   sites share.
-- **Textures:** PC textures (DXT1, DXT3, DXT5, 32/24/16-bit, paletted).
-  The app converts them for the phone. Textures from other platforms (PS2,
-  mobile) are skipped.
+- **Textures:** a PC `.txd` (DXT1, DXT3, DXT5, 32/24/16-bit, paletted), or
+  `.png` pictures named after the textures. The app converts them for the
+  phone. Textures from other platforms (PS2, mobile) are skipped.
+- **Missing textures:** if the model needs a texture you didn't provide, the
+  phone's log says `CustomModels: the model wants texture "<name>"`.
 - **Choosing an id:** pick a skin nobody uses, and keep the replacement the
   same kind (a man's skin for a man's id) so it uses the right walk and
   voice. Ids 1-6, 8, 42, 65, 74, 86, 119, 149, 208, 273 and 289 aren't in
@@ -147,7 +172,7 @@ or vehicle when it streams in. The client hooks it
 (`app/src/main/cpp/samp/game/custommodels.cpp`). When a downloaded
 `models/<id>.dff` exists, the client:
 1. hands that file to the engine instead of the stock model
-2. decodes the `.txd` to RGBA (`txddecode.h`, tested by
-   `app/src/test/txd/run.sh`)
+2. decodes the `.txd` or `.png` textures to RGBA (`txddecode.h`,
+   `pngdecode.h`, tested by `app/src/test/txd/run.sh`)
 3. serves its textures by name while the model loads, falling back to the
    game's textures for any it doesn't have

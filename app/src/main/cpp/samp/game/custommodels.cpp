@@ -28,6 +28,9 @@
 #include "../vendor/armhook/patch.h"
 #include "custommodels.h"
 #include "txddecode.h"
+#include "pngdecode.h"
+#include <dirent.h>
+#include <unordered_set>
 
 namespace {
 
@@ -121,6 +124,33 @@ int LoadTxd(const std::vector<uint8_t>& file, CustomModel& model)
     });
 }
 
+// Every <name>.png in dir becomes texture <name> (if the model has no
+// texture by that name yet).
+int LoadPngDir(const std::string& dir, CustomModel& model)
+{
+    DIR* d = opendir(dir.c_str());
+    if (!d) return 0;
+    int made = 0;
+    while (dirent* e = readdir(d)) {
+        std::string file = e->d_name;
+        if (file.size() < 5 || file[0] == '.' || strcasecmp(file.c_str() + file.size() - 4, ".png") != 0) continue;
+        std::string name = file.substr(0, file.size() - 4);
+        if (model.textures.count(Lower(name.c_str()))) continue;
+        std::vector<uint8_t> png, rgba;
+        int w = 0, h = 0;
+        if (!ReadFile(dir + "/" + file, png, 16u << 20) || !kmpng::Decode(png.data(), png.size(), w, h, rgba)) {
+            FLog("CustomModels: can't read %s/%s (not a PNG this client reads)", dir.c_str(), file.c_str());
+            continue;
+        }
+        if (void* t = MakeTexture(name, w, h, rgba)) {
+            model.textures[Lower(name.c_str())] = t;
+            made++;
+        }
+    }
+    closedir(d);
+    return made;
+}
+
 bool IsSafeId(unsigned int id) { return id > 0 && id < 20000; }
 
 CustomModel* Find(unsigned int modelId)
@@ -138,6 +168,11 @@ CustomModel* Find(unsigned int modelId)
         int n = LoadTxd(txd, m);
         FLog("CustomModels: model %u: %d textures from %u.txd", modelId, n, modelId);
     }
+    // PNG textures: the model's own folder, then the folder all custom models share.
+    std::string models = std::string(g_pszStorage) + "content/models/";
+    int own = LoadPngDir(base, m);
+    int shared = LoadPngDir(models + "textures", m);
+    if (own || shared) FLog("CustomModels: model %u: %d PNG textures from models/%u/, %d from models/textures/", modelId, own, modelId, shared);
     m.usable = true;
     return &m;
 }
@@ -148,7 +183,10 @@ void* FindTexture(const char* name)
         auto it = g_current->textures.find(Lower(name));
         if (it != g_current->textures.end()) return it->second;
     }
-    return g_gameFind ? g_gameFind(name) : nullptr;
+    void* found = g_gameFind ? g_gameFind(name) : nullptr;
+    // Tells the server owner which texture file a custom model is missing.
+    if (!found && g_current && name) FLog("CustomModels: the model wants texture \"%s\", which isn't in its files", name);
+    return found;
 }
 
 bool LoadClumpFile_hook(void* stream, unsigned int modelId)

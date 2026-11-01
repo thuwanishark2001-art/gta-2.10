@@ -49,8 +49,10 @@ jobs:
       - name: Client protocol parser test
         run: ./app/src/test/kmui/run.sh
 
-      - name: Custom model texture decoder test
-        run: ./app/src/test/txd/run.sh
+      - name: Custom model texture decoder tests
+        run: |
+          python3 -c "import PIL" 2>/dev/null || python3 -m pip install --user pillow
+          ./app/src/test/txd/run.sh
 
       - name: Offset porting tool test
         run: ./tools/port-libgtasa/test/test.sh
