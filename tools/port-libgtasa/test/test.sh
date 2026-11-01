@@ -7,6 +7,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 ndk=${ANDROID_NDK_HOME:-$(ls -d /opt/android-sdk/ndk/* "${ANDROID_HOME:-/nonexistent}"/ndk/* 2>/dev/null | sort -V | tail -1 || true)}
 bin=$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin
 export READELF=$bin/llvm-readelf
+# Name the failing line: a silent non-zero exit is otherwise all CI shows.
+trap 'echo "test.sh: line $LINENO failed (exit $?)" >&2' ERR
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 
 for v in old new; do
@@ -18,8 +20,8 @@ for v in old new; do
 done
 
 # Addresses in OLD, as the client would write them.
-sym() { "$READELF" -sW "$1" | awk -v n="$2" '$8 == n { print "0x" $2; exit }'; }
-got() { "$READELF" -rW "$1" | awk -v n="$2" '$3 ~ /GLOB_DAT/ && $5 == n { print "0x" $1; exit }'; }
+sym() { "$READELF" -sW "$1" | awk -v n="$2" '$8 == n && !v { v = "0x" $2 } END { print v }'; }
+got() { "$READELF" -rW "$1" | awk -v n="$2" '$3 ~ /GLOB_DAT/ && $5 == n && !v { v = "0x" $1 } END { print v }'; }
 hex() { printf '0x%X' "$1"; }
 plus() { printf '0x%X' $(( $1 + $2 )); }
 str() { python3 -c "
