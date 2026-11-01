@@ -121,6 +121,23 @@ A fourth scenario, `driving`, adds in-vehicle sync (the 63-byte
 
 `test.sh` checks the licence, the owned vehicle and the money reasons.
 
+A two-player run (`suspect` and `officer`, two processes at once):
+1. The officer pays the suspect $100, writes a $250 ticket, charges them
+   and is refused an arrest before cuffing.
+2. The officer cuffs and arrests the suspect, and the MDT shows the charge,
+   the ticket and the jail time.
+3. The suspect sees each step, is moved to the cell, serves the minute
+   and is released.
+
+`test.sh` checks the database afterwards. Two things it surfaced:
+- open.mp keeps the interior the client reports, not the one the script
+  sets. The real client reports it (`UpdateRemoteInterior`), so the bot
+  now does too. Without that, the jail check kept re-placing the player
+  every second.
+- Action lines showed the acting player as "First Last" but the other
+  player as "First_Last". Nine actions (pay, cuff, uncuff, ticket, show
+  licence, give item, repair, refill, heal) now use `Chat_Name`.
+
 `test.sh` then checks the exact `money_log` trail. The anti-cheat logged
 the bot's 3 km jump to the quarry as a teleport and, as designed, didn't
 kick.

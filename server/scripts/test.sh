@@ -7,8 +7,9 @@
 #   4. end-to-end runs of tools/kmbot, a headless SA:MP client: registration,
 #      character creation, spawn, commands and login; then ATM banking and a
 #      full miner job loop; RCON, property, police and reports as an admin;
-#      and driving: the licence test, the dealership and a trucker delivery;
-#      each checked against the database
+#      driving: the licence test, the dealership and a trucker delivery;
+#      and two players at once (officer arrests suspect, who serves the
+#      time); each checked against the database
 # Exit code 0 means everything passed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -133,3 +134,24 @@ if [ "$driving" != "admin,driving_test,vehicle_buy,job licence=1 vehicles=1" ]; 
     echo "unexpected database state after the driving run: $driving"; exit 1
 fi
 echo "database matches the driving run"
+
+echo "== end-to-end: two players, officer and suspect"
+run_bot kmbot_sus Suspect_Bot suspect & suspect_pid=$!
+sleep 2
+officer_ok=1; run_bot kmbot_cop Officer_Bot officer Suspect_Bot || officer_ok=0
+suspect_ok=1; wait "$suspect_pid" || suspect_ok=0
+if [ "$officer_ok" != 1 ] || [ "$suspect_ok" != 1 ]; then
+    "${COMPOSE[@]}" logs server | tail -30
+    echo "two-player test failed"; exit 1
+fi
+police=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
+    "SELECT CONCAT('records=', (SELECT COUNT(*) FROM criminal_records r JOIN characters o ON o.id = r.officer_character_id
+                                WHERE r.character_id = s.id AND o.name = 'Officer_Bot' AND r.charge = 'Testing the police flow'),
+                   ' tickets=', (SELECT COUNT(*) FROM tickets t WHERE t.character_id = s.id AND t.amount = 250 AND t.paid_at IS NULL),
+                   ' paid=', (SELECT COUNT(*) FROM money_log m WHERE m.character_id = s.id AND m.reason = 'pay_in' AND m.cash_delta = 100),
+                   ' jail=', s.jail_seconds, ' wanted=', s.wanted)
+     FROM characters s WHERE s.name = 'Suspect_Bot'")
+if [ "$police" != "records=1 tickets=1 paid=1 jail=0 wanted=0" ]; then
+    echo "unexpected database state after the two-player run: $police"; exit 1
+fi
+echo "database matches the two-player run"

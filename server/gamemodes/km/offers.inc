@@ -104,17 +104,17 @@ CMD:accept(playerid, params[])
         case OFFER_REPAIR:
         {
             RepairVehicle(vehicleid);
-            format(action, sizeof (action), "repairs the vehicle of %s.", gChar[playerid][cName]);
+            format(action, sizeof (action), "repairs the vehicle of %s.", Chat_Name(playerid));
         }
         case OFFER_REFILL:
         {
             Veh_SetFuel(vehicleid, 100.0);
-            format(action, sizeof (action), "refills the fuel tank of %s's vehicle.", gChar[playerid][cName]);
+            format(action, sizeof (action), "refills the fuel tank of %s's vehicle.", Chat_Name(playerid));
         }
         case OFFER_HEAL:
         {
             SetPlayerHealth(playerid, 100.0);
-            format(action, sizeof (action), "treats the injuries of %s.", gChar[playerid][cName]);
+            format(action, sizeof (action), "treats the injuries of %s.", Chat_Name(playerid));
         }
         default: {}
     }

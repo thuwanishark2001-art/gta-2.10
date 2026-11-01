@@ -229,7 +229,12 @@ mobile client's RakNet code, through the real server, twice (see
   driving test through its checkpoints, buys a Faggio at the dealership,
   starts the engine, parks, locks and lists it, then gets out and does a
   trucker delivery for pay. The script checks the licence, the owned
-  vehicle and the money trail. It's built with the
+  vehicle and the money trail.
+- `suspect` and `officer`, run together: the officer pays, tickets,
+  charges, cuffs and arrests the suspect and checks the MDT. The suspect
+  sees each step, is moved to the cell, serves the minute and is released.
+  The script checks the charge, the ticket, the payment and the finished
+  sentence in the database. It's built with the
 host's `g++`, or in a `gcc` container if there is none.
 
 The test script includes every gamemode module, so it uses the real code:
