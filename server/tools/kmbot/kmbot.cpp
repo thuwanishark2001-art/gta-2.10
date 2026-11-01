@@ -665,6 +665,18 @@ static void OfficerScenario(const char* host, int port, const std::string& chara
         if (mdt.text.find("Unpaid tickets: 1 ($250)") == std::string::npos) Fail("ticket missing from the MDT");
         if (mdt.text.find("In jail: yes") == std::string::npos) Fail("MDT doesn't show the jail time");
     }
+
+    printf("== spectate\n");
+    Vec3 before = g_pos;
+    Command("/specoff");
+    ExpectMessage("You're not spectating");
+    Command("/spec " + suspect);
+    ExpectMessage("Spectating " + suspect);
+    Pump(1000);
+    Command("/specoff");
+    ExpectMessage("Stopped spectating");
+    Pump(1500);
+    if (fabsf(g_pos.x - before.x) > 3.0f || fabsf(g_pos.y - before.y) > 3.0f) Fail("/specoff didn't put us back where we were");
     Disconnect();
 }
 

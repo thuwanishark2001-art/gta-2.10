@@ -40,6 +40,7 @@
 #include "km/radio.inc"
 #include "km/mapicons.inc"
 #include "km/admintools.inc"
+#include "km/spectate.inc"
 
 forward KM_Tick();
 
@@ -101,6 +102,7 @@ public OnPlayerConnect(playerid)
 
 public OnPlayerDisconnect(playerid, reason)
 {
+    Spec_OnDisconnect(playerid);
     if (Player_IsPlaying(playerid))
     {
         Job_Stop(playerid);
@@ -121,6 +123,7 @@ public OnPlayerDisconnect(playerid, reason)
     KMUI_Reset(playerid);
     Radio_Reset(playerid);
     MapIcons_Reset(playerid);
+    Spec_Reset(playerid);
     return 1;
 }
 
@@ -151,6 +154,7 @@ public OnPlayerSpawn(playerid)
     AC_Grace(playerid);
     gAcHavePos[playerid] = false;
     Char_OnSpawn(playerid);
+    Spec_OnSpawn(playerid);
     MapIcons_Show(playerid);
     return 1;
 }
@@ -170,6 +174,7 @@ public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstat
         Veh_OnStateChange(playerid, newstate);
         Radio_OnStateChange(playerid, newstate);
     }
+    Spec_OnStateChange(playerid);
     return 1;
 }
 
@@ -270,7 +275,7 @@ CMD:help(playerid, params[])
     if (gChar[playerid][cJob] == JOB_TAXI) SendClientMessage(playerid, COLOR_WHITE, "Taxi: /taxiaccept");
     if (gChar[playerid][cJob] == JOB_MECHANIC) SendClientMessage(playerid, COLOR_WHITE, "Mechanic: /repair /refill");
     if (Sup_IsStaff(playerid)) SendClientMessage(playerid, COLOR_INFO, "Staff: /reports /ar /cr /h");
-    if (gPlayer[playerid][pAdmin] >= ADMIN_MOD) SendClientMessage(playerid, COLOR_ADMIN, "Moderator: /a /kick /mute /unmute /goto /gethere /freeze /unfreeze /check /ajail /togooc");
+    if (gPlayer[playerid][pAdmin] >= ADMIN_MOD) SendClientMessage(playerid, COLOR_ADMIN, "Moderator: /a /kick /mute /unmute /goto /gethere /freeze /unfreeze /check /ajail /togooc /spec /specoff");
     if (gPlayer[playerid][pAdmin] >= ADMIN_ADMIN) SendClientMessage(playerid, COLOR_ADMIN, "Admin: /ban /unban /veh /dveh /announce /sethealth /setskin /playstream /stopstream");
     if (gPlayer[playerid][pAdmin] >= ADMIN_LEAD) SendClientMessage(playerid, COLOR_ADMIN, "Lead: /givemoney /setfaction /sethelper /createproperty /deleteproperty /settime /setweather");
     if (gPlayer[playerid][pAdmin] >= ADMIN_OWNER) SendClientMessage(playerid, COLOR_ADMIN, "Owner: /setadmin /renameaccount /testblips");

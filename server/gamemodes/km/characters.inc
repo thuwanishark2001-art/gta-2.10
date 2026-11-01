@@ -432,7 +432,14 @@ stock Char_Save(playerid)
     new Float:health, Float:armour;
     GetPlayerHealth(playerid, health);
     GetPlayerArmour(playerid, armour);
-    if (health < 1.0 || gChar[playerid][cJailSeconds] > 0)
+    if (Spec_IsSpectating(playerid))
+    {
+        // The camera is somewhere else: keep where the admin was standing.
+        Spec_SavedPlace(playerid, gChar[playerid][cX], gChar[playerid][cY], gChar[playerid][cZ], gChar[playerid][cA],
+            gChar[playerid][cInterior], gChar[playerid][cWorld]);
+        if (health < 1.0) health = 100.0;
+    }
+    else if (health < 1.0 || gChar[playerid][cJailSeconds] > 0)
     {
         // Dead (respawns at the hospital) or in jail: keep the last position.
         if (health < 1.0) health = 100.0;
