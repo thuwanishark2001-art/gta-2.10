@@ -1469,10 +1469,24 @@ stFile* NvFOpen211(const char* path)
 // loading disabled, waits forever. SA-MP's own main.scm is all but empty,
 // and the client runs its script commands through its own thread
 // (scripting.cpp), so the story script just doesn't run.
+// It still runs once, inside CGame::Initialise: that first pass of the main
+// script creates the player (the camera crashes without one) and starts the
+// background threads. The story, starting with the intro mission, runs from
+// the passes after it, so those are skipped.
+static bool g_bInGameInitialise = false;
+
 void (*CTheScripts__Process211)();
 void CTheScripts__Process211_hook()
 {
-    if (g_bSampMainScript) CTheScripts__Process211();
+    if (g_bSampMainScript || g_bInGameInitialise) CTheScripts__Process211();
+}
+
+void (*CGame__Initialise211)(const char* datFile);
+void CGame__Initialise211_hook(const char* datFile)
+{
+    g_bInGameInitialise = true;
+    CGame__Initialise211(datFile);
+    g_bInGameInitialise = false;
 }
 #endif
 
@@ -2021,6 +2035,7 @@ void InstallSpecialHooks()
 #if KM_GTA211
     CHook::InlineHook("_Z7NvFOpenPKc", &NvFOpen211, &NvFOpen211_orig);
     CHook::InlineHook("_ZN11CTheScripts7ProcessEv", &CTheScripts__Process211_hook, &CTheScripts__Process211);
+    CHook::InlineHook("_ZN5CGame10InitialiseEPKc", &CGame__Initialise211_hook, &CGame__Initialise211);
 #else
     CHook::Redirect("_Z7NvFOpenPKcS0_bb", &NvFOpen);
 #endif
