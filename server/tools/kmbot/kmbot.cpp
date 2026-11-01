@@ -671,7 +671,7 @@ static void OfficerScenario(const char* host, int port, const std::string& chara
     Command("/specoff");
     ExpectMessage("You're not spectating");
     Command("/spec " + suspect);
-    ExpectMessage("Spectating " + suspect);
+    ExpectMessage(("Spectating " + suspect).c_str());
     Pump(1000);
     Command("/specoff");
     ExpectMessage("Stopped spectating");
