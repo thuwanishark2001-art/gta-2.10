@@ -32,7 +32,6 @@ public class Engine211Activity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        CrashLog.sessionStarted(this);
         Diag.start(this);
         Log.i(TAG, "onCreate");
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -110,6 +109,20 @@ public class Engine211Activity extends Activity {
         view.setGameFocus(hasFocus);
     }
 
+    // A session counts as running only while the game is on screen: being
+    // closed from the background (swiped away in Recents) isn't a crash.
+    @Override
+    protected void onStart() {
+        super.onStart();
+        CrashLog.sessionStarted(this);
+    }
+
+    @Override
+    protected void onStop() {
+        CrashLog.sessionEnded(this);
+        super.onStop();
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -139,7 +152,6 @@ public class Engine211Activity extends Activity {
     protected void onDestroy() {
         GameThread.post(GameNative::implOnActivityDestroyed);
         GameThread.stop();
-        CrashLog.sessionEnded(this);
         super.onDestroy();
     }
 }

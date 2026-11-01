@@ -33,6 +33,28 @@ it comes as install-time packs, which become readable split APKs.
 Also in 2.11: a Flutter UI (`libflutter.so`, `libapp.so`), Sentry crash
 reporting, and Play licensing (`CHECK_LICENSE`).
 
+## Milestone 1: the 2.11 engine runs in the launcher (2026-11-01)
+
+On a test phone (Honor, Android 16, GTA:SA 2.11.311), the launcher runs
+the player's own 2.11 engine through the new oswrapper host
+(`docs/OSWRAPPER-2.11.md`). It got through the main menu, a new game and
+the intro cutscene, and into Grove Street: HUD, radar, peds, traffic,
+touch controls, and backgrounding and resuming. There's no multiplayer
+client yet, and no sound.
+
+What it took, found with on-device diagnostics (`cpp/kmdiag`: log copy,
+crash reports, a game-thread hang watchdog, all saved to Downloads):
+
+- Pass only `data_main`, through the game's AssetManager.
+- `cpp/km211` patches for the missing audio packs:
+  - `ZIPFile::Find` on a missing archive returns "not found". The first
+    crash was a null `ZIPFile` in `CAEMP3TrackLoader::GetDataStream`.
+  - `IsAmbienceTrackActive`, `IsCutsceneTrackActive` and `IsRadioOn` report
+    false, and the cutscene preload doesn't wait. The game thread was
+    sleeping forever in `StopAmbienceTrack` under the intro.
+
+Sound needs the audio packs, which other apps can't read.
+
 ## What carries over
 
 `tools/port-libgtasa/port.py port` on the arm64 build:
