@@ -440,6 +440,35 @@ def check(lib64, lib32):
     return 1 if bad else 0
 
 
+NAMED = re.compile(r'"(_Z[A-Za-z0-9_]+)"')
+
+
+def named_symbols():
+    """Mangled names the client hooks or looks up by name ("_Z..." literals)."""
+    names = {}
+    for root, dirs, files in os.walk(SRC):
+        dirs[:] = [d for d in dirs if d != "vendor"]
+        for f in files:
+            if f.endswith((".cpp", ".h")):
+                path = os.path.join(root, f)
+                for n, line in enumerate(open(path, encoding="utf-8", errors="replace"), 1):
+                    if line.lstrip().startswith("//"):
+                        continue
+                    for m in NAMED.finditer(line):
+                        names.setdefault(m.group(1), (path, n))
+    return names
+
+
+def check_names(old, new):
+    """Names hooked by symbol that the old build has and the new one lacks."""
+    missing = []
+    for name, (path, n) in sorted(named_symbols().items()):
+        for arch, lib in new.items():
+            if lib and name in old[arch].by_name and name not in lib.by_name:
+                missing.append((path, n, arch, name))
+    return missing
+
+
 def port(old64, old32, new64, new32, write):
     old = {64: Lib(old64), 32: Lib(old32)}
     new = {a: (Lib(p) if p != "-" else None) for a, p in ((64, new64), (32, new32))}
@@ -466,8 +495,11 @@ def port(old64, old32, new64, new32, write):
         if moved != value:
             width = span[1] - span[0] - 2
             edits.setdefault(path, []).append((n, span, f"0x{moved:0{width}X}"))
+    for path, n, arch, name in check_names(old, new):
+        status["name gone"] += 1
+        review.append((path, n, arch, 0, f"hooked by name, but {name} is not in the new build"))
     total = sum(status.values())
-    print(f"{total} addresses checked")
+    print(f"{total} addresses and names checked")
     for k, v in status.most_common():
         print(f"  {k:10} {v:5}")
     if review:
@@ -482,6 +514,16 @@ def port(old64, old32, new64, new32, write):
                 lines[n - 1] = line[:span[0]] + text + line[span[1]:]
             open(path, "w", encoding="utf-8").write("\n".join(lines))
         print(f"\nRewrote {sum(len(c) for c in edits.values())} addresses in {len(edits)} files.")
+        import hashlib
+        print("\nThen, in app/src/main/java/com/samp/mobile/game/GameFiles.java:")
+        for arch, lib in new.items():
+            if lib is None:
+                continue
+            abi = "arm64-v8a" if arch == 64 else "armeabi-v7a"
+            const = "REQUIRED_VERSION_ARM64" if arch == 64 else "REQUIRED_VERSION_ARMV7"
+            print(f"  {const} = the new game version (versionName from the Play Store)")
+            print(f'  KNOWN_GOOD {{ "{abi}/libGTASA.so", "{hashlib.sha256(lib.data).hexdigest()}" }}')
+            print(f"  (and {abi}/libSCAnd.so from the same APK)")
     return 0 if not review else 1
 
 

@@ -39,6 +39,7 @@ void d() { write(g_libGTASA + (VER_x32 ? $(plus $tab32 12) : $(plus $tab64 12)))
 void e() { write(g_libGTASA + (VER_x32 ? $(got "$work/old32.so" counter) : $(got "$work/old64.so" counter))); }
 void f() { patch(g_libGTASA + (VER_x32 ? $(str "$work/old32.so") : $(str "$work/old64.so"))); }
 static_assert(sizeof(T) == (VER_x32 ? 0x20 : 0x28));
+void g() { CHook::InlineHook("_Z4kepti", h, &o); CHook::InlineHook("_Z14renamed_in_newi", h, &o); }
 CPP
 cp "$work/src/sites.cpp" "$work/before.cpp"
 
@@ -64,6 +65,8 @@ expect "$after" "$(got "$work/new32.so" counter) : $(got "$work/new64.so" counte
 expect "$after" "$(str "$work/new32.so") : $(str "$work/new64.so")"                 # string
 expect "$after" "0x20 : 0x28"                                                      # a size, not an address
 reject "$out"   "unnamed"
+expect "$out"   "_Z14renamed_in_newi is not in the new build"
+reject "$out"   "_Z4kepti is not"
 [ "$after" != "$(cat "$work/before.cpp")" ] || { echo "FAIL: nothing was rewritten"; fail=1; }
 
 # Porting a build to itself changes nothing.

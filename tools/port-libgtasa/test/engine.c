@@ -27,6 +27,14 @@ __attribute__((noinline)) int changed(int a)
 #endif
 }
 
+/* Hooked by (mangled) name in the test's sources. */
+int kept(int a) __asm__("_Z4kepti");
+int kept(int a) { return a + 2; }
+#ifndef NEW
+int renamed_in_new(int a) __asm__("_Z14renamed_in_newi");
+int renamed_in_new(int a) { return a + 1; }
+#endif
+
 int uses_import(void) { return imported + counter; }
 
 const char *format(void) { return "engine/%s/%d.dat"; }

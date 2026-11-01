@@ -24,6 +24,10 @@ whenever anything around the function moves. Registers, struct offsets and
 constants must still match, so a function that was edited is reported
 rather than patched at a guessed offset.
 
+It also checks that every symbol the client hooks by name
+(`CHook::InlineHook("_Z...")` and the like, about 300) still exists in the
+new build.
+
 Anything the tool can't name or match is left as it is and printed for a
 human to check. Sizes and field offsets written the same way
 (`VALIDATE_SIZE(T, VER_x32 ? 0x20 : 0x28)`) aren't addresses and are skipped.
@@ -43,6 +47,21 @@ tools/port-libgtasa/port.py port  old64.so old32.so new64.so new32.so --write  #
 
 Pass `-` for a new library you don't have, to port only one architecture.
 `port` exits 1 while any address still needs a human.
+
+After `--write`, the launcher still accepts only the old version. In
+`GameFiles.java`, set `REQUIRED_VERSION_ARM64` or `REQUIRED_VERSION_ARMV7`
+for the architecture you ported, and replace its `KNOWN_GOOD` hashes;
+`port` prints the new `libGTASA.so` hash. Leave the other architecture
+alone: its addresses are still the old version's.
+
+## Not covered
+
+Struct layouts. Field offsets and sizes written as `VER_x32 ? a : b` aren't
+addresses, so they are left alone. `VALIDATE_SIZE` only compares our own
+struct definitions with our own numbers, so it can't notice a class Rockstar
+changed. Only in-game testing catches that. (The 2.10 libraries carry DWARF
+debug info. If the new build does too, its struct layouts could be compared
+the same way; that isn't written yet.)
 
 `check` needs only the 2.10 libraries. It found seven addresses where the two
 halves of a ternary pointed at different functions, now fixed (for example,
