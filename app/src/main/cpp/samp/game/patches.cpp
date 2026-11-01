@@ -81,8 +81,24 @@ void ApplyFPSPatch(uint8_t fps)
     CHook::WriteMemory(g_libGTASA + 0x70A43C, "\xE8\x0F\x1E\x32", 4);
     CHook::WriteMemory(g_libGTASA + 0x70A458, "\xE9\x0F\x1E\x32", 4);
 #else
-    // TODO 2.11: DoGameState(float) was rebuilt; the 30 fps limit isn't patched yet.
+    // 2.11 DoGameState sets RsGlobal.maxFPS from "mov w8, #30" (frame limiter
+    // setting on) or "mov w8, #60". Like the 2.10 arm64 patch, make all three
+    // 60. Each site is checked first, so a different engine build is left alone.
     (void) fps;
+    static const struct { uintptr_t offset; uint32_t expect; } kSites[] = {
+        { 0x3683D0, 0x528003C8 }, // mov w8, #30
+        { 0x368644, 0x52800788 }, // mov w8, #60
+        { 0x368924, 0x52800788 }, // mov w8, #60
+    };
+    const uint32_t mov60 = 0x52800788;
+    for (auto& site : kSites) {
+        uint32_t current = *(uint32_t*)(g_libGTASA + site.offset);
+        if (current == site.expect || current == mov60)
+            CHook::WriteMemory(g_libGTASA + site.offset, (uintptr_t)&mov60, 4);
+        else
+            FLog("ApplyFPSPatch: unexpected code at 0x%lx (0x%08x), skipped", (unsigned long) site.offset, current);
+    }
+    fps = 60;
 #endif
 
     FLog("New fps limit = %d", fps);
@@ -234,9 +250,10 @@ void ApplyGlobalPatches()
     // crash legend
     CHook::NOP(g_libGTASA + 0x36A690, 1);
 #else
-    // TODO 2.11: CRadar::Draw3dMarkers, DrawEntityBlip and DrawCoordBlip were
-    // rebuilt; blip colour patches and the legend crash fix aren't ported yet.
-    // DrawLegend is RET'd below, which covers the legend.
+    // 2.11: blip colours are translated by hooks on DrawEntityBlip and
+    // DrawCoordBlip instead (hooks.cpp), since GetRadarTraceColour is inlined
+    // there. The legend crash fix isn't needed: the DrawLegend call is NOP'd
+    // below. Black sprite icons: to be checked in game with /testblips.
 #endif
 
     //ApplyShadowPatch();

@@ -518,6 +518,45 @@ uint32_t CRadar__GetRadarTraceColor(uint32_t color, uint8_t bright, uint8_t frie
     return TranslateColorCodeToRGBA(color);
 }
 
+#if KM_GTA211
+// 2.11 inlines CRadar::GetRadarTraceColour into DrawEntityBlip and
+// DrawCoordBlip, so the redirect above never runs for blips: SA-MP's colour
+// codes (player ids, 1004-1006) were drawn as GTA palette colours or as raw
+// near-black numbers. Translate the blip's colour just for the draw call.
+// The inlined code returns any value above 8 unchanged, so an RGBA goes
+// through. Raw RGBA colours (map icons) are kept as they are.
+struct tRadarTrace211 { uint32_t colour; uint8_t rest[0x2C]; };
+static_assert(sizeof(tRadarTrace211) == 0x30, "2.11 radar trace stride");
+static tRadarTrace211* g_RadarTrace211 = nullptr;
+static constexpr int kRadarTraceCount211 = 12000 / 0x30;
+
+static uint32_t RadarBlipColour211(uint32_t code)
+{
+    uint32_t rgba = (code < 1000 || (code >= 1004 && code <= 1006)) ? TranslateColorCodeToRGBA(code) : code;
+    return rgba > 8 ? rgba : 9;
+}
+
+void (*CRadar__DrawEntityBlip211)(int, uint8_t, int, float);
+void CRadar__DrawEntityBlip211_hook(int index, uint8_t a, int b, float f)
+{
+    if (!g_RadarTrace211 || index < 0 || index >= kRadarTraceCount211) return CRadar__DrawEntityBlip211(index, a, b, f);
+    uint32_t code = g_RadarTrace211[index].colour;
+    g_RadarTrace211[index].colour = RadarBlipColour211(code);
+    CRadar__DrawEntityBlip211(index, a, b, f);
+    g_RadarTrace211[index].colour = code;
+}
+
+void (*CRadar__DrawCoordBlip211)(int, uint8_t, int, float);
+void CRadar__DrawCoordBlip211_hook(int index, uint8_t a, int b, float f)
+{
+    if (!g_RadarTrace211 || index < 0 || index >= kRadarTraceCount211) return CRadar__DrawCoordBlip211(index, a, b, f);
+    uint32_t code = g_RadarTrace211[index].colour;
+    g_RadarTrace211[index].colour = RadarBlipColour211(code);
+    CRadar__DrawCoordBlip211(index, a, b, f);
+    g_RadarTrace211[index].colour = code;
+}
+#endif
+
 #if VER_x32
 uint32_t CHudColours__GetIntColour(uint32 colour_id)
 {
@@ -2079,6 +2118,11 @@ void InstallHooks()
 	
     CHook::Redirect("_ZN11CHudColours12GetIntColourEh", &CHudColours__GetIntColour); // dangerous
     CHook::Redirect("_ZN6CRadar19GetRadarTraceColourEjhh", &CRadar__GetRadarTraceColor); // dangerous
+#if KM_GTA211
+    g_RadarTrace211 = reinterpret_cast<tRadarTrace211*>(CHook::getSym("_ZN6CRadar13ms_RadarTraceE"));
+    CHook::InlineHook("_ZN6CRadar14DrawEntityBlipEihif", &CRadar__DrawEntityBlip211_hook, &CRadar__DrawEntityBlip211);
+    CHook::InlineHook("_ZN6CRadar13DrawCoordBlipEihif", &CRadar__DrawCoordBlip211_hook, &CRadar__DrawCoordBlip211);
+#endif
     CHook::InlineHook("_ZN6CRadar12SetCoordBlipE9eBlipType7CVectorj12eBlipDisplayPc", &CRadar__SetCoordBlip_hook, &CRadar__SetCoordBlip);
     CHook::InlineHook("_ZN6CRadar20DrawRadarGangOverlayEb", &CRadar_DrawRadarGangOverlay_hook, &CRadar_DrawRadarGangOverlay);
 
