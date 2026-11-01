@@ -806,6 +806,20 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     Command("/renameaccount kmbot_nobody kmbot_renamed");
     ExpectMessage("No account has the old name");
 
+    printf("== admin tools\n");
+    Command("/announce Server restart in 5 minutes");
+    ExpectMessage("[Announcement] Server restart in 5 minutes");
+    Command("/sethealth " + character + " 50");
+    ExpectMessage("health to 50");
+    Command("/setskin " + character + " 2");
+    ExpectMessage("isn't in every copy of the game");
+    Command("/setskin " + character + " 21");
+    ExpectMessage("skin to 21");
+    Command("/settime 12");
+    ExpectMessage("set the time to 12:00");
+    Command("/setweather 1");
+    ExpectMessage("changed the weather");
+
     printf("== property\n");
     Command("/createproperty 0 1000 Bot House");
     ExpectMessage("Created property #");

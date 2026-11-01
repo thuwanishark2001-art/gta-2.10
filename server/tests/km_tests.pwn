@@ -43,6 +43,7 @@
 #include "km/licence.inc"
 #include "km/radio.inc"
 #include "km/mapicons.inc"
+#include "km/admintools.inc"
 
 new gPass, gFail;
 
@@ -107,6 +108,16 @@ Test_Validation()
     EXPECT(Radio_IsValidStation(0));
     EXPECT(!Radio_IsValidStation(RADIO_OFF));
     EXPECT(!Radio_IsValidStation(Radio_StationCount()));
+
+    EXPECT(IsStockSkin(0));
+    EXPECT(IsStockSkin(7));
+    EXPECT(IsStockSkin(21));
+    EXPECT(IsStockSkin(280));
+    EXPECT(!IsStockSkin(2));
+    EXPECT(!IsStockSkin(74));
+    EXPECT(!IsStockSkin(306));
+    EXPECT(!IsStockSkin(-1));
+    EXPECT(!IsStockSkin(312));
 
     EXPECT(IsValidCharacterName("Marcus_Reed"));
     EXPECT(IsValidCharacterName("Al_Li"));
