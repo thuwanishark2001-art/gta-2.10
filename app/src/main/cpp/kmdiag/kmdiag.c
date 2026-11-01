@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/syscall.h>
 #include <time.h>
 #include <ucontext.h>
@@ -274,10 +275,27 @@ JNIEXPORT void JNICALL Java_com_samp_mobile_game_Diag_heartbeatNative(JNIEnv *en
     g_heartbeat_ms = now_ms();
 }
 
+// Signal handlers (ART's included: it handles implicit null and suspend
+// checks through SIGSEGV all the time) run on the calling thread's alternate
+// stack. That stack must belong to that thread alone. This used to install
+// one static buffer from every thread that called install_handlers() (the UI
+// thread and the game thread), so two threads taking a signal at the same
+// time overwrote each other's frames and ART crashed in its fault handler.
+// Give each calling thread its own stack, and keep bionic's if it's big enough.
+static void ensure_alt_stack(void) {
+    const size_t kSize = 64 * 1024;
+    stack_t cur;
+    if (sigaltstack(NULL, &cur) == 0 && !(cur.ss_flags & SS_DISABLE) && cur.ss_size >= kSize) return;
+    if (cur.ss_flags & SS_ONSTACK) return; // never swap the stack we're running on
+    void *mem = mmap(NULL, kSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem == MAP_FAILED) return; // keep whatever the thread already has
+    stack_t ss = { .ss_sp = mem, .ss_size = kSize, .ss_flags = 0 };
+    if (sigaltstack(&ss, NULL) != 0) munmap(mem, kSize);
+    // Deliberately never freed: the thread may run handlers on it until it exits.
+}
+
 static void install_handlers(void) {
-    static char alt[64 * 1024];
-    stack_t ss = { .ss_sp = alt, .ss_size = sizeof alt, .ss_flags = 0 };
-    sigaltstack(&ss, NULL);
+    ensure_alt_stack();
     for (size_t i = 0; i < sizeof kSignals / sizeof kSignals[0]; i++) {
         struct sigaction sa;
         memset(&sa, 0, sizeof sa);
