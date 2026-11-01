@@ -39,7 +39,11 @@ android {
         externalNativeBuild {
             cmake {
                 // shadowhook's prefab package is only published for the shared STL
-                arguments "-DANDROID_STL=c++_shared"
+                arguments "-DANDROID_STL=c++_shared",
+                        // Game server the client joins. Override with
+                        // ./gradlew -PkmServerHost=1.2.3.4 -PkmServerPort=7777 ...
+                        "-DKM_SERVER_HOST=${project.findProperty('kmServerHost') ?: '65.20.88.67'}",
+                        "-DKM_SERVER_PORT=${project.findProperty('kmServerPort') ?: '7777'}"
             }
         }
     }
