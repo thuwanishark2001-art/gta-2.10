@@ -7,6 +7,7 @@
 #define MAPICON_SHOP_LAST       (89)
 
 #define MAPICON_COLOUR_TAXI     (0xFFD700FF)    // yellow square
+#define MAPICON_COLOUR_BUS      (0x9B59B6FF)    // purple square
 
 static gShopIconCount[MAX_PLAYERS];
 
@@ -31,6 +32,7 @@ stock MapIcons_Show(playerid)
     MapIcon_Set(playerid, id, gTaxiDepot, 0, MAPICON_COLOUR_TAXI);
     MapIcon_Set(playerid, id, gQuarry, 11);             // bulldozer: miner job
     MapIcon_Set(playerid, id, gGarage, 27);             // wrench: mechanic job
+    MapIcon_Set(playerid, id, gBusDepot, 0, MAPICON_COLOUR_BUS);
     MapIcons_ShowShops(playerid);
     return id;
 }

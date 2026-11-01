@@ -13,7 +13,8 @@
 // suspect / officer: run together (two processes). The officer (RCON
 //          owner, LSPD on duty) pays, tickets, charges, cuffs and arrests
 //          the suspect, who checks each step and serves the jail time.
-// jobs:    one pizza delivery, then one taxi fare (pickup and drop-off)
+// jobs:    one pizza delivery, one taxi fare (pickup and drop-off), then a
+//          full bus route
 // mechanic / customer: run together. The customer (RCON owner) sits in an
 //          admin car; the mechanic starts a shift and offers a repair,
 //          which the customer accepts and pays for.
@@ -718,6 +719,28 @@ static void JobsScenario(const char* host, int port, const std::string& characte
     ExpectMessage("Shift ended");
     Command("/stats");
     ExpectMessage("Job Taxi driver");
+
+    printf("== bus route (LS Airport)\n");
+    MoveTo(1685.0f, -2240.0f, 13.5f);
+    Command("/takejob");
+    ExpectMessage("You're now working as: Bus driver");
+    g_haveCheckpoint = false;
+    Command("/work");
+    ExpectMessage("Shift started as Bus driver");
+    if (g_vehicle == 0) Fail("not put in the bus");
+    for (int stop = 0; stop < 8; stop++)
+    {
+        if (!ExpectCheckpoint()) break;
+        EnterCheckpoint();
+        ExpectMessage("for bus stop", kKmuiColour, 5000);
+    }
+    if (ExpectCheckpoint())
+    {
+        EnterCheckpoint();                      // back at the depot
+        ExpectMessage("for bus route", kKmuiColour, 5000);
+    }
+    Command("/stopwork");
+    ExpectMessage("Shift ended");
     Disconnect();
 }
 

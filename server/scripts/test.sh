@@ -174,7 +174,7 @@ services=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$D
     "SELECT CONCAT('jobs=', (SELECT GROUP_CONCAT(m.details ORDER BY m.id) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Jobs_Bot'),
                    ' paid=', (SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_delta)) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Customer_Bot'),
                    ' earned=', (SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_delta)) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Mechanic_Bot'))")
-if [ "$services" != "jobs=pizza delivery,taxi fare paid=service_paid:-75 earned=service_earned:75" ]; then
+if [ "$services" != "jobs=pizza delivery,taxi fare,bus stop,bus stop,bus stop,bus stop,bus stop,bus stop,bus stop,bus stop,bus route paid=service_paid:-75 earned=service_earned:75" ]; then
     echo "unexpected database state after the jobs and mechanic runs: $services"; exit 1
 fi
 echo "database matches the jobs and mechanic runs"

@@ -80,6 +80,20 @@ stock const gTaxiStops[][E_POINT] = {
     { 2484.0, -1667.0, 13.3, 0.0 }      // Grove Street
 };
 
+// Bus: airport depot and a fixed loop through the city (taxi stops' curbs)
+stock const gBusDepot[E_POINT] = { 1685.0, -2240.0, 13.5, 0.0 };
+stock const gBusSpawn[E_POINT] = { 1685.0, -2240.0, 13.5, 0.0 };
+stock const gBusRoute[][E_POINT] = {
+    { 1481.0, -1740.0, 13.5, 0.0 },     // City Hall
+    { 1310.0, -1373.0, 13.5, 0.0 },     // Market
+    { 1022.0, -1132.0, 23.8, 0.0 },     // Vinewood
+    { 1172.0, -1323.0, 15.4, 0.0 },     // All Saints
+    { 1543.0, -1675.0, 13.5, 0.0 },     // LSPD
+    { 1835.0, -1682.0, 13.4, 0.0 },     // Alhambra
+    { 2229.0, -1721.0, 13.5, 0.0 },     // Ganton gym
+    { 2484.0, -1667.0, 13.3, 0.0 }      // Grove Street
+};
+
 // Miner: Hunter Quarry, rock faces, ore drop-off
 stock const gQuarry[E_POINT] = { 588.6, 868.5, -42.5, 0.0 };
 stock const gQuarryRocks[][E_POINT] = {

@@ -338,6 +338,7 @@ Test_Rules()
     EXPECT(sizeof (gItems) == ITEM_COUNT && sizeof (gJobNames) == JOB_COUNT);
     EXPECT(strcmp(gItems[ITEM_PHONE][itName], "Phone") == 0 && gItems[ITEM_PHONE][itMax] == 1);
     EXPECT(strcmp(gJobNames[JOB_MECHANIC], "Mechanic") == 0);
+    EXPECT(strcmp(gJobNames[JOB_BUS], "Bus driver") == 0 && sizeof (gBusRoute) == 8);
     // Every dealership model is a real vehicle model.
     ok = true;
     for (new i = 0; i < sizeof (gDealerStock); i++)
