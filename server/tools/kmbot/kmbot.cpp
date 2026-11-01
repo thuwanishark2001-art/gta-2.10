@@ -948,6 +948,19 @@ static void EconomyScenario(const char* host, int port, const std::string& chara
     if (MapIconCount() < 19) { Fail("expected the 19 place icons on the map"); return; }
     printf("  map icons: %d\n", MapIconCount());
 
+    printf("== gps\n");
+    g_haveCheckpoint = false;
+    Command("/gps");
+    if (ExpectDialog(16)) Respond(16, 1, 4, "");      // Hospital
+    if (ExpectCheckpoint() && (fabsf(g_checkpoint.x - 1178.4f) > 1.0f || fabsf(g_checkpoint.y + 1323.6f) > 1.0f))
+        Fail("/gps didn't mark the hospital");
+    g_haveCheckpoint = false;
+    Command("/gps");
+    if (ExpectDialog(16)) Respond(16, 1, 0, "");      // nearest ATM: Unity Station's, next to the spawn
+    ExpectMessage("The nearest ATM is marked");
+    if (ExpectCheckpoint() && (fabsf(g_checkpoint.x - 1742.3f) > 1.0f || fabsf(g_checkpoint.y + 1867.0f) > 1.0f))
+        Fail("/gps didn't pick the nearest ATM");
+
     printf("== ATM (Idlewood gas station)\n");
     MoveTo(1928.6f, -1786.1f, 13.5f);
     Command("/deposit 200");

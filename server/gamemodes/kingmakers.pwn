@@ -41,6 +41,7 @@
 #include "km/mapicons.inc"
 #include "km/admintools.inc"
 #include "km/spectate.inc"
+#include "km/gps.inc"
 
 forward KM_Tick();
 
@@ -206,6 +207,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
     if (Job_OnDialog(playerid, dialogid, response, listitem)) return 1;
     if (Inv_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
     if (Radio_OnDialog(playerid, dialogid, response, listitem)) return 1;
+    if (Gps_OnDialog(playerid, dialogid, response, listitem)) return 1;
     return 0;
 }
 
@@ -259,7 +261,7 @@ public KM_Tick()
 CMD:help(playerid, params[])
 {
     SendClientMessage(playerid, COLOR_BRAND, "Kingmakers RP commands");
-    SendClientMessage(playerid, COLOR_WHITE, "General: /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
+    SendClientMessage(playerid, COLOR_WHITE, "General: /gps /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
     SendClientMessage(playerid, COLOR_WHITE, "Chat: /me /do /b /s /low /w /pm /r /o  Phone: /phone /number /sms /911");
     SendClientMessage(playerid, COLOR_WHITE, "Vehicles: /engine /lights /lock /radio /park /myvehicles /buyvehicle /sellvehicle /refuel /drivingtest /licence /showlicence /tickets /paytickets");
     SendClientMessage(playerid, COLOR_WHITE, "Jobs: /jobs /takejob /quitjob /work /stopwork /calltaxi  Property: /enter /exit /buyproperty /sellproperty /myproperties /shop /till");
