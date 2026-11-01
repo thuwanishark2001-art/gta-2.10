@@ -39,27 +39,9 @@ public class SAMP211 extends Engine211Activity implements CustomKeyboard.InputLi
         Log.i(TAG, "client loaded");
     }
 
-    /**
-     * libsamp reads <storage>/SAMP/settings.ini and stops if it's missing.
-     * Put the APK's default there on first run; never overwrite the player's.
-     */
+    /** libsamp reads <storage>/SAMP/settings.ini and stops if it's missing. */
     private void provisionClientFiles(String storageRoot) {
-        java.io.File settings = new java.io.File(storageRoot, "SAMP/settings.ini");
-        if (settings.isFile()) return;
-        java.io.File dir = settings.getParentFile();
-        if (dir != null && !dir.isDirectory() && !dir.mkdirs()) {
-            Log.e(TAG, "can't create " + dir);
-            return;
-        }
-        try (java.io.InputStream in = getAssets().open("settings.ini");
-             java.io.OutputStream out = new java.io.FileOutputStream(settings)) {
-            byte[] buffer = new byte[8192];
-            int n;
-            while ((n = in.read(buffer)) > 0) out.write(buffer, 0, n);
-            Log.i(TAG, "wrote default " + settings);
-        } catch (java.io.IOException e) {
-            Log.e(TAG, "can't write " + settings, e);
-        }
+        ClientSettings.provision(this);
     }
 
     @Override

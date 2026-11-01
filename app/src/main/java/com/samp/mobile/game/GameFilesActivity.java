@@ -9,7 +9,11 @@ import android.os.Bundle;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.text.InputFilter;
+import android.text.InputType;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -29,6 +33,7 @@ public class GameFilesActivity extends Activity {
     private TextView message;
     private ProgressBar progress;
     private TextView action;
+    private EditText nameInput;
     private boolean copying = false;
 
     /** Set when the last game session crashed and its log was saved. */
@@ -108,10 +113,46 @@ public class GameFilesActivity extends Activity {
     }
 
     private void startGame(GameFiles.Engine engine) {
+        // Every install starts with the same placeholder name, which would make
+        // every new player try to log into one account. Ask for a name first.
+        if (ClientSettings.needsName(this)) {
+            askName(engine);
+            return;
+        }
         // 2.11 (arm64): the 2.11 host with the client; 2.10 (armv7): the original.
         Class<?> activity = engine == GameFiles.Engine.GTA_211 ? SAMP211.class : SAMP.class;
         startActivity(new Intent(this, activity));
         finish();
+    }
+
+    private void askName(GameFiles.Engine engine) {
+        message.setText("Choose your account name.\n3-20 letters, numbers or _ (for example King_Maker).\n"
+            + "You'll use it with your password every time you log in.");
+        progress.setVisibility(View.GONE);
+        String current = ClientSettings.getName(this);
+        if (!current.equals(ClientSettings.DEFAULT_NAME) && nameInput.getText().length() == 0) nameInput.setText(current);
+        nameInput.setVisibility(View.VISIBLE);
+        nameInput.requestFocus();
+        View.OnClickListener play = v -> {
+            String name = nameInput.getText().toString().trim();
+            if (!ClientSettings.isValidName(name) || name.equals(ClientSettings.DEFAULT_NAME)) {
+                message.setText("That name can't be used.\nUse 3-20 letters, numbers or _ (no spaces).");
+                return;
+            }
+            if (!ClientSettings.setName(this, name)) {
+                message.setText("Couldn't save the name. Check the app's storage and try again.");
+                return;
+            }
+            nameInput.setVisibility(View.GONE);
+            startGame(engine);
+        };
+        action.setText("Play");
+        action.setOnClickListener(play);
+        action.setVisibility(View.VISIBLE);
+        nameInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) { play.onClick(v); return true; }
+            return false;
+        });
     }
 
     private void openStore() {
@@ -155,6 +196,18 @@ public class GameFilesActivity extends Activity {
         message.setPadding(0, dp(16), 0, dp(16));
         message.setText("Checking your game files…");
         root.addView(message, new LinearLayout.LayoutParams(dp(420), LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        nameInput = new EditText(this);
+        nameInput.setSingleLine(true);
+        nameInput.setHint("Account name");
+        nameInput.setTextColor(Color.WHITE);
+        nameInput.setHintTextColor(0xFF9A9A9A);
+        nameInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+        nameInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        nameInput.setFilters(new InputFilter[] { new InputFilter.LengthFilter(20) });
+        nameInput.setGravity(Gravity.CENTER);
+        nameInput.setVisibility(View.GONE);
+        root.addView(nameInput, new LinearLayout.LayoutParams(dp(260), LinearLayout.LayoutParams.WRAP_CONTENT));
 
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setIndeterminate(true);
