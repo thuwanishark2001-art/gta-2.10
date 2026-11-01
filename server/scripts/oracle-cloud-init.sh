@@ -1,5 +1,6 @@
 #!/bin/bash
-# Kingmakers RP: Oracle Cloud "Always Free" VM setup (cloud-init user data).
+# Kingmakers RP: Ubuntu VM setup as cloud-init user data (Oracle Always Free,
+# Vultr, or any Ubuntu 24.04 x86-64 VPS).
 #
 # Paste this whole file into "Show advanced options -> Management ->
 # Paste cloud-init script" when creating an Ubuntu 24.04 instance on the
@@ -24,14 +25,22 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y ca-certificates curl git unzip openssl iptables-persistent
+apt-get install -y ca-certificates curl git unzip openssl
 
-# Oracle's Ubuntu images ship iptables rules that reject everything except SSH,
-# on top of the cloud Security List. Allow the game port in the VM as well.
-if ! iptables -C INPUT -p udp --dport "$PORT" -j ACCEPT 2>/dev/null; then
-    iptables -I INPUT 1 -p udp --dport "$PORT" -j ACCEPT
+if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
+    # Vultr and similar images enable ufw with only SSH allowed.
+    ufw allow 22/tcp
+    ufw allow "$PORT"/udp
+else
+    # Oracle's Ubuntu images ship iptables rules that reject everything except
+    # SSH, on top of the cloud Security List. Allow the game port in the VM too.
+    # (iptables-persistent conflicts with ufw, so only install it here.)
+    apt-get install -y iptables-persistent
+    if ! iptables -C INPUT -p udp --dport "$PORT" -j ACCEPT 2>/dev/null; then
+        iptables -I INPUT 1 -p udp --dport "$PORT" -j ACCEPT
+    fi
+    netfilter-persistent save || true
 fi
-netfilter-persistent save || true
 
 if ! command -v docker >/dev/null; then
     curl -fsSL https://get.docker.com | sh
