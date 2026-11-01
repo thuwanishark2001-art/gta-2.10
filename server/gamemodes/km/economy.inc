@@ -146,7 +146,7 @@ CMD:pay(playerid, params[])
     SendClientMessage(playerid, COLOR_SUCCESS, "You gave $%d to %s.", amount, gChar[targetid][cName]);
     SendClientMessage(targetid, COLOR_SUCCESS, "%s gave you $%d.", gChar[playerid][cName], amount);
     new action[64];
-    format(action, sizeof (action), "hands some money to %s.", gChar[targetid][cName]);
+    format(action, sizeof (action), "hands some money to %s.", Chat_Name(targetid));
     Chat_Action(playerid, action);
     return 1;
 }

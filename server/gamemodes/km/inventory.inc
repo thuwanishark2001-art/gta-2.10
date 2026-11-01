@@ -262,7 +262,7 @@ stock Inv_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
                 if (gChar[targetid][cPhone] == 0) Inv_AssignNumber(targetid);
             }
             new action[64];
-            format(action, sizeof (action), "hands %d %s to %s.", quantity, gItems[item][itName], gChar[targetid][cName]);
+            format(action, sizeof (action), "hands %d %s to %s.", quantity, gItems[item][itName], Chat_Name(targetid));
             Chat_Action(playerid, action);
             return 1;
         }

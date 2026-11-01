@@ -51,6 +51,14 @@ stock Chat_DisplayName(playerid, dest[], size = sizeof (dest))
     Chat_FixName(dest);
 }
 
+// The same, returned: for formatting another player's name into an action.
+stock Chat_Name(playerid)
+{
+    new name[MAX_PLAYER_NAME];
+    Chat_DisplayName(playerid, name);
+    return name;
+}
+
 // Mute and anti-spam check shared by chat and the chat commands.
 stock bool:Chat_CanTalk(playerid, const text[])
 {

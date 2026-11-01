@@ -487,7 +487,7 @@ CMD:cuff(playerid, params[])
     gChar[targetid][cCuffed] = true;
     SetPlayerSpecialAction(targetid, SPECIAL_ACTION_CUFFED);
     new action[64];
-    format(action, sizeof (action), "puts handcuffs on %s.", gChar[targetid][cName]);
+    format(action, sizeof (action), "puts handcuffs on %s.", Chat_Name(targetid));
     Chat_Action(playerid, action);
     return 1;
 }
@@ -501,7 +501,7 @@ CMD:uncuff(playerid, params[])
     gChar[targetid][cCuffed] = false;
     SetPlayerSpecialAction(targetid, SPECIAL_ACTION_NONE);
     new action[64];
-    format(action, sizeof (action), "removes the handcuffs from %s.", gChar[targetid][cName]);
+    format(action, sizeof (action), "removes the handcuffs from %s.", Chat_Name(targetid));
     Chat_Action(playerid, action);
     return 1;
 }

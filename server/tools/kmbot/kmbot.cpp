@@ -10,6 +10,9 @@
 //          (walk to the checkpoints the server sets, mine, deliver, get paid)
 // driving: RCON for money, pass the driving test, buy a vehicle at the
 //          dealership (engine, lock, park), then one trucker delivery
+// suspect / officer: run together (two processes). The officer (RCON
+//          owner, LSPD on duty) pays, tickets, charges, cuffs and arrests
+//          the suspect, who checks each step and serves the jail time.
 // admin:   RCON login (KMBOT_RCON env), make itself owner, then property
 //          (create, buy, enter, exit, sell), police (faction, duty, MDT),
 //          and the report flow
@@ -122,6 +125,18 @@ static void OnSetCheckpoint(RPCParameters* params)
 }
 
 static void OnDisableCheckpoint(RPCParameters*) { g_haveCheckpoint = false; }
+
+// open.mp keeps the interior the client reports, not the one the script
+// sets, so echo it back like the client's UpdateRemoteInterior does.
+static void OnSetInterior(RPCParameters* params)
+{
+    RakNet::BitStream bs(params->input, (params->numberOfBitsOfData / 8) + 1, false);
+    uint8_t interior = 0;
+    bs.Read(interior);
+    RakNet::BitStream out;
+    out.Write(interior);
+    g_client->RPC(&RPC_SetInteriorId, &out, HIGH_PRIORITY, RELIABLE, 0, false, UNASSIGNED_NETWORK_ID, nullptr);
+}
 
 static void OnPutInVehicle(RPCParameters* params)
 {
@@ -301,6 +316,7 @@ static bool Connect(const char* host, int port)
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetPlayerPos, OnSetPlayerPos);
     g_client->RegisterAsRemoteProcedureCall(&RPC_SetCheckpoint, OnSetCheckpoint);
     g_client->RegisterAsRemoteProcedureCall(&RPC_DisableCheckpoint, OnDisableCheckpoint);
+    g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetInterior, OnSetInterior);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrPutPlayerInVehicle, OnPutInVehicle);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrRemovePlayerFromVehicle, OnRemoveFromVehicle);
     g_client->RegisterAsRemoteProcedureCall(&RPC_WorldVehicleRemove, OnVehicleRemoved);
@@ -519,6 +535,109 @@ static void DrivingScenario(const char* host, int port, const std::string& chara
     Disconnect();
 }
 
+// Both bots meet at the LSPD garage, where arrests are booked.
+static const Vec3 kArrestPoint = {1568.6f, -1694.8f, 5.9f};
+
+static bool WaitForMessage(const char* needle, uint32_t timeout)
+{
+    uint32_t end = Now() + timeout;
+    while (Now() < end)
+    {
+        for (auto& m : g_messages) if (m.text.find(needle) != std::string::npos) return true;
+        Pump(100);
+    }
+    return false;
+}
+
+static void SuspectScenario(const char* host, int port, const std::string& character)
+{
+    printf("== register %s and create %s\n", g_name.c_str(), character.c_str());
+    if (!Connect(host, port)) return;
+    RegisterAndCreate(character);
+    Pump(1000);
+    g_messages.clear();
+    MoveTo(kArrestPoint.x, kArrestPoint.y, kArrestPoint.z);
+
+    printf("== waiting for the officer\n");
+    // The officer's steps arrive in this order; each must reach us.
+    // Actions show names as "First Last".
+    std::string shown = character;
+    for (char& c : shown) if (c == '_') c = ' ';
+    const std::string steps[] = {
+        "gave you $100",
+        "gave you a $250 ticket: Jaywalking",
+        "puts handcuffs on " + shown,
+        "was arrested by",
+        "You're in jail for another",
+    };
+    for (const std::string& step : steps)
+    {
+        if (!WaitForMessage(step.c_str(), 120000)) { Fail(step.c_str()); return; }
+        printf("  ok: %s\n", step.c_str());
+    }
+    Pump(1000);
+    // Jail cell: 264.3, 77.6, 1001.0 (places.inc).
+    if (fabsf(g_pos.x - 264.3f) > 3.0f || fabsf(g_pos.y - 77.6f) > 3.0f) Fail("not moved to the jail cell");
+
+    printf("== serving the sentence\n");
+    g_messages.clear();
+    if (!WaitForMessage("You served your time and were released", 80000)) Fail("wasn't released after 1 minute");
+    // The cell check must not keep pulling us back: one placement only.
+    int placements = 0;
+    for (auto& m : g_messages) if (m.text.find("You're in jail for another") != std::string::npos) placements++;
+    if (placements > 0) Fail("re-placed in the cell while already in it");
+    Command("/tickets");
+    ExpectMessage("Total $250");
+    Disconnect();
+}
+
+static void OfficerScenario(const char* host, int port, const std::string& character, const std::string& suspect)
+{
+    printf("== register %s and create %s\n", g_name.c_str(), character.c_str());
+    if (!Connect(host, port)) return;
+    RegisterAndCreate(character);
+    Pump(1000);
+    if (!BecomeOwner(character)) return;
+    Command("/setfaction " + character + " 1 6");
+    ExpectMessage("Los Santos Police Department at rank 6");
+    MoveTo(1553.6f, -1675.6f, 16.2f);
+    Command("/duty");
+    ExpectMessage("is now on duty");
+    Command("/givemoney " + character + " 1000 kmbot police");
+    ExpectMessage("Their bank balance is $1000");
+    MoveTo(kArrestPoint.x, kArrestPoint.y, kArrestPoint.z);
+
+    printf("== find the suspect\n");
+    bool found = false;
+    for (int i = 0; i < 60 && !found; i++)
+    {
+        Command("/pay " + suspect + " 100");
+        found = WaitForMessage("You gave $100", 1500);
+    }
+    if (!found) { Fail("the suspect never showed up"); return; }
+
+    printf("== ticket, charge, cuff, arrest\n");
+    Command("/ticket " + suspect + " 250 Jaywalking");
+    ExpectMessage("Ticket written: $250");
+    Command("/su " + suspect + " Testing the police flow");
+    ExpectMessage("charged");
+    Command("/arrest " + suspect + " 1");
+    ExpectMessage("Cuff them first");
+    Command("/cuff " + suspect);
+    ExpectMessage("puts handcuffs on");
+    Command("/arrest " + suspect + " 1");
+    ExpectMessage("was arrested by");
+    Command("/mdt " + suspect);
+    Dialog mdt;
+    if (ExpectDialog(8, &mdt))
+    {
+        if (mdt.text.find("Testing the police flow") == std::string::npos) Fail("charge missing from the MDT");
+        if (mdt.text.find("Unpaid tickets: 1 ($250)") == std::string::npos) Fail("ticket missing from the MDT");
+        if (mdt.text.find("In jail: yes") == std::string::npos) Fail("MDT doesn't show the jail time");
+    }
+    Disconnect();
+}
+
 static void AdminScenario(const char* host, int port, const std::string& character)
 {
     const char* rconPassword = getenv("KMBOT_RCON");
@@ -653,7 +772,7 @@ static void EconomyScenario(const char* host, int port, const std::string& chara
 
 int main(int argc, char** argv)
 {
-    if (argc < 5) { printf("usage: kmbot <host> <port> <account> <First_Last> [basic|economy|admin|driving]\n"); return 2; }
+    if (argc < 5) { printf("usage: kmbot <host> <port> <account> <First_Last> [basic|economy|admin|driving|suspect|officer <suspect>]\n"); return 2; }
     setvbuf(stdout, nullptr, _IONBF, 0);
     char host[64];
     {
@@ -671,6 +790,8 @@ int main(int argc, char** argv)
         if (strcmp(argv[5], "economy") == 0) EconomyScenario(host, port, character);
         else if (strcmp(argv[5], "admin") == 0) AdminScenario(host, port, character);
         else if (strcmp(argv[5], "driving") == 0) DrivingScenario(host, port, character);
+        else if (strcmp(argv[5], "suspect") == 0) SuspectScenario(host, port, character);
+        else if (strcmp(argv[5], "officer") == 0 && argc > 6) OfficerScenario(host, port, character, argv[6]);
         else { printf("unknown scenario %s\n", argv[5]); return 2; }
         printf(g_failures ? "KMBOT DONE: %d failure(s)\n" : "KMBOT DONE: all steps passed\n", g_failures);
         return g_failures ? 1 : 0;

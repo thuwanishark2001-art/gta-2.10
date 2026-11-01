@@ -148,7 +148,7 @@ CMD:showlicence(playerid, params[])
     if (!gChar[playerid][cDrivingLicence]) return SendError(playerid, "You don't have a driving licence to show.");
     SendClientMessage(targetid, COLOR_INFO, "%s shows you a valid San Andreas driving licence.", gChar[playerid][cName]);
     new action[64];
-    format(action, sizeof (action), "shows their driving licence to %s.", gChar[targetid][cName]);
+    format(action, sizeof (action), "shows their driving licence to %s.", Chat_Name(targetid));
     Chat_Action(playerid, action);
     return 1;
 }
@@ -169,7 +169,7 @@ CMD:ticket(playerid, params[])
     SendClientMessage(targetid, COLOR_YELLOW, "Officer %s gave you a $%d ticket: %s. Pay it with /paytickets.", gChar[playerid][cName], amount, reason);
     SendClientMessage(playerid, COLOR_SUCCESS, "Ticket written: $%d to %s.", amount, gChar[targetid][cName]);
     new action[64];
-    format(action, sizeof (action), "writes a ticket and hands it to %s.", gChar[targetid][cName]);
+    format(action, sizeof (action), "writes a ticket and hands it to %s.", Chat_Name(targetid));
     Chat_Action(playerid, action);
     return 1;
 }
