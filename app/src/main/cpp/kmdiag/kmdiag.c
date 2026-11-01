@@ -13,6 +13,7 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <jni.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -117,18 +118,8 @@ static struct sigaction g_old[32];
 
 static volatile int g_crashing;
 
-static void on_crash(int sig, siginfo_t *info, void *uc_void) {
-    ucontext_t *uc = uc_void;
-    // Report once: the re-raise below can come back here through ART's
-    // signal chain.
-    if (g_crashing++) {
-        signal(sig, SIG_DFL);
-        syscall(SYS_tgkill, getpid(), syscall(SYS_gettid), sig);
-        return;
-    }
-    stamp();
-    outf("\n*** fatal signal %d (code %d) fault address %p, thread %d\n",
-         sig, info->si_code, info->si_addr, (int) syscall(SYS_gettid));
+// Where a thread is: pc/lr, registers, backtrace, engine addresses on its stack.
+static void report_context(ucontext_t *uc) {
 #if defined(__aarch64__)
     uintptr_t pc = uc->uc_mcontext.pc, lr = uc->uc_mcontext.regs[30], sp = uc->uc_mcontext.sp;
     where("pc", pc);
@@ -155,12 +146,91 @@ static void on_crash(int sig, siginfo_t *info, void *uc_void) {
 #else
     (void) uc;
 #endif
+}
+
+static volatile int g_crashing;
+
+static void on_crash(int sig, siginfo_t *info, void *uc_void) {
+    // Report once: the re-raise below can come back here through ART's
+    // signal chain.
+    if (g_crashing++) {
+        signal(sig, SIG_DFL);
+        syscall(SYS_tgkill, getpid(), syscall(SYS_gettid), sig);
+        return;
+    }
+    stamp();
+    outf("\n*** fatal signal %d (code %d) fault address %p, thread %d\n",
+         sig, info->si_code, info->si_addr, (int) syscall(SYS_gettid));
+    report_context(uc_void);
     out("*** end\n", 8);
     fsync(g_fd);
 
     // Let the previous handler (Android's crash reporter) have it.
     sigaction(sig, &g_old[sig], NULL);
     syscall(SYS_tgkill, getpid(), syscall(SYS_gettid), sig);
+}
+
+// ---- hang watchdog -----------------------------------------------------------
+// The game thread sends a heartbeat every loop. If none comes for
+// HANG_SECONDS, the watchdog signals the game thread, whose handler writes
+// where it is and returns. Up to three snapshots a stall, a few seconds apart,
+// show whether it's looping (pc moves) or blocked (pc stays).
+
+#define HANG_SECONDS 5
+#define HANG_SIGNAL (SIGRTMIN + 5)
+
+static volatile pid_t g_game_tid;
+static volatile int64_t g_heartbeat_ms;
+static volatile int g_hang_snapshot;
+
+static int64_t now_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t) ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+static void on_hang_signal(int sig, siginfo_t *info, void *uc_void) {
+    (void) sig; (void) info;
+    stamp();
+    outf("\n*** game thread not responding for %llds (snapshot %d), thread %d\n",
+         (long long) ((now_ms() - g_heartbeat_ms) / 1000), g_hang_snapshot, (int) syscall(SYS_gettid));
+    report_context(uc_void);
+    out("*** end\n", 8);
+    fsync(g_fd);
+}
+
+static void *watchdog(void *arg) {
+    (void) arg;
+    int64_t stall_start = 0;
+    for (;;) {
+        sleep(1);
+        if (!g_game_tid || !g_heartbeat_ms) continue;
+        int64_t idle = now_ms() - g_heartbeat_ms;
+        if (idle < HANG_SECONDS * 1000) {
+            g_hang_snapshot = 0;
+            stall_start = 0;
+            continue;
+        }
+        if (!stall_start) stall_start = g_heartbeat_ms;
+        // Snapshots at 5s, 9s and 13s into a stall.
+        if (g_hang_snapshot < 3 && idle >= (HANG_SECONDS + 4 * g_hang_snapshot) * 1000) {
+            g_hang_snapshot++;
+            syscall(SYS_tgkill, getpid(), g_game_tid, HANG_SIGNAL);
+        }
+    }
+    return NULL;
+}
+
+JNIEXPORT void JNICALL Java_com_samp_mobile_game_Diag_registerGameThread(JNIEnv *env, jclass cls) {
+    (void) env; (void) cls;
+    g_heartbeat_ms = now_ms();
+    g_game_tid = (pid_t) syscall(SYS_gettid);
+    outf("game thread is %d\n", (int) g_game_tid);
+}
+
+JNIEXPORT void JNICALL Java_com_samp_mobile_game_Diag_heartbeatNative(JNIEnv *env, jclass cls) {
+    (void) env; (void) cls;
+    g_heartbeat_ms = now_ms();
 }
 
 static void install_handlers(void) {
@@ -175,6 +245,12 @@ static void install_handlers(void) {
         sigemptyset(&sa.sa_mask);
         sigaction(kSignals[i], &sa, &g_old[kSignals[i]]);
     }
+    struct sigaction hang;
+    memset(&hang, 0, sizeof hang);
+    hang.sa_sigaction = on_hang_signal;
+    hang.sa_flags = SA_SIGINFO | SA_ONSTACK | SA_RESTART;
+    sigemptyset(&hang.sa_mask);
+    sigaction(HANG_SIGNAL, &hang, NULL);
 }
 
 // Re-install from the game thread too, after the engine may have set its own.
@@ -201,6 +277,8 @@ JNIEXPORT void JNICALL Java_com_samp_mobile_game_Diag_start(JNIEnv *env, jclass 
     outf("kmdiag started, pid %d\n", getpid());
 
     install_handlers();
+    pthread_t t;
+    if (pthread_create(&t, NULL, watchdog, NULL) == 0) pthread_detach(t);
 
     if (shadowhook_init(SHADOWHOOK_MODE_UNIQUE, false) == 0) {
         void *write_fn = dlsym(RTLD_DEFAULT, "__android_log_write");

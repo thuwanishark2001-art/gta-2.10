@@ -12,7 +12,7 @@ import java.io.File;
  */
 public final class Diag {
     private static final String TAG = "Diag";
-    private static boolean sStarted;
+    private static volatile boolean sStarted;
 
     private Diag() {}
 
@@ -36,6 +36,19 @@ public final class Diag {
         if (sStarted) installCrashHandler();
     }
 
+    /** Call from the game thread when it starts. */
+    public static void gameThreadStarted() {
+        if (sStarted) registerGameThread();
+    }
+
+    /** Call from the game thread every loop; silence for 5 s is reported as a hang. */
+    public static void heartbeat() {
+        if (sStarted) heartbeatNative();
+    }
+
+    private static native void registerGameThread();
+    @SuppressWarnings("JniMissingFunction")
+    private static native void heartbeatNative();
     private static native void start(String path);
     private static native void installCrashHandler();
     static native void note(String text);

@@ -47,9 +47,11 @@ public final class GameThread {
         @Override
         public void run() {
             Log.i(TAG, "started");
+            com.samp.mobile.game.Diag.gameThreadStarted();
             long last = SystemClock.elapsedRealtime();
             long frames = 0;
             while (!exit.get()) {
+                com.samp.mobile.game.Diag.heartbeat();
                 Runnable r;
                 while ((r = queue.poll()) != null) r.run();
                 long now = SystemClock.elapsedRealtime();
