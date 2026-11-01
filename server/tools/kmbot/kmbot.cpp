@@ -130,6 +130,22 @@ static void OnSetCheckpoint(RPCParameters* params)
 
 static void OnDisableCheckpoint(RPCParameters*) { g_haveCheckpoint = false; }
 
+// Map icon ids the server has set (places on the radar).
+static bool g_mapIcons[100];
+static void OnSetMapIcon(RPCParameters* params)
+{
+    RakNet::BitStream bs(params->input, (params->numberOfBitsOfData + 7) / 8, false);
+    uint8_t id = 0;
+    bs.Read(id);
+    if (id < 100) g_mapIcons[id] = true;
+}
+static int MapIconCount()
+{
+    int n = 0;
+    for (bool set : g_mapIcons) n += set;
+    return n;
+}
+
 // open.mp keeps the interior the client reports, not the one the script
 // sets, so echo it back like the client's UpdateRemoteInterior does.
 static void OnSetInterior(RPCParameters* params)
@@ -320,6 +336,7 @@ static bool Connect(const char* host, int port)
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetPlayerPos, OnSetPlayerPos);
     g_client->RegisterAsRemoteProcedureCall(&RPC_SetCheckpoint, OnSetCheckpoint);
     g_client->RegisterAsRemoteProcedureCall(&RPC_DisableCheckpoint, OnDisableCheckpoint);
+    g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetMapIcon, OnSetMapIcon);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetInterior, OnSetInterior);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrPutPlayerInVehicle, OnPutInVehicle);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrRemovePlayerFromVehicle, OnRemoveFromVehicle);
@@ -854,6 +871,10 @@ static void EconomyScenario(const char* host, int port, const std::string& chara
     if (!Connect(host, port)) return;
     RegisterAndCreate(character);
     Pump(1500);
+
+    printf("== map icons\n");
+    if (MapIconCount() < 19) { Fail("expected the 19 place icons on the map"); return; }
+    printf("  map icons: %d\n", MapIconCount());
 
     printf("== ATM (Idlewood gas station)\n");
     MoveTo(1928.6f, -1786.1f, 13.5f);

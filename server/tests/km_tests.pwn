@@ -42,6 +42,7 @@
 #include "km/anticheat.inc"
 #include "km/licence.inc"
 #include "km/radio.inc"
+#include "km/mapicons.inc"
 
 new gPass, gFail;
 

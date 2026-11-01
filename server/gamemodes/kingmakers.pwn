@@ -38,6 +38,7 @@
 #include "km/anticheat.inc"
 #include "km/licence.inc"
 #include "km/radio.inc"
+#include "km/mapicons.inc"
 
 forward KM_Tick();
 
@@ -148,6 +149,7 @@ public OnPlayerSpawn(playerid)
     AC_Grace(playerid);
     gAcHavePos[playerid] = false;
     Char_OnSpawn(playerid);
+    MapIcons_Show(playerid);
     return 1;
 }
 
