@@ -522,7 +522,8 @@ bool IsPedModel(unsigned int iModelID)
 // 0.3.7
 void CPlayerPed::SetModelIndex(uint uiModel)
 {
-    if(!GamePool_Ped_GetAt(m_dwGTAId)) return;
+    FLog("SetModelIndex: %u (ped %p)", uiModel, m_pPed);
+    if(!GamePool_Ped_GetAt(m_dwGTAId)) { FLog("SetModelIndex: ped %lu not in the pool", (unsigned long) m_dwGTAId); return; }
     if(!IsPedModel(uiModel))
     {
         auto* info = uiModel < CModelInfo::NUM_MODEL_INFOS ? CModelInfo::ms_modelInfoPtrs[uiModel] : nullptr;

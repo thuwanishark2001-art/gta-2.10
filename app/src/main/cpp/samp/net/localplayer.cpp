@@ -1580,6 +1580,8 @@ void CLocalPlayer::SetSpawnInfo(PLAYER_SPAWN_INFO* pSpawnInfo)
 {
 	memcpy(&m_SpawnInfo, pSpawnInfo, sizeof(PLAYER_SPAWN_INFO));
 	m_bHasSpawnInfo = true;
+	FLog("SetSpawnInfo: skin %d team %d at %.1f %.1f %.1f", m_SpawnInfo.iSkin, m_SpawnInfo.byteTeam,
+		m_SpawnInfo.vecPos.x, m_SpawnInfo.vecPos.y, m_SpawnInfo.vecPos.z);
 }
 // 0.3.7
 void CLocalPlayer::HandleClassSelectionOutcome(bool bOutcome)
