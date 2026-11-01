@@ -52,11 +52,11 @@ int32_t NVEventGetNextEvent_hook(NVEvent* ev, int waitMSecs)
         {
             if (num == 0 && type != NV_MULTITOUCH_MOVE)
             {
-                ((void(*)(int, int, int posX, int posY))(g_libGTASA + (VER_x32 ? 0x00269740  + 1 : 0x31EC0C)))(type, 0, x1, y1); // AND_TouchEvent
+                ((void(*)(int, int, int posX, int posY))(g_libGTASA + (VER_x32 ? 0x00269740  + 1 : 0x7D318C)))(type, 0, x1, y1); // AND_TouchEvent
             }
             else
             {
-                ((void(*)(int, int, int posX, int posY))(g_libGTASA +  (VER_x32 ? 0x00269740  + 1 : 0x31EC0C)))(NV_MULTITOUCH_MOVE, 0, x1, y1); // AND_TouchEvent
+                ((void(*)(int, int, int posX, int posY))(g_libGTASA +  (VER_x32 ? 0x00269740  + 1 : 0x7D318C)))(NV_MULTITOUCH_MOVE, 0, x1, y1); // AND_TouchEvent
             }
         }
 
@@ -64,22 +64,22 @@ int32_t NVEventGetNextEvent_hook(NVEvent* ev, int waitMSecs)
         {
             if (num == 1 && type != NV_MULTITOUCH_MOVE)
             {
-                ((void(*)(int, int, int posX, int posY))(g_libGTASA +  (VER_x32 ? 0x00269740  + 1 : 0x31EC0C)))(type, 1, x2, y2); // AND_TouchEvent
+                ((void(*)(int, int, int posX, int posY))(g_libGTASA +  (VER_x32 ? 0x00269740  + 1 : 0x7D318C)))(type, 1, x2, y2); // AND_TouchEvent
             }
             else
             {
-                ((void(*)(int, int, int posX, int posY))(g_libGTASA +  (VER_x32 ? 0x00269740  + 1 : 0x31EC0C)))(NV_MULTITOUCH_MOVE, 1, x2, y2); // AND_TouchEvent
+                ((void(*)(int, int, int posX, int posY))(g_libGTASA +  (VER_x32 ? 0x00269740  + 1 : 0x7D318C)))(NV_MULTITOUCH_MOVE, 1, x2, y2); // AND_TouchEvent
             }
         }
         if ((x3 || y3) || num == 2)
         {
             if (num == 2 && type != NV_MULTITOUCH_MOVE)
             {
-                ((void(*)(int, int, int posX, int posY))(g_libGTASA +  (VER_x32 ? 0x00269740  + 1 : 0x31EC0C)))(type, 2, x3, y3); // AND_TouchEvent
+                ((void(*)(int, int, int posX, int posY))(g_libGTASA +  (VER_x32 ? 0x00269740  + 1 : 0x7D318C)))(type, 2, x3, y3); // AND_TouchEvent
             }
             else
             {
-                ((void(*)(int, int, int posX, int posY))(g_libGTASA +  (VER_x32 ? 0x00269740  + 1 : 0x31EC0C)))(NV_MULTITOUCH_MOVE, 2, x3, y3); // AND_TouchEvent
+                ((void(*)(int, int, int posX, int posY))(g_libGTASA +  (VER_x32 ? 0x00269740  + 1 : 0x7D318C)))(NV_MULTITOUCH_MOVE, 2, x3, y3); // AND_TouchEvent
             }
         }
     }
@@ -99,7 +99,7 @@ void MultiTouch::initialize()
     CHook::Write(g_libGTASA + (VER_x32 ? 0x00679E90 : 0x851D38), &test_pointsArray);
 
     memset(test_pointersLibArray, 0, 999 * sizeof(int));
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x006D7178 : 0x8B5028), test_pointersLibArray);
+    CHook::Write(g_libGTASA + (VER_x32 ? 0x006D7178 : 0xD194A8), test_pointersLibArray);
 
     // 3 touch end
 #if VER_x32
@@ -110,11 +110,11 @@ void MultiTouch::initialize()
     CHook::WriteMemory(g_libGTASA + 0x00270164, (uintptr_t) "\x03\x28", 2); // LIB_PointerDoubleClicked
     CHook::WriteMemory(g_libGTASA + 0x002700F2, (uintptr_t) "\x03\x2A", 2); // LIB_PointerGetButton
 #else
-    CHook::WriteMemory(g_libGTASA + 0x320844, (uintptr_t)"\x60\x00\x80\x52", 4); // OS_PointerGetNumber
-    CHook::WriteMemory(g_libGTASA + 0x320850, (uintptr_t) "\x1F\x0C\x00\x71", 4); // OS_PointerGetType
-    CHook::WriteMemory(g_libGTASA + 0x326FEC, (uintptr_t) "\x1F\x0C\x00\x71", 4); // LIB_PointerGetCoordinates
-    CHook::WriteMemory(g_libGTASA + 0x32706C, (uintptr_t) "\x1F\x0C\x00\x71", 4); // LIB_PointerGetWheel
-    CHook::WriteMemory(g_libGTASA + 0x3270AC, (uintptr_t) "\x1F\x0C\x00\x71", 4); // LIB_PointerDoubleClicked
+    CHook::WriteMemory(g_libGTASA + 0x7D32F0, (uintptr_t)"\x60\x00\x80\x52", 4); // OS_PointerGetNumber
+    CHook::WriteMemory(g_libGTASA + 0x7D32FC, (uintptr_t) "\x1F\x0C\x00\x71", 4); // OS_PointerGetType
+    CHook::WriteMemory(g_libGTASA + 0x7D7C80, (uintptr_t) "\x1F\x0C\x00\x71", 4); // LIB_PointerGetCoordinates
+    CHook::WriteMemory(g_libGTASA + 0x7D7D4C, (uintptr_t) "\x1F\x0C\x00\x71", 4); // LIB_PointerGetWheel
+    CHook::WriteMemory(g_libGTASA + 0x7D7E8C, (uintptr_t) "\x1F\x0C\x00\x71", 4); // LIB_PointerDoubleClicked
     CHook::WriteMemory(g_libGTASA + 0x327040, (uintptr_t) "\x1F\x0D\x00\x71", 4); // LIB_PointerGetButton
 #endif
 

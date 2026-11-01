@@ -138,15 +138,15 @@ void CGame::EnableZoneNames(bool bEnable)
 // 0.3.7
 void CGame::SetWorldTime(int iHour, int iMinute)
 {
-    *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953143 : 0xBBBC1B)) = (uint8_t)iMinute;
-    *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953142 : 0xBBBC1A)) = (uint8_t)iHour;
+    *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953143 : 0x9F9A3B)) = (uint8_t)iMinute;
+    *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953142 : 0x9F9A3A)) = (uint8_t)iHour;
     ScriptCommand(&set_current_time, iHour, iMinute);
 }
 // 0.3.7
 void CGame::GetWorldTime(int *iHour, int *iMinute)
 {
-	*iMinute = *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953143 : 0xBBBC1B));
-	*iHour = *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953142 : 0xBBBC1A));
+	*iMinute = *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953143 : 0x9F9A3B));
+	*iHour = *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953142 : 0x9F9A3A));
 }
 // 0.3.7
 void CGame::PreloadObjectsAnims()
@@ -179,12 +179,12 @@ void CGame::PreloadObjectsAnims()
 // 0.3.7
 void CGame::SetWorldWeather(int byteWeatherID)
 {
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005CDF88 + 1 : 0x6F24E8), byteWeatherID);
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005CDF88 + 1 : 0x5FC4F8), byteWeatherID);
 
     if(!m_bClockEnabled)
     {
-        *(uint16_t*)(g_libGTASA + (VER_x32 ? 0x00A7D136 : 0xD216F2)) = byteWeatherID;
-        *(uint16_t*)(g_libGTASA + (VER_x32 ? 0x00A7D134 : 0xD216F0)) = byteWeatherID;
+        *(uint16_t*)(g_libGTASA + (VER_x32 ? 0x00A7D136 : 0xCC7452)) = byteWeatherID;
+        *(uint16_t*)(g_libGTASA + (VER_x32 ? 0x00A7D134 : 0xCC7450)) = byteWeatherID;
     }
 }
 // 0.3.7
@@ -192,13 +192,13 @@ void CGame::DisplayHUD(bool bDisp)
 {
 	if (bDisp)
 	{
-		*(uint8_t*)(g_libGTASA + (VER_x32 ? 0x819D88 : 0x9FF3A8)) = 1;
-		*(uint8_t*)(g_libGTASA + (VER_x32 ? 0x991FD8 : 0xC20DFC)) = 0;
+		*(uint8_t*)(g_libGTASA + (VER_x32 ? 0x819D88 : 0x9F13E8)) = 1;
+		*(uint8_t*)(g_libGTASA + (VER_x32 ? 0x991FD8 : 0xA65E5C)) = 0;
 	}
 	else
 	{
-		*(uint8_t*)(g_libGTASA + (VER_x32 ? 0x819D88 : 0x9FF3A8)) = 0;
-		*(uint8_t*)(g_libGTASA + (VER_x32 ? 0x991FD8 : 0xC20DFC)) = 1;
+		*(uint8_t*)(g_libGTASA + (VER_x32 ? 0x819D88 : 0x9F13E8)) = 0;
+		*(uint8_t*)(g_libGTASA + (VER_x32 ? 0x991FD8 : 0xA65E5C)) = 1;
 	}
 }
 // 0.3.7
@@ -301,7 +301,7 @@ void CGame::SetGravity(float fGravity)
 
 bool CGame::IsGamePaused()
 {
-	return *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x96B514 : 0xBDC594));
+	return *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x96B514 : 0xA1A378));
 }
 
 bool CGame::IsGameLoaded()
@@ -312,7 +312,7 @@ bool CGame::IsGameLoaded()
 void CGame::DrawGangZone(float fPos[], uint32_t dwColor, uint32_t dwUnk)
 {
 	// CRadar::DrawAreaOnRadar
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x00443C60 + 1 : 0x528EC4), fPos, &dwColor, dwUnk);
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x00443C60 + 1 : 0x51E49C), fPos, &dwColor, dwUnk);
 }
 // 0.3.7
 uint32_t CGame::CreatePickup(int iModel, int iType, float x, float y, float z, int *pdwIndex)
@@ -363,7 +363,7 @@ void CGame::RemoveModel(int iModel, bool bFromStreaming)
 		{
 			if(ScriptCommand(&is_model_available, iModel))
 				// CStreaming::RemoveModel x64	0000000000391FF0 x32 002D0128
-				((void(*)(int))(g_libGTASA + (VER_x32 ? 0x2D0128 + 1 : 0x391FF0)))(iModel);
+				((void(*)(int))(g_libGTASA + (VER_x32 ? 0x2D0128 + 1 : 0x3AE4EC)))(iModel);
 		}
 		else
 		{
@@ -556,7 +556,15 @@ void CGame::DisableRaceCheckpoint()
 
 uint8_t CGame::GetWantedLevel()
 {
+#if KM_GTA211
+    // FindPlayerWanted(-1)->m_nWantedLevel (CWanted+0x2C), as
+    // CWidgetPlayerInfo::DrawWanted reads it. (The 2.10 address below is an
+    // instruction inside DrawWanted, so it read code bytes, not the level.)
+    auto wanted = ((uintptr_t (*)(int))(g_libGTASA + 0x4B01F4))(-1);
+    return wanted ? (uint8_t) *(uint32_t*)(wanted + 0x2C) : 0;
+#else
     return *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x002BDFDC : 0x0037E160));
+#endif
 }
 
 void CGame::SetWantedLevel(uint8_t level)
@@ -576,7 +584,7 @@ void CGame::DisplayGameText(const char* szStr, int iTime, int iSize)
     CFont::AsciiToGxtChar(szStr, szGameTextMessage);
 
     // CMessages::AddBigMesssage
-    (( void (*)(uint16_t*, int, int))(g_libGTASA + (VER_x32 ? 0x0054C62C + 1 : 0x66C150)))(szGameTextMessage, iTime, iSize);
+    (( void (*)(uint16_t*, int, int))(g_libGTASA + (VER_x32 ? 0x0054C62C + 1 : 0x69E958)))(szGameTextMessage, iTime, iSize);
 }
 // 0.3.7
 void CGame::AddToLocalMoney(int iAmmount)
@@ -618,7 +626,8 @@ void CGame::DisableEnterExits()
 
 void CGame::ToggleCJWalk(bool bUseCJWalk)
 {
-        CHook::NOP(g_libGTASA + (VER_x32 ? 0x004C5F6A : 0x5C3970), 2);
+        // The anim-group store (str w8, [x19, #0x630]) in CPlayerPed::ProcessAnimGroups.
+        CHook::NOP(g_libGTASA + (VER_x32 ? 0x004C5F6A : 0x5B83D8), 2);
 }
 
 void CGame::InitialiseOnceBeforeRW() {
@@ -631,16 +640,16 @@ void CGame::InitialiseOnceBeforeRW() {
 }
 
 void CameraSize(RwCamera* camera, RwRect* rect, RwReal viewWindow, RwReal aspectRatio) {
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005D32AC + 1 : 0x6F7F84), camera, rect, viewWindow, aspectRatio);
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005D32AC + 1 : 0x601B3C), camera, rect, viewWindow, aspectRatio);
 }
 
 void CameraDestroy(RwCamera* camera) {
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005D33A4 + 1 : 0x6F80C0), camera);
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005D33A4 + 1 : 0x601C88), camera);
 }
 
 
 void LightsCreate(RpWorld* world) {
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x0046FC08 + 1 : 0x55BDCC), world);
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x0046FC08 + 1 : 0x55BA3C), world);
 }
 
 void InitGui();
@@ -648,7 +657,7 @@ void InitGui();
 bool CGame::InitialiseRenderWare() {
     FLog("InitialiseRenderWare ..");
 
-    CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0xBBA8D0));
+    CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0x9F86F8));
 
     CTxdStore::Initialise();
     CVisibilityPlugins::Initialise();
@@ -719,9 +728,9 @@ bool CGame::InitialiseRenderWare() {
     LightsCreate(Scene.m_pRpWorld);
 //	CreateDebugFont();
     CFont::Initialise();
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x0046FF38 + 1 : 0x55C1C8)); // CHud::Initialise();
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005B1188 + 1 : 0x6D5970)); // CPlayerSkin::Initialise();
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005B28D4 + 1 : 0x6D6E30)); // CPostEffects::Initialise();
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x0046FF38 + 1 : 0x55BE74)); // CHud::Initialise();
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005B1188 + 1 : 0x5DDDE0)); // CPlayerSkin::Initialise();
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005B28D4 + 1 : 0x5DF67C)); // CPostEffects::Initialise();
     CGame::m_pWorkingMatrix1 = RwMatrixCreate();
     CGame::m_pWorkingMatrix2 = RwMatrixCreate();
 
@@ -791,9 +800,9 @@ void CGame::Process() {
     uint32_t v3; // r5
 
     //FIXME
-    ((void(*)())(g_libGTASA + (VER_x32 ? 0x003F8B50 + 1 : 0x4DB464)))(); // CPad::UpdatePads()
-    ((void(*)())(g_libGTASA + (VER_x32 ? 0x002B03F8 + 1 : 0x36F374)))(); // CTouchInterface::Clear()
-    ((void(*)())(g_libGTASA + (VER_x32 ? 0x0028C178 + 1 : 0x3467BC)))(); // CHID::Update()
+    ((void(*)())(g_libGTASA + (VER_x32 ? 0x003F8B50 + 1 : 0x49B728)))(); // CPad::UpdatePads()
+    ((void(*)())(g_libGTASA + (VER_x32 ? 0x002B03F8 + 1 : 0x500D34)))(); // CTouchInterface::Clear()
+    ((void(*)())(g_libGTASA + (VER_x32 ? 0x0028C178 + 1 : 0x72D330)))(); // CHID::Update()
 
 //	CLoadMonitor::BeginFrame(&g_LoadMonitor);
     CurrentTimeInCycles = CTimer::GetCurrentTimeInCycles();
@@ -808,15 +817,15 @@ void CGame::Process() {
 
     if ( !(CTimer::m_CodePause << 0x18) )
     {
-        auto gMobileMenu = (uintptr_t *) (g_libGTASA + (VER_x32 ? 0x006E0074 : 0x8BE780));
-        ((void(*)(uintptr_t*))(g_libGTASA + (VER_x32 ? 0x0029A730 + 1 : 0x356A7C)))(gMobileMenu); // MobileMenu::Update
+        auto gMobileMenu = (uintptr_t *) (g_libGTASA + (VER_x32 ? 0x006E0074 : 0xD0DB20));
+        ((void(*)(uintptr_t*))(g_libGTASA + (VER_x32 ? 0x0029A730 + 1 : 0x70D3F4)))(gMobileMenu); // MobileMenu::Update
     }
 
     // CTheZones::Update()
 
     // CCover::Update()
 
-    CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0xBBA8D0));
+    CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0x9F86F8));
 
 //	auto p_tx = (CSimpleTransform *)&TheCamera + 0x14 + 0x30;
 //	if ( !TheCamera.m_pMat )
@@ -824,47 +833,47 @@ void CGame::Process() {
 
     //CAudioZones::Update(0, p_tx->m_translate);
 
-    *(int32_t*)(g_libGTASA + (VER_x32 ? 0x00A7D22C: 0xD217F8)) = 0; // CWindModifiers::Number
+    *(int32_t*)(g_libGTASA + (VER_x32 ? 0x00A7D22C: 0xCC7578)) = 0; // CWindModifiers::Number
 
     if ( !CTimer::m_CodePause && !CTimer::m_UserPause )
     {
         CSprite2d::SetRecipNearClip();
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005C89F8 + 1 : 0x6ECF00)))(); // CSprite2d::InitPerFrame();
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005A8A74 + 1 : 0x6CC898)))(); // CFont::InitPerFrame()
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005C89F8 + 1 : 0x5F6D64)))(); // CSprite2d::InitPerFrame();
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005A8A74 + 1 : 0x5D5A04)))(); // CFont::InitPerFrame()
         // CCheat::DoCheats();
         // CClock::Update()
 
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005CC2E8 + 1 : 0x6F0BD8)))(); // CWeather::Update()
-        ((void(*)())(g_libGTASA + (VER_x32 ? 0x0032AED8 + 1 : 0x3F3AD8)))(); // CTheScripts::Process()
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005CC2E8 + 1 : 0x5FAAFC)))(); // CWeather::Update()
+        ((void(*)())(g_libGTASA + (VER_x32 ? 0x0032AED8 + 1 : 0x41233C)))(); // CTheScripts::Process()
         // CCollision::Update()
         //CCollision::Update();
 
         // CPathFind::UpdateStreaming
 
-        CHook::CallFunction<void>(g_libGTASA+(VER_x32?0x57D098+1:0x6A0A14));// CTrain::UpdateTrains();
+        CHook::CallFunction<void>(g_libGTASA+(VER_x32?0x57D098+1:0x6D4218));// CTrain::UpdateTrains();
         //CHook::CallFunction<void>(g_libGTASA+(VER_x32?0x572EBC+1:0x695608));// CHeli::UpdatHelis
         // CDarkel::Update()
-        ((void(*)())(g_libGTASA + (VER_x32 ? 0x005BE838 + 1 : 0x6E2F08)))(); // CSkidmarks::Update();
-        ((void(*)())(g_libGTASA + (VER_x32 ? 0x005AB4C8 + 1 : 0x6D032C)))(); // CGlass::Update()
+        ((void(*)())(g_libGTASA + (VER_x32 ? 0x005BE838 + 1 : 0x5EC704)))(); // CSkidmarks::Update();
+        ((void(*)())(g_libGTASA + (VER_x32 ? 0x005AB4C8 + 1 : 0x5D8578)))(); // CGlass::Update()
         // CWanted::UpdateEachFrame();
         // CCreepingFire::Update();
         // CSetPieces::Update();
 
-        auto gFireManager = (uintptr_t *) (g_libGTASA + (VER_x32 ? 0x00958800 : 0xBC12D8));
-        ((void (*)(uintptr_t *)) (g_libGTASA + (VER_x32 ? 0x003F1628 + 1 : 0x4D361C)))(gFireManager); // CFireManager::Update
+        auto gFireManager = (uintptr_t *) (g_libGTASA + (VER_x32 ? 0x00958800 : 0x9FF0F8));
+        ((void (*)(uintptr_t *)) (g_libGTASA + (VER_x32 ? 0x003F1628 + 1 : 0x4930A8)))(gFireManager); // CFireManager::Update
 
         // FIXME: add if
-        ((void(*)(bool))(g_libGTASA + (VER_x32 ? 0x004CC380 + 1 : 0x5CB5E0)))(false); // CPopulation::Update нужно (
+        ((void(*)(bool))(g_libGTASA + (VER_x32 ? 0x004CC380 + 1 : 0x5BF528)))(false); // CPopulation::Update нужно (
 
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005DB8E8 + 1 : 0x700AF4)))(); // CWeapon::UpdateWeapons()
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005DB8E8 + 1 : 0x6F99C4)))(); // CWeapon::UpdateWeapons()
 //		if ( !CCutsceneMgr::ms_running )
 //			CTheCarGenerators::Process();
 //		CCranes::UpdateCranes();
 //		CClouds::Update();
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005A6720 + 1 : 0x6CA130)))(); // CMovingThings::Update();
-        ((void(*)())(g_libGTASA + (VER_x32 ? 0x005CBB20 + 1 : 0x6F04CC)))(); // CWaterCannons::Update()
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005A6720 + 1 : 0x5D2BB8)))(); // CMovingThings::Update();
+        ((void(*)())(g_libGTASA + (VER_x32 ? 0x005CBB20 + 1 : 0x5FA338)))(); // CWaterCannons::Update()
 //		CUserDisplay::Process();
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x00427744 + 1 : 0x50BE40)))(); // CWorld::Process()
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x00427744 + 1 : 0x4CCB98)))(); // CWorld::Process()
 
 //		CLoadMonitor::EndFrame(&g_LoadMonitor);
 
@@ -872,35 +881,35 @@ void CGame::Process() {
         {
             CPickups::Update();
 //			CCarCtrl::PruneVehiclesOfInterest();
-            CHook::CallFunction<void>(g_libGTASA+(VER_x32?0x30E760+1:0x3D4134)); //CGarages::Update();
+            CHook::CallFunction<void>(g_libGTASA+(VER_x32?0x30E760+1:0x3F231C)); //CGarages::Update();
 // 			CEntryExitManager::Update();
-            CHook::CallFunction<void>(g_libGTASA+(VER_x32?0x3616C4+1:0x4304D0)); //	CStuntJumpManager::Update();
-            ((void (*)()) (g_libGTASA + (VER_x32 ? 0x0059CFC0 + 1 : 0x6C13F0)))(); // CBirds::Update()
-            ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005C03E4 + 1 : 0x6E4A7C)))(); // CSpecialFX::Update()
+            CHook::CallFunction<void>(g_libGTASA+(VER_x32?0x3616C4+1:0x450418)); //	CStuntJumpManager::Update();
+            ((void (*)()) (g_libGTASA + (VER_x32 ? 0x0059CFC0 + 1 : 0x5C94AC)))(); // CBirds::Update()
+            ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005C03E4 + 1 : 0x5EE9C0)))(); // CSpecialFX::Update()
             // CRopes::Update();
         }
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005B28D8 + 1 : 0x6D6E34)))(); // CPostEffects::Update()
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x0041EF78 + 1 : 0x502ADC)))(); // CTimeCycle::Update() crash without
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005B28D8 + 1 : 0x5DF680)))(); // CPostEffects::Update()
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x0041EF78 + 1 : 0x4C2E24)))(); // CTimeCycle::Update() crash without
         // CPopCycle::Update()
 
         // CInterestingEvents::ScanForNearbyEntities
 
-        ((void (*)(CCamera*)) (g_libGTASA + (VER_x32 ? 0x003DC7D0 + 1 : 0x4BAB78)))(&TheCamera); // CCamera::Process()
+        ((void (*)(CCamera*)) (g_libGTASA + (VER_x32 ? 0x003DC7D0 + 1 : 0x470E98)))(&TheCamera); // CCamera::Process()
 
         // CCullZones::Update() менты не могут найти?
-        CHook::CallFunction<void>(g_libGTASA+(VER_x32 ? 0x307D8C+1:0x3CD630));// CGameLogic::Update()
+        CHook::CallFunction<void>(g_libGTASA+(VER_x32 ? 0x307D8C+1:0x3EB724));// CGameLogic::Update()
         // CGangWars::Update();
         // CConversations::Update()
         // CPedToPlayerConversations::Update()
         // CBridge::Update()
 
         //((void (*)()) (g_libGTASA + (VER_x32 ? 0x005A3E40 + 1 : 0x6C75E4)))(); // CCoronas::DoSunAndMoon()
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005A22C8 + 1 : 0x6C5BE0)))(); // CCoronas::Update()
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005BD370 + 1 : 0x6E1BC4)))(); // CShadows::UpdatePermanentShadows()
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005A22C8 + 1 : 0x5CDF50)))(); // CCoronas::Update()
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x005BD370 + 1 : 0x5EB814)))(); // CShadows::UpdatePermanentShadows()
 
         // CPlantMgr::Update
 
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x002CA3A4 + 1 : 0x38B6DC)))(); // CCustomBuildingRenderer::Update()
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x002CA3A4 + 1 : 0x35DF68)))(); // CCustomBuildingRenderer::Update()
 //		if ( v6 <= 3 )
 //			CCarCtrl::GenerateRandomCars();
 //		CRoadBlocks::GenerateRoadBlocks();
@@ -908,18 +917,18 @@ void CGame::Process() {
 //		CCarCtrl::RemoveCarsIfThePoolGetsFull();
         auto temp = TheCamera.m_pRwCamera;
 
-        auto g_fx = *(uintptr_t *) (g_libGTASA + (VER_x32 ? 0x00820520 : 0xA062A8));
-        ((void (*)(uintptr_t*, RwCamera*, float )) (g_libGTASA + (VER_x32 ? 0x00363DE0 + 1 : 0x433F48)))(&g_fx, temp, CTimer::ms_fTimeStep / 50.0f); // Fx_c::Update
+        auto g_fx = *(uintptr_t *) (g_libGTASA + (VER_x32 ? 0x00820520 : 0xA5BC20));
+        ((void (*)(uintptr_t*, RwCamera*, float )) (g_libGTASA + (VER_x32 ? 0x00363DE0 + 1 : 0x4D5014)))(&g_fx, temp, CTimer::ms_fTimeStep / 50.0f); // Fx_c::Update
 
-        auto g_breakMan = (uintptr_t *) (g_libGTASA + (VER_x32 ? 0x0099DD14 : 0xC31CF0));
-        ((void (*)(uintptr_t*, float )) (g_libGTASA + (VER_x32 ? 0x0045267C + 1 : 0x53AFDC)))(g_breakMan, CTimer::ms_fTimeStep); // BreakManager_c::Update
+        auto g_breakMan = (uintptr_t *) (g_libGTASA + (VER_x32 ? 0x0099DD14 : 0xBFF218));
+        ((void (*)(uintptr_t*, float )) (g_libGTASA + (VER_x32 ? 0x0045267C + 1 : 0x538464)))(g_breakMan, CTimer::ms_fTimeStep); // BreakManager_c::Update
 
         // InteriorManager_c::Update(&g_interiorMan);
         // ProcObjectMan_c::Update
 
         // WaterCreatureManager_c::Update
 
-        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x00596540 + 1 : 0x6BB3A8)))(); // CWaterLevel::PreRenderWater()
+        ((void (*)()) (g_libGTASA + (VER_x32 ? 0x00596540 + 1 : 0x6EF688)))(); // CWaterLevel::PreRenderWater()
     }
 
     //CHook::CallFunction<void>(g_libGTASA+(VER_x32?0x572EBC+1:0x695608));
@@ -938,10 +947,10 @@ void CGame::InjectHooks()
     CHook::Redirect("_ZN5CGame22InitialiseOnceBeforeRWEv", &CGame::InitialiseOnceBeforeRW);
     CHook::Redirect("_ZN5CGame7ProcessEv", &CGame::Process);
 
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x00678C38 : 0x84F8A0), &CGame::currArea);
+    CHook::Write(g_libGTASA + (VER_x32 ? 0x00678C38 : 0x8376C0), &CGame::currArea);
 
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x006796E8 : 0x850DF0), &CGame::m_pWorkingMatrix1);
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x00677B38 : 0x84D6A0), &CGame::m_pWorkingMatrix2);
+    CHook::Write(g_libGTASA + (VER_x32 ? 0x006796E8 : 0x839DC0), &CGame::m_pWorkingMatrix1);
+    CHook::Write(g_libGTASA + (VER_x32 ? 0x00677B38 : 0x839DC8), &CGame::m_pWorkingMatrix2);
 }
 
 bool CGame::CanSeeOutSideFromCurrArea() {

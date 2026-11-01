@@ -96,22 +96,22 @@ void RenderEffects() {
     //((void(*)())(g_libGTASA + (VER_x32 ? 0x5C1280 + 1 : 0x6E5844) + 1))(); // 32 - 0x5C1280 // 64 - 0x6E5844
     //((void(*)())(g_libGTASA + (VER_x32 ? 0x5C1528 + 1 : 0x6E5A30) + 1))(); // 32 - 0x5C1528 // 64 - 0x6E5A30
 
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x0059DA40 + 1 : 0x6C1D6C));
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005BE914 + 1 : 0x6E2FB4));
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x0059DA40 + 1 : 0x5C9E04));
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005BE914 + 1 : 0x5EC7BC));
 //    CRopes::Render();
 //    CGlass::Render();
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005A6BC8 + 1 : 0x6CA5D0));
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005A6BC8 + 1 : 0x5D32E4));
     CVisibilityPlugins::RenderReallyDrawLastObjects();
     CCoronas::Render();
 
     // FIXME
-    CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0xBBA8D0));
-    auto g_fx = *(uintptr_t *) (g_libGTASA + (VER_x32 ? 0x00820520 : 0xA062A8));
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x00363DF0 + 1 : 0x433F54), &g_fx, TheCamera.m_pRwCamera, false);
+    CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0x9F86F8));
+    auto g_fx = *(uintptr_t *) (g_libGTASA + (VER_x32 ? 0x00820520 : 0xA5BC20));
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x00363DF0 + 1 : 0x4D5020), &g_fx, TheCamera.m_pRwCamera, false);
 
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005CBBAC + 1 : 0x6F054C));
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x0059BF84 + 1 : 0x6C0268));
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005A1C38 + 1 : 0x6C552C));
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005CBBAC + 1 : 0x5FA3B8));
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x0059BF84 + 1 : 0x6F4AA0));
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005A1C38 + 1 : 0x5CD7EC));
     //   CClouds::VolumetricCloudsRender();
 ////    if (CHeli::NumberOfSearchLights || CTheScripts::NumberOfScriptSearchLights) {
 ////        CHeli::Pre_SearchLightCone();
@@ -119,15 +119,15 @@ void RenderEffects() {
 ////        CTheScripts::RenderAllSearchLights();
 ////        CHeli::Post_SearchLightCone();
 ////    }
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005E3390 + 1 : 0x708DF0));
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005E3390 + 1 : 0x702670));
 ////    if (CReplay::Mode != MODE_PLAYBACK && !CPad::GetPad(0)->DisablePlayerControls) {
 ////        FindPlayerPed()->DrawTriangleForMouseRecruitPed();
 ////    }
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005C0B14 + 1 : 0x6E50CC));
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005C0B14 + 1 : 0x5EEFA8));
 //    //CVehicleRecording::Render();
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005B19D0 + 1 : 0x6D6068));
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005B19D0 + 1 : 0x5DE58C));
 //    //CRenderer::RenderFirstPersonVehicle();
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005B5F78 + 1 : 0x6DA2B8));
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005B5F78 + 1 : 0x5E2C9C));
 
     //DebugModules::Render3D();
 }
@@ -173,7 +173,7 @@ void ShowHud()
                             pGame->GetWantedLevel()
                     );
                 }
-                *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009ff3A8)) = 0;
+                *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009F13E8)) = 0;
             }
         }
     }
@@ -189,15 +189,15 @@ void Render2dStuff()
 
     /*if (pSettings && pSettings->Get().iHud)
     {
-        *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009ff3A8)) = 1;
+        *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009F13E8)) = 1;
     }
     else if (pSettings && !pSettings->Get().iHud)
     {
-        *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009ff3A8)) = 0;
+        *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009F13E8)) = 0;
     }*/
 
-    if( CHook::CallFunction<bool>(g_libGTASA + (VER_x32 ? 0x001BB7F4 + 1 : 0x24EA90)) ) // emu_IsAltRenderTarget()
-        CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x001BC20C + 1 : 0x24F5B8)); // emu_FlushAltRenderTarget()
+    if( CHook::CallFunction<bool>(g_libGTASA + (VER_x32 ? 0x001BB7F4 + 1 : 0x739F40)) ) // emu_IsAltRenderTarget()
+        CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x001BC20C + 1 : 0x73A848)); // emu_FlushAltRenderTarget()
 
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, RWRSTATE(FALSE));
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, RWRSTATE(FALSE));
@@ -212,12 +212,12 @@ void Render2dStuff()
     CHook::CallFunction<void>("_ZN4CHud4DrawEv");
     //	GPS::Draw();
     //
-    ((void(*)(bool) )(g_libGTASA + (VER_x32 ? 0x002B0BD8 + 1 : 0x36FB00)) )(false); // CTouchInterface::DrawAll
+    ((void(*)(bool) )(g_libGTASA + (VER_x32 ? 0x002B0BD8 + 1 : 0x5017B0)) )(false); // CTouchInterface::DrawAll
 
     CHook::CallFunction<void>("_Z12emu_GammaSeth", 1);
 
-    ((void (*)(bool)) (g_libGTASA + (VER_x32 ? 0x0054BDD4 + 1 : 0x66B678)))(1u); // CMessages::Display - gametext
-    ((void (*)(bool)) (g_libGTASA + (VER_x32 ? 0x005A9120 + 1 : 0x6CCEA0)))(1u); // CFont::RenderFontBuffer
+    ((void (*)(bool)) (g_libGTASA + (VER_x32 ? 0x0054BDD4 + 1 : 0x69DDB8)))(1u); // CMessages::Display - gametext
+    ((void (*)(bool)) (g_libGTASA + (VER_x32 ? 0x005A9120 + 1 : 0x5D6090)))(1u); // CFont::RenderFontBuffer
     CHook::CallFunction<void>("_Z12emu_GammaSeth", 0);
 
     if(pNetGame)
@@ -325,7 +325,7 @@ void CEntity_Render_hook(CEntityGTA* pEntity)
     }
     if(iBuildingToRemoveCount > 1)
     {
-        if(pEntity && *(uintptr_t*)pEntity != g_libGTASA+(VER_x32 ? 0x667D18:0x8300A0) && !pNetGame->GetObjectPool()->GetObjectFromGtaPtr(pEntity))
+        if(pEntity && *(uintptr_t*)pEntity != g_libGTASA+(VER_x32 ? 0x667D18:0x81E630) && !pNetGame->GetObjectPool()->GetObjectFromGtaPtr(pEntity))
         {
             for (auto &entry : RemoveBuildingData)
             {
@@ -458,13 +458,13 @@ int TaskEnterVehicleHook(uintptr_t a1, uintptr_t a2)
     }
 
     // CTask::operator new
-    uintptr_t pTask = ((uintptr_t (*)(void))(g_libGTASA + (VER_x32 ? 0x4D6A70:0x5D7414)))();
+    uintptr_t pTask = ((uintptr_t (*)(void))(g_libGTASA + (VER_x32 ? 0x4D6A70:0x60E1A0)))();
 
     // CTaskComplexEnterCarAsDriver::CTaskComplexEnterCarAsDriver
-    ((void (__fastcall *)(uintptr_t, uintptr_t))(g_libGTASA + (VER_x32 ? 0x4F6FE0:0x6007E0)))(pTask, a1);
+    ((void (__fastcall *)(uintptr_t, uintptr_t))(g_libGTASA + (VER_x32 ? 0x4F6FE0:0x6372AC)))(pTask, a1);
 
     // CTaskManager::SetTask
-    ((int (__fastcall *)(uintptr_t, uintptr_t, int, int))(g_libGTASA + (VER_x32 ? 0x53397A:0x64E084)))(a2, pTask, 3, 0);
+    ((int (__fastcall *)(uintptr_t, uintptr_t, int, int))(g_libGTASA + (VER_x32 ? 0x53397A:0x684028)))(a2, pTask, 3, 0);
 
     return true;
 }
@@ -726,7 +726,9 @@ uint32_t CWorld__ProcessLineOfSight_hook(CVector* vecOrigin, CVector* vecEnd, CC
     uintptr_t dwRetAddr = 0;
     GET_LR(dwRetAddr);
 
-    if(dwRetAddr == (VER_x32 ? 0x005dd0b0 + 1 : 0x70253C) || g_bForceWorldProcessLineOfSight)
+    // Return address of the ProcessLineOfSight call in CWeapon::FireInstantHit
+    // (2.11: the one between sincosf and CPed::IsPlayer/CheckForShootingVehicleOccupant).
+    if(dwRetAddr == (VER_x32 ? 0x005dd0b0 + 1 : 0x6FB42C) || g_bForceWorldProcessLineOfSight)
     {
         g_bForceWorldProcessLineOfSight = false;
         //LOGI("CWorld_ProcessLineOfSight iLagCompensationMode: %d", g_iLagCompensationMode);
@@ -738,7 +740,7 @@ uint32_t CWorld__ProcessLineOfSight_hook(CVector* vecOrigin, CVector* vecEnd, CC
             {
                 if (g_pCurrentBulletData && g_pCurrentBulletData->pEntity)
                 {
-                    if (*(uintptr_t*)(g_pCurrentBulletData->pEntity) != g_libGTASA+(VER_x32 ? 0x667D18:0x8300A0)) // CPlaceable
+                    if (*(uintptr_t*)(g_pCurrentBulletData->pEntity) != g_libGTASA+(VER_x32 ? 0x667D18:0x81E630)) // CPlaceable
                     {
                         if (g_iLagCompensationMode)
                         {
@@ -1391,7 +1393,14 @@ void NvUtilInit_hook()
 
     NvUtilInit();
 
+#if KM_GTA211
+    // 2.11's StorageRootBuffer isn't named in the stripped build; the host
+    // passes the same path it gives the engine (Engine211Activity).
+    extern char g_szStorageRoot211[];
+    g_pszStorage = g_szStorageRoot211;
+#else
     g_pszStorage = (char*)(g_libGTASA + (VER_x32 ? 0x6D687C : 0x8B46A8)); // StorageRootBuffer
+#endif
 
     ReadSettingFile();
 
@@ -1405,6 +1414,53 @@ struct stFile
 };
 
 char lastFile[123];
+
+#if KM_GTA211
+// 2.11: NvFOpen(path) opens from the APK, the asset pack, then disk. Use
+// SA-MP's own copy from <storage>/SAMP/ when one is there (main.scm,
+// peds.ide, ...), otherwise let the engine open the game's file.
+stFile* (*NvFOpen211_orig)(const char* path);
+static const struct { const char* game; size_t len; const char* ours; } kSampFiles[] = {
+    { "DATA/SCRIPT/MAINV1.SCM", 22, "SAMP/main.scm" },
+    { "DATA/SCRIPT/SCRIPTV1.IMG", 24, "SAMP/script.img" },
+    { "DATA/PEDS.IDE", 13, "SAMP/peds.ide" },
+    { "DATA/VEHICLES.IDE", 17, "SAMP/vehicles.ide" },
+    { "DATA/GTA.DAT", 12, "SAMP/gta.dat" },
+    { "DATA/HANDLING.CFG", 17, "SAMP/handling.cfg" },
+    { "DATA/WEAPON.DAT", 15, "SAMP/weapon.dat" },
+};
+// The engine writes these with '\\' and mixed case (DATA\\GTA.DAT, data\\script\\mainv1.scm).
+static bool SameGamePath(const char* path, const char* want, size_t len)
+{
+    for (size_t i = 0; i < len; i++) {
+        char a = path[i], b = want[i];
+        if (!a) return false;
+        if (a == '\\') a = '/';
+        if (tolower((unsigned char) a) != tolower((unsigned char) b)) return false;
+    }
+    return path[len] == '\0';
+}
+
+stFile* NvFOpen211(const char* path)
+{
+    if (path) {
+        strncpy(lastFile, path, sizeof(lastFile) - 1);
+        for (auto& f : kSampFiles) {
+            if (!SameGamePath(path, f.game, f.len)) continue;
+            char ours[512];
+            snprintf(ours, sizeof(ours), "%s%s", g_pszStorage ? g_pszStorage : "", f.ours);
+            if (FILE* fp = fopen(ours, "rb")) {
+                FLog("NvFOpen: %s -> %s", path, ours);
+                auto* st = (stFile*)calloc(1, 0x10);
+                st->isFileExist = 1; // 2.11's "disk file" kind, as its own fopen branch sets
+                st->f = fp;
+                return st;
+            }
+        }
+    }
+    return NvFOpen211_orig(path);
+}
+#endif
 
 stFile* NvFOpen(const char* r0, const char* r1, int r2, int r3)
 {
@@ -1515,7 +1571,7 @@ void MainMenu_OnStartSAMP()
     pGame->StartGame();
 
     // StartGameScreen::OnNewGameCheck()
-    (( void (*)())(g_libGTASA + (VER_x32 ? 0x002A7270 + 1 : 0x365EA0)))();
+    (( void (*)())(g_libGTASA + (VER_x32 ? 0x002A7270 + 1 : 0x718FCC)))();
 
     //CHook::InlineHook(g_libGTASA, (VER_x32 ? 0x5A3E40 : , &DoSunAndMoon, &dword_67E048);
 
@@ -1781,7 +1837,7 @@ void(*CStreaming__Init2)();
 void CStreaming__Init2_hook()
 {
     CStreaming__Init2();
-    *(uint32_t*)(g_libGTASA+(VER_x32 ? 0x00685FA0:0x85EBD8)) = 536870912;
+    *(uint32_t*)(g_libGTASA+(VER_x32 ? 0x00685FA0:0x878540)) = 536870912;
 }
 
 void SetUpGLHooks();
@@ -1801,7 +1857,7 @@ int mpg123_param_hook(void* mh, int key, long val, int ZERO, double fval)
 void InjectHooks()
 {
     FLog("InjectHooks");
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x678954 : 0x84F2D0), &Scene);
+    CHook::Write(g_libGTASA + (VER_x32 ? 0x678954 : 0x8379C8), &Scene);
 
 #if !VER_x32 // mb all.. wtf crash x64?
     CHook::RET("_ZN11CPlayerInfo14LoadPlayerSkinEv");
@@ -1866,41 +1922,41 @@ void InjectHooks()
     //CWidgetRadar::InjectHooks();
 
     //CRealTimeShadowManager::InjectHooks();
-    CHook::Write(g_libGTASA+(VER_x32 ? 0xA41140 : 0xCE3EE8), &COcclusion::aOccluders);
-    CHook::Write(g_libGTASA+(VER_x32 ? 0xA45790:0xCE8538), &COcclusion::NumOccludersOnMap);
+    CHook::Write(g_libGTASA+(VER_x32 ? 0xA41140 : 0xC89C68), &COcclusion::aOccluders);
+    CHook::Write(g_libGTASA+(VER_x32 ? 0xA45790:0xC8E2B8), &COcclusion::NumOccludersOnMap);
 }
 
 void InstallCutHooks()
 {
 // pvr
-    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x714003 ));
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x714003 ) + 12) = 'd';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x714003 ) + 13) = 'x';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x714003 ) + 14) = 't';
+    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x24E4C4 ));
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x24E4C4 ) + 12) = 'd';
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x24E4C4 ) + 13) = 'x';
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x24E4C4 ) + 14) = 't';
 
-    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x71406F));
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x71406F) + 12) = 'd';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x71406F) + 13) = 'x';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x71406F) + 14) = 't';
+    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x246D17));
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x246D17) + 12) = 'd';
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x246D17) + 13) = 'x';
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x246D17) + 14) = 't';
 
 // etc
 
-    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E878C : 0x714017 ));
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E878C : 0x714017 ) + 12) = 'd';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E878C : 0x714017 ) + 13) = 'x';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E878C : 0x714017 ) + 14) = 't';
+    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E878C : 0x25ADF9 ));
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E878C : 0x25ADF9 ) + 12) = 'd';
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E878C : 0x25ADF9 ) + 13) = 'x';
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E878C : 0x25ADF9 ) + 14) = 't';
 
-    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E8BF4 : 0x71407F));
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8BF4 : 0x71407F) + 12) = 'd';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8BF4 : 0x71407F) + 13) = 'x';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8BF4 : 0x71407F) + 14) = 't';
+    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E8BF4 : 0x24D527));
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8BF4 : 0x24D527) + 12) = 'd';
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8BF4 : 0x24D527) + 13) = 'x';
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8BF4 : 0x24D527) + 14) = 't';
 
 // unc
 
-    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E87F0 : 0x713FB3 ));
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87F0 : 0x713FB3 ) + 12) = 'd';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87F0 : 0x713FB3 ) + 13) = 'x';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87F0 : 0x713FB3 ) + 14) = 't';
+    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E87F0 : 0x25707B ));
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87F0 : 0x25707B ) + 12) = 'd';
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87F0 : 0x25707B ) + 13) = 'x';
+    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87F0 : 0x25707B ) + 14) = 't';
 }
 
 
@@ -1915,7 +1971,7 @@ uintptr_t* g_WaterShaderClass = nullptr;
 void (*emu_glEndInternal)();
 void emu_glEndInternal_hook()
 {
-    if ( ((*(uintptr_t *)(g_libGTASA + (VER_x32 ? 0x006B7094 : 0x8944A8))) & 0x80000) != 0 )
+    if ( ((*(uintptr_t *)(g_libGTASA + (VER_x32 ? 0x006B7094 : 0xD106C0))) & 0x80000) != 0 )
     {
         if ( g_WaterShaderClass == nullptr )
         {
@@ -1941,14 +1997,18 @@ void InstallSpecialHooks()
     //InstallCutHooks(); //If u use CRMP cache, u need to use this
 
     CHook::Redirect("_ZN5CGame20InitialiseRenderWareEv", &CGame::InitialiseRenderWare);
-    CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x6785FC : 0x84EC20), &StartGameScreen__OnNewGameCheck_hook, &StartGameScreen__OnNewGameCheck);
+    CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x6785FC : 0x83DE90), &StartGameScreen__OnNewGameCheck_hook, &StartGameScreen__OnNewGameCheck);
 
     CHook::InlineHook("_Z10NvUtilInitv", &NvUtilInit_hook, &NvUtilInit);
 
     CHook::RET("_ZN12CCutsceneMgr16LoadCutsceneDataEPKc"); // LoadCutsceneData
     CHook::RET("_ZN12CCutsceneMgr10InitialiseEv");			// CCutsceneMgr::Initialise
 
+#if KM_GTA211
+    CHook::InlineHook("_Z7NvFOpenPKc", &NvFOpen211, &NvFOpen211_orig);
+#else
     CHook::Redirect("_Z7NvFOpenPKcS0_bb", &NvFOpen);
+#endif
 
     CHook::InlineHook("_ZN14MainMenuScreen6UpdateEf", &MainMenuScreen__Update_hook, &MainMenuScreen__Update);
 
@@ -1980,7 +2040,9 @@ void InstallHooks()
 
     CHook::Redirect("_Z10GetTexturePKc", &CUtil::GetTexture);
 
+#if !KM_GTA211 // TODO 2.11: MainMenuScreen::OnExit is gone; exiting from the menu doesn't disconnect yet
     CHook::InlineHook("_ZN14MainMenuScreen6OnExitEv", &MainMenuScreen__OnExit_hook, &MainMenuScreen__OnExit);
+#endif
 
     CHook::InlineHook("_ZN17CTaskSimpleUseGun17RemoveStanceAnimsEP4CPedf", &CTaskSimpleUseGun__RemoveStanceAnims_hook, &CTaskSimpleUseGun__RemoveStanceAnims);
 
@@ -2004,7 +2066,7 @@ void InstallHooks()
     CHook::InlineHook("_ZN7CObject6RenderEv", &CObject_Render_hook, & CObject_Render);
 
     CHook::Redirect("_Z19PlayerIsEnteringCarv", &PlayerIsEnteringCar);
-    if(*(uint8_t *)(g_libGTASA + (VER_x32 ? 0x6B8B9C:0x896135)))
+    if(*(uint8_t *)(g_libGTASA + (VER_x32 ? 0x6B8B9C:0xD13C65)))
     {
         CHook::Redirect("_ZNK14TextureListing11GetMipCountEv", &getmip);
     }
@@ -2012,7 +2074,9 @@ void InstallHooks()
     if (!eglGetProcAddress("glAlphaFuncQCOM")) {
         // If "glAlphaFuncQCOM" is not available, try "glAlphaFunc"
 
-        if (eglGetProcAddress("glAlphaFunc")) {
+        if (!KM_GTA211 && eglGetProcAddress("glAlphaFunc")) {
+            // (2.11's glAlphaFuncQCOM pointer is a static the stripped build
+            // doesn't name, so 2.11 takes the RQ_Command_rqSetAlphaTest path.)
             // If "glAlphaFunc" is found, store the address in the global library
             *((void**)(g_libGTASA + (VER_x32 ? 0x6BCBF8:0x89A1B0))) = (void*)eglGetProcAddress("glAlphaFunc");
         } else {
@@ -2041,7 +2105,7 @@ void InstallHooks()
 
     CHook::InlineHook("_ZN9CRenderer24RenderEverythingBarRoadsEv", &CRenderer__RenderEverythingBarRoads_hook, &CRenderer__RenderEverythingBarRoads);
 
-    ms_fAspectRatio = (float*)(g_libGTASA+(VER_x32 ? 0xA26A90:0xCC7F00));
+    ms_fAspectRatio = (float*)(g_libGTASA+(VER_x32 ? 0xA26A90:0xC6DC70));
     CHook::InlineHook("_ZN4CHud14DrawCrossHairsEv", &DrawCrosshair_hook, &DrawCrosshair);
 
     // retexture
@@ -2050,9 +2114,11 @@ void InstallHooks()
 #if VER_x32
     CHook::UnFuck(g_libGTASA + 0x4DD9E8);
     *(float*)(g_libGTASA + 0x4DD9E8) = 0.015f;
-#else
+#elif !KM_GTA211
     CHook::Write(g_libGTASA + 0x5DF790, 0x90000AA9);
     CHook::Write(g_libGTASA + 0x5DF794, 0xBD48D521);
+#else
+    // TODO 2.11: CTaskSimpleUseGun::SetMoveAnim's float constant load was rebuilt; not patched yet.
 #endif
 
     CHook::InlineHook("_ZN10CStreaming5Init2Ev", &CStreaming__Init2_hook, &CStreaming__Init2);

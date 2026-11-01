@@ -60,16 +60,16 @@ CPlayerPed::CPlayerPed(int iNum, int iSkin, float fX, float fY, float fZ, float 
     }*/
 
     //458FC0 ; CPlayerPed::SetupPlayerPed(int)
-    ((void (*)(int))(g_libGTASA + (VER_x32 ? 0x4C39A4 + 1:0x5C0FD4)))(iPlayerNum); // CPlayerPed::SetupPlayerPed
+    ((void (*)(int))(g_libGTASA + (VER_x32 ? 0x4C39A4 + 1:0x5B5940)))(iPlayerNum); // CPlayerPed::SetupPlayerPed
     //4543D4 ; CPlayerPed::DeactivatePlayerPed
-    ((void (*)(int))(g_libGTASA + (VER_x32 ? 0x4C3AD4+1: 0x5C1140)))(iPlayerNum); // CPlayerPed::DeactivatePlayerPed
+    ((void (*)(int))(g_libGTASA + (VER_x32 ? 0x4C3AD4+1: 0x5B5AB0)))(iPlayerNum); // CPlayerPed::DeactivatePlayerPed
     //3AC5DC ; FindPlayerPed(int)
     m_pPed = FindPlayerPed(iNum); // CPlayerPed::FindPlayerPed
 
     CVector posn = {fX, fY, fZ};
-    ((void (*)(const CVector&, CEntityGTA*))(g_libGTASA + (VER_x32 ? 0x34DA34+1: 0x419BE0)))(posn, m_pPed); // CTheScripts::ClearSpaceForMissionEntity
+    ((void (*)(const CVector&, CEntityGTA*))(g_libGTASA + (VER_x32 ? 0x34DA34+1: 0x423758)))(posn, m_pPed); // CTheScripts::ClearSpaceForMissionEntity
     //4543F8 ; CPlayerPed::ReactivatePlayerPed
-    ((void (*)(int))(g_libGTASA+(VER_x32 ? 0x4C3AEC + 1:0x5C1158)))(iPlayerNum); // CPlayerPed::ReactivatePlayerPed
+    ((void (*)(int))(g_libGTASA+(VER_x32 ? 0x4C3AEC + 1:0x5B5AC8)))(iPlayerNum); // CPlayerPed::ReactivatePlayerPed
     //((void (*)(ENTITY_TYPE*))(SA_ADDR(0x3C14B0 + 1)))((ENTITY_TYPE*)m_pPed); // CWorld::Add
     CWorld::Add(m_pPed);
 
@@ -162,7 +162,7 @@ CPlayerPed::~CPlayerPed()
 		//((void (*)(CPedGTA*))(*(void**)(m_pPed->entity.vtable + 0x4)))(m_pPed);
 
 		// CPopulation::RemovePed
-        ((void (*)(uintptr_t))(g_libGTASA + (VER_x32 ? 0x004CE6A0 + 1 : 0x5CDC64)))((uintptr_t)m_pPed);
+        ((void (*)(uintptr_t))(g_libGTASA + (VER_x32 ? 0x004CE6A0 + 1 : 0x5C1B10)))((uintptr_t)m_pPed);
 
 		m_pPed = nullptr;
 	}
@@ -412,7 +412,7 @@ bool CPlayerPed::IsPlayingAnimation(int iIndex)
 	const char* pNameAnim = strchr(pAnim, ':') + 1;
 
     //RpAnimBlendClumpGetAssociation(RpClump *,char const*)	000000000046AAF4
-	uintptr_t blendAssoc = ((uintptr_t(*)(RpClump* clump, const char* szName))(g_libGTASA + (VER_x32 ? 0x00390A24 + 1:0x46AAF4)))
+	uintptr_t blendAssoc = ((uintptr_t(*)(RpClump* clump, const char* szName))(g_libGTASA + (VER_x32 ? 0x00390A24 + 1:0x3763C8)))
 			(m_pPed->m_pRwClump, pNameAnim);	// RpAnimBlendClumpGetAssociation
 
 	if (blendAssoc)
@@ -427,7 +427,7 @@ bool CPlayerPed::IsPlayingAnimation(int iIndex)
 
 bool IsBlendAssocGroupLoaded(int iGroup)
 {
-	uintptr_t* pBlendAssocGroup = *(uintptr_t * *)(g_libGTASA + (VER_x32 ? 0x00942184 : 0xBA88A8)); // CAnimManager::ms_aAnimAssocGroups
+	uintptr_t* pBlendAssocGroup = *(uintptr_t * *)(g_libGTASA + (VER_x32 ? 0x00942184 : 0x8D1BB8)); // CAnimManager::ms_aAnimAssocGroups
 	uintptr_t blendAssoc = (uintptr_t)pBlendAssocGroup;
 	blendAssoc += (iGroup * 20);
 	pBlendAssocGroup = (uintptr_t*)blendAssoc;
@@ -499,7 +499,7 @@ void CPlayerPed::RemoveWeaponWhenEnteringVehicle()
 void CPlayerPed::SetInitialState()
 {
 	// CPlayerPed::SetInitialState
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x004C37B4 + 1 : 0x5C0D50), m_pPed);
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x004C37B4 + 1 : 0x5B56AC), m_pPed);
 }
 // 0.3.7
 void CPlayerPed::RestartIfWastedAt(CVector *vecRestart, float fRotation)
@@ -513,7 +513,7 @@ bool IsPedModel(unsigned int iModelID)
     auto dwModelArray = CModelInfo::ms_modelInfoPtrs;
 
     uintptr_t ModelInfo = reinterpret_cast<uintptr_t>(dwModelArray[iModelID]);
-    if(ModelInfo && *(uintptr_t*)ModelInfo == (uintptr_t)g_libGTASA + (VER_x32 ? 0x00667658 : 0x82F310))
+    if(ModelInfo && *(uintptr_t*)ModelInfo == (uintptr_t)g_libGTASA + (VER_x32 ? 0x00667658 : 0x822858))
         return true;
 
     return false;
@@ -546,7 +546,7 @@ void CPlayerPed::ClearWeapons()
 	if (m_pPed == nullptr) return;
 
 	CWorld::PlayerInFocus = m_bytePlayerNumber; // CWorld::PlayerInFocus
-	((void (*)(CPedGTA*))(g_libGTASA + (VER_x32 ? 0x0049F836 + 1 : 0x595604)))(m_pPed); // CPed::ClearWeapons
+	((void (*)(CPedGTA*))(g_libGTASA + (VER_x32 ? 0x0049F836 + 1 : 0x5876F8)))(m_pPed); // CPed::ClearWeapons
     CWorld::PlayerInFocus = 0;
 }
 
@@ -775,7 +775,7 @@ void CPlayerPed::GetTransformedBonePosition(int iBoneID, CVector* vecOut)
 	if (!m_pPed) return;
 
 	// CPed::GetTransformedBonePosition
-	((void (*)(CPedGTA*, CVector*, int, int))(g_libGTASA + (VER_x32 ? 0x4A24A8 + 1: 0x598670)))(m_pPed, vecOut, iBoneID, 0);
+	((void (*)(CPedGTA*, CVector*, int, int))(g_libGTASA + (VER_x32 ? 0x4A24A8 + 1: 0x58A7B4)))(m_pPed, vecOut, iBoneID, 0);
 }
 
 void CPlayerPed::ApplyAnimation(const char* szAnimName, const char* szAnimLib, float fT, int opt1, int opt2, int opt3, int opt4, int iTime)
@@ -1194,14 +1194,14 @@ void CPlayerPed::GetWeaponInfoForFire(bool bLeftWrist, CVector* vecBonePos, CVec
         vecBonePos->z += pFireOffset->z + 0.15f;
 
         // CPed::GetTransformedBonePosition
-        ((void (*)(CPedGTA*, CVector*, int, bool))(g_libGTASA + (VER_x32 ? 0x004A24A8 + 1 : 0x598670)))(m_pPed, vecOut, bone_id, false);
+        ((void (*)(CPedGTA*, CVector*, int, bool))(g_libGTASA + (VER_x32 ? 0x004A24A8 + 1 : 0x58A7B4)))(m_pPed, vecOut, bone_id, false);
     }
 }
 
 uintptr_t GetWeaponInfo(int iWeapon, int iSkill)
 {
     // CWeaponInfo::GetWeaponInfo
-    return ((uintptr_t(*)(int, int))(g_libGTASA + (VER_x32 ? 0x005E42E8 + 1 : 0x709BA8)))(iWeapon, iSkill);
+    return ((uintptr_t(*)(int, int))(g_libGTASA + (VER_x32 ? 0x005E42E8 + 1 : 0x703440)))(iWeapon, iSkill);
 }
 // 0.3.7
 CVector* CPlayerPed::GetCurrentWeaponFireOffset()
@@ -1515,7 +1515,7 @@ void CPlayerPed::ApplyCrouch()
         {
             if (m_pPed->m_pIntelligence)
             {
-                ((int (*)(CPedIntelligence*, uint16_t))(g_libGTASA + (VER_x32 ? 0x004C07B0 + 1 : 0x5BCE70)))(m_pPed->m_pIntelligence, 0);
+                ((int (*)(CPedIntelligence*, uint16_t))(g_libGTASA + (VER_x32 ? 0x004C07B0 + 1 : 0x5B167C)))(m_pPed->m_pIntelligence, 0);
             }
         }
     }
@@ -1534,7 +1534,7 @@ void CPlayerPed::ResetCrouch()
     m_pPed->bIsDucking = false;
     if (m_pPed->m_pIntelligence)
     {
-        ((int (*)(CPedIntelligence*))(g_libGTASA + (VER_x32 ? 0x004C08A8 + 1 : 0x5BCFF8)))(m_pPed->m_pIntelligence);
+        ((int (*)(CPedIntelligence*))(g_libGTASA + (VER_x32 ? 0x004C08A8 + 1 : 0x5B1828)))(m_pPed->m_pIntelligence);
     }
 }
 
@@ -1563,7 +1563,7 @@ void CPlayerPed::StartJetpack()
 	m_pPed->SetPosn(m_pPed->m_matrix->m_pos.x, m_pPed->m_matrix->m_pos.y, m_pPed->m_matrix->m_pos.z);
 
 	// CCheat::JetpackCheat
-	(( void (*)())(g_libGTASA+(VER_x32 ? 0x2FE258+1:0x3C2A40)))();
+	(( void (*)())(g_libGTASA+(VER_x32 ? 0x2FE258+1:0x3E06F4)))();
 
 	CWorld::PlayerInFocus = 0;
 }

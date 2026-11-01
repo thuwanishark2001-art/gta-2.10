@@ -8,6 +8,14 @@ if(${ANDROID_ABI} STREQUAL "armeabi-v7a")
 elseif(${ANDROID_ABI} STREQUAL "arm64-v8a")
     add_definitions(-DVER_x32=false)
 endif()
+# Which GTA:SA build the addresses target: armv7 is 2.10 (libGTASA.so),
+# arm64 is 2.11 (libGame.so, ported by tools/port-libgtasa; docs/PORT-2.11.md).
+# KM_GTA211 guards code that differs, including 2.10 patches not ported yet.
+if(${ANDROID_ABI} STREQUAL "arm64-v8a")
+    add_definitions(-DKM_GTA211=1)
+else()
+    add_definitions(-DKM_GTA211=0)
+endif()
 
 message(WARNING "-------------------------------------------------")
 message(WARNING "")

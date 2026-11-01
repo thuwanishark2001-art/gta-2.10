@@ -15,7 +15,7 @@ void CRealTimeShadowManager::ReturnRealTimeShadow(CRealTimeShadow *shdw) {
 }
 
 CRealTimeShadow* CRealTimeShadowManager::GetRealTimeShadow(CPhysical* physical) {
-    return CHook::CallFunction<CRealTimeShadow*>(g_libGTASA + (VER_x32 ? 0x5B87AC + 1 : 0x6DD0C4), this, physical);
+    return CHook::CallFunction<CRealTimeShadow*>(g_libGTASA + (VER_x32 ? 0x5B87AC + 1 : 0x5E62F0), this, physical);
 }
 
 void CRealTimeShadowManager::DoShadowThisFrame(CPhysical* physical) {

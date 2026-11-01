@@ -76,10 +76,13 @@ void ApplyFPSPatch(uint8_t fps)
 #if VER_x32
     CHook::WriteMemory(g_libGTASA + 0x005E49E0, (uintptr_t)& fps, 1);
 	CHook::WriteMemory(g_libGTASA + 0x005E492E, (uintptr_t)& fps, 1);
-#else
+#elif !KM_GTA211
     CHook::WriteMemory(g_libGTASA + 0x70A38C, "\xE9\x0F\x1E\x32", 4);
     CHook::WriteMemory(g_libGTASA + 0x70A43C, "\xE8\x0F\x1E\x32", 4);
     CHook::WriteMemory(g_libGTASA + 0x70A458, "\xE9\x0F\x1E\x32", 4);
+#else
+    // TODO 2.11: DoGameState(float) was rebuilt; the 30 fps limit isn't patched yet.
+    (void) fps;
 #endif
 
     FLog("New fps limit = %d", fps);
@@ -98,34 +101,39 @@ void ApplySAMPPatchesInGame()
 
     /* Разблокировка карты */
     // CTheZones::ZonesVisited[100]
-    memset((void*)(g_libGTASA + (VER_x32 ? 0x0098D252 : 0xC1BF92)), 1, 100);
+    memset((void*)(g_libGTASA + (VER_x32 ? 0x0098D252 : 0xA59D7A)), 1, 100);
     // CTheZones::ZonesRevealed
-    *(uint32_t*)(g_libGTASA + (VER_x32 ? 0x0098D2B8 : 0xC1BFF8)) = 100;
+    *(uint32_t*)(g_libGTASA + (VER_x32 ? 0x0098D2B8 : 0xA59DE0)) = 100;
 
     // CPlayerPed::CPlayerPed task fix
 #if VER_x32
     CHook::WriteMemory(g_libGTASA + 0x004C36E2, (uintptr_t)"\xE0", 1);
 #else
-    CHook::WriteMemory(g_libGTASA + 0x5C0BC4, (uintptr_t)"\x34\x00\x80\x52", 4);
+    CHook::WriteMemory(g_libGTASA + (KM_GTA211 ? 0x5B5510 : 0x5C0BC4), (uintptr_t)"\x34\x00\x80\x52", 4); // mov w20, #1
 #endif
     // radar draw blips
-    CHook::NOP(g_libGTASA + (VER_x32 ? 0x0043FE5A : 0x52522C), 2);
-    CHook::NOP(g_libGTASA + (VER_x32 ? 0x004409AE : 0x525E14), 2);
+    CHook::NOP(g_libGTASA + (VER_x32 ? 0x0043FE5A : 0x51A314), 2);
+    CHook::NOP(g_libGTASA + (VER_x32 ? 0x004409AE : 0x51B11C), 2);
 
 //	CHook::WriteMemory(g_libGTASA + 0x00341F84, (uintptr_t)"\x00\xF0\x21\xBE", 4);
 
     // no vehicle audio processing
-    CHook::NOP(g_libGTASA + (VER_x32 ? 0x00553E96 : 0x674610), 2);
-    CHook::NOP(g_libGTASA + (VER_x32 ? 0x00561AC2 : 0x682C1C), 2);
-    CHook::NOP(g_libGTASA + (VER_x32 ? 0x0056BED4 : 0x68DD0C), 2);
+    CHook::NOP(g_libGTASA + (VER_x32 ? 0x00553E96 : 0x6A7834), 2);
+    CHook::NOP(g_libGTASA + (VER_x32 ? 0x00561AC2 : 0x6B69B8), 2);
+    CHook::NOP(g_libGTASA + (VER_x32 ? 0x0056BED4 : 0x6C183C), 2);
 
     // Disable in-game radio
     CHook::RET("_ZN20CAERadioTrackManager7ServiceEi");
 
     // карта в меню
+#if !KM_GTA211
     CHook::NOP(g_libGTASA + (VER_x32 ? 0x2ABA08 : 0x36A6E8), 2); // текст легенды карты
-    CHook::NOP(g_libGTASA + (VER_x32 ? 0x2ABA14 : 0x36A6F8), 2); // значки легенды
+    CHook::NOP(g_libGTASA + (VER_x32 ? 0x2ABA14 : 0x71DBC8), 2); // значки легенды
     CHook::NOP(g_libGTASA + (VER_x32 ? 0x2AB4A6 : 0x36A190), 2); // название местности
+#else
+    // TODO 2.11: Menu_MapRender was rebuilt; legend text and zone name not hidden yet.
+    CHook::NOP(g_libGTASA + 0x71DBC8, 2); // значки легенды (CRadar::DrawLegend call)
+#endif
 }
 
 int32_t CWorld__FindPlayerSlotWithPedPointer(CPedGTA* pPlayersPed)
@@ -142,8 +150,8 @@ void ApplyPatches_level0()
 {
     FLog("ApplyPatches_level0");
 
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x006783C0 : 0x84E7A8), &CWorld::Players);
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x00679B5C : 0x8516D8), &CWorld::PlayerInFocus);
+    CHook::Write(g_libGTASA + (VER_x32 ? 0x006783C0 : 0x837358), &CWorld::Players);
+    CHook::Write(g_libGTASA + (VER_x32 ? 0x00679B5C : 0x837378), &CWorld::PlayerInFocus);
 
     CHook::Redirect("_ZN6CWorld28FindPlayerSlotWithPedPointerEPv", &CWorld__FindPlayerSlotWithPedPointer);
 
@@ -151,7 +159,7 @@ void ApplyPatches_level0()
 #if VER_x32
     CHook::WriteMemory(g_libGTASA + 0x001AE8DE, (uintptr_t)"\x01\x22", 2);
 #else
-    CHook::WriteMemory(g_libGTASA + 0x23FDE0, (uintptr_t)"\x22\x00\x80\x52", 4);
+    CHook::WriteMemory(g_libGTASA + (KM_GTA211 ? 0x775848 : 0x23FDE0), (uintptr_t)"\x22\x00\x80\x52", 4); // mov w2, #1
 #endif
 
     //CHook::RET("_ZN6CTrain10InitTrainsEv"); // CTrain::InitTrains
@@ -210,7 +218,7 @@ void ApplyGlobalPatches()
     CHook::WriteMemory(g_libGTASA + 0x0043FB5E, (uintptr_t)"\x12\xE0", 2); // B 0x43fb86
     CHook::WriteMemory(g_libGTASA + 0x0043FB86, (uintptr_t)"\x48\x46", 2); // mov r0, r9
     CHook::WriteMemory(g_libGTASA + 0x002AB5C6, (uintptr_t)"\x00\x21", 2);
-#else
+#elif !KM_GTA211
     // черные значки
     CHook::WriteMemory(g_libGTASA + 0x52737C, (uintptr_t)"\x1E\x00\x00\x14", 4); // B 0x5273F4
     CHook::WriteMemory(g_libGTASA + 0x5273F4, (uintptr_t)"\xE1\x03\x14\x2A", 4); // mov w1, w20
@@ -225,6 +233,10 @@ void ApplyGlobalPatches()
 
     // crash legend
     CHook::NOP(g_libGTASA + 0x36A690, 1);
+#else
+    // TODO 2.11: CRadar::Draw3dMarkers, DrawEntityBlip and DrawCoordBlip were
+    // rebuilt; blip colour patches and the legend crash fix aren't ported yet.
+    // DrawLegend is RET'd below, which covers the legend.
 #endif
 
     //ApplyShadowPatch();
@@ -234,7 +246,7 @@ void ApplyGlobalPatches()
     CHook::RET("_ZN12CAudioEngine16StartLoadingTuneEv"); // звук загрузочного экрана
 
     // DefaultPCSaveFileName
-    char* DefaultPCSaveFileName = (char*)(g_libGTASA + (VER_x32 ? 0x006B012C : 0x88CB08));
+    char* DefaultPCSaveFileName = (char*)(g_libGTASA + (VER_x32 ? 0x006B012C : 0x8839B0));
     memcpy(DefaultPCSaveFileName, "GTASAMP", 8);
 
 #if VER_x32
@@ -242,9 +254,9 @@ void ApplyGlobalPatches()
     CHook::NOP(g_libGTASA + 0x00584884, 2);	// не давать ган при выходе из тачки 	( клюшка, дробовик and etc )
     CHook::NOP(g_libGTASA + 0x00584850, 2);	// не давать ган при выходе из тачки	( клюшка, дробовик and etc )
 #else
-    CHook::NOP(g_libGTASA + 0x004D8700, 1);  // CCoronas::RenderSunReflection crash
-    CHook::NOP(g_libGTASA + 0x006A852C, 1);  // не давать ган при выходе из тачки   ( клюшка, дробовик and etc )
-    CHook::NOP(g_libGTASA + 0x006A84E0, 1);  // не давать ган при выходе из тачки  ( клюшка, дробовик and etc )
+    CHook::NOP(g_libGTASA + 0x00498718, 1);  // CCoronas::RenderSunReflection crash
+    CHook::NOP(g_libGTASA + 0x006DC14C, 1);  // не давать ган при выходе из тачки   ( клюшка, дробовик and etc )
+    CHook::NOP(g_libGTASA + 0x006DC100, 1);  // не давать ган при выходе из тачки  ( клюшка, дробовик and etc )
 #endif
 
     CHook::RET("_ZN17CVehicleRecording4LoadEP8RwStreamii"); // CVehicleRecording::Load
@@ -266,7 +278,7 @@ void ApplyGlobalPatches()
     CHook::RET("_ZN7CEntity23PreRenderForGlassWindowEv"); // CEntity::PreRenderForGlassWindow
     CHook::RET("_ZN8CMirrors16RenderReflBufferEb"); // CMirrors::RenderReflBuffer
     CHook::RET("_ZN4CHud23DrawBustedWastedMessageEv"); // CHud::DrawBustedWastedMessage // ПОТРАЧЕНО
-    CHook::RET("_ZN4CHud14SetHelpMessageEPKcPtbbbj"); // CHud::SetHelpMessage
+    CHook::RET(KM_GTA211 ? "_ZN4CHud14SetHelpMessageEPKcPsbbbj" : "_ZN4CHud14SetHelpMessageEPKcPtbbbj"); // CHud::SetHelpMessage
     CHook::RET("_ZN4CHud24SetHelpMessageStatUpdateEhtff"); // CHud::SetHelpMessageStatUpdate
     CHook::RET("_ZN6CCheat16ProcessCheatMenuEv"); // CCheat::ProcessCheatMenu
     CHook::RET("_ZN6CCheat13ProcessCheatsEv"); // CCheat::ProcessCheats
@@ -306,9 +318,9 @@ void ApplyGlobalPatches()
 
     CHook::WriteMemory(g_libGTASA + 0x003F4138, "\x03", 1); // RE3: Fix R* optimization that prevents peds to spawn
 #else
-    CHook::NOP(g_libGTASA + 0x5C3258, 1);  // CCamera::ClearPlayerWeaponMode from CPlayerPed::ClearWeaponTarget
+    CHook::NOP(g_libGTASA + 0x5B7C20, 1);  // CCamera::ClearPlayerWeaponMode from CPlayerPed::ClearWeaponTarget
     //CHook::WriteMemory(g_libGTASA + 0x266FC8, "\xF5\x03\x08\x32", 4); //  RenderQueue::RenderQueue
-    CHook::WriteMemory(g_libGTASA + 0x4D644C, "\x1F\x0D\x00\x71", 4); // RE3: Fix R* optimization that prevents peds to spawn
+    CHook::WriteMemory(g_libGTASA + (KM_GTA211 ? 0x496200 : 0x4D644C), "\x1F\x0D\x00\x71", 4); // RE3: Fix R* optimization that prevents peds to spawn (cmp w8, #3)
 #endif
 
     CHook::RET("_ZN10CPlayerPed14AnnoyPlayerPedEb"); // CPedSamp::AnnoyPlayerPed

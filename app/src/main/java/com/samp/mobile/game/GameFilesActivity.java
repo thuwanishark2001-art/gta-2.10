@@ -108,8 +108,8 @@ public class GameFilesActivity extends Activity {
     }
 
     private void startGame(GameFiles.Engine engine) {
-        // 2.11 runs as an engine boot test until the client is ported to it.
-        Class<?> activity = engine == GameFiles.Engine.GTA_211 ? Engine211Activity.class : SAMP.class;
+        // 2.11 (arm64): the 2.11 host with the client; 2.10 (armv7): the original.
+        Class<?> activity = engine == GameFiles.Engine.GTA_211 ? SAMP211.class : SAMP.class;
         startActivity(new Intent(this, activity));
         finish();
     }
