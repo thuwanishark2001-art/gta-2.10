@@ -47,6 +47,7 @@
 #include "km/spectate.inc"
 #include "km/gps.inc"
 #include "km/guide.inc"
+#include "km/owner.inc"
 
 new gPass, gFail;
 

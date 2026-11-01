@@ -76,7 +76,16 @@ All of these run on the server over SSH (`ssh root@<server IP>`).
 cd /opt/kingmakers && git pull && cd server && ./scripts/deploy.sh
 ```
 
-**Make an account owner** without being in game:
+**Make yourself owner:** put your account name in `server/.env` and redeploy.
+The name is the one you type in the app, not your character's name.
+
+```
+KM_OWNER_ACCOUNT=YourName
+```
+
+That account becomes owner (level 5) the next time it logs in.
+
+**Make any account owner** from the database instead:
 
 ```
 cd /opt/kingmakers/server && docker compose exec db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e "UPDATE accounts SET admin_level=5 WHERE username='"'"'NAME'"'"'"'

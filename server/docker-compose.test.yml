@@ -18,6 +18,8 @@ services:
       KM_SCRIPT: ${KM_SCRIPT:-km_tests}
       # Lets tools/kmbot's admin scenario log in to RCON. Test stack only.
       KM_RCON_PASSWORD: kmbot-rcon-test
+      # The basic kmbot run checks it's made owner. Test stack only.
+      KM_OWNER_ACCOUNT: kmbot_e2e
     ports: !reset []
     volumes: !reset []
     restart: "no"

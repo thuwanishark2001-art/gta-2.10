@@ -83,6 +83,7 @@ services:
       KM_PORT: ${KM_PORT:-7777}
       KM_MAX_PLAYERS: ${KM_MAX_PLAYERS:-100}
       KM_RCON_PASSWORD: ${KM_RCON_PASSWORD:-}
+      KM_OWNER_ACCOUNT: ${KM_OWNER_ACCOUNT:-}
       KM_ANNOUNCE: ${KM_ANNOUNCE:-false}
       KM_SCRIPT: ${KM_SCRIPT:-kingmakers}
       DB_HOST: db

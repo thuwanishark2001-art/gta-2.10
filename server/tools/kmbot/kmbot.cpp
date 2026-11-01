@@ -1047,6 +1047,7 @@ int main(int argc, char** argv)
     if (ExpectDialog(D_CHAR_GENDER)) Respond(D_CHAR_GENDER, 1, 0, "");
     if (ExpectDialog(D_CHAR_SKIN)) Respond(D_CHAR_SKIN, 1, 2, "");
     ExpectMessage("You are now playing as", 0, 10000);
+    ExpectMessage("You're the server owner");       // KM_OWNER_ACCOUNT in the test stack
     // The Kingmakers client HUD arrives on the next 1 s tick after spawning.
     ExpectMessage("KM1|hud|cash=500;bank=0;lvl=1", kKmuiColour, 5000);
 

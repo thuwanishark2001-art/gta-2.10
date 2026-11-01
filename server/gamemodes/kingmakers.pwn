@@ -43,6 +43,7 @@
 #include "km/spectate.inc"
 #include "km/gps.inc"
 #include "km/guide.inc"
+#include "km/owner.inc"
 
 forward KM_Tick();
 
@@ -66,6 +67,7 @@ public OnGameModeInit()
     bcrypt_set_thread_limit(2);
     Fac_Load();
     Prop_Load();
+    Owner_Load();
     Eco_Init();
     Veh_Init();
     Job_Init();
