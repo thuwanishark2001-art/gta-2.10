@@ -54,18 +54,28 @@ for the architecture you ported, and replace its `KNOWN_GOOD` hashes;
 `port` prints the new `libGTASA.so` hash. Leave the other architecture
 alone: its addresses are still the old version's.
 
-## Not covered
+## Struct layouts
 
-Struct layouts. Field offsets and sizes written as `VER_x32 ? a : b` aren't
-addresses, so they are left alone. `VALIDATE_SIZE` only compares our own
-struct definitions with our own numbers, so it can't notice a class Rockstar
-changed. Only in-game testing catches that. (The 2.10 libraries carry DWARF
-debug info. If the new build does too, its struct layouts could be compared
-the same way; that isn't written yet.)
+Field offsets and sizes written as `VER_x32 ? a : b` aren't addresses, so
+`port` leaves them alone. `structs` checks them a different way: the 2.10
+libraries carry Rockstar's DWARF debug info, and it compares every
+`VALIDATE_SIZE` with the size of the engine class of that name (`ALIASES`
+maps our renamed classes, such as `CWidgetGta` to `CWidget`).
 
-`check` needs only the 2.10 libraries. It found seven addresses where the two
-halves of a ternary pointed at different functions, now fixed (for example,
-arm64 `Font_SetRightJustifyWrap` was calling into `Interior_c::Lounge_AddHifi`).
+```sh
+tools/port-libgtasa/port.py structs lib64.so lib32.so
+```
+
+On 2.10 all 180 comparable checks match, plus one known, harmless
+difference (`KNOWN`). 48 of our structs have no engine counterpart in the
+debug info. Run it on the new libraries too: if they still have DWARF,
+it tells you whether any class changed size. If they're stripped, only
+in-game testing will catch a changed class.
+
+It found that our `CSprite2d` had a second texture pointer the engine's
+lacks. That put every field of every widget after its sprite at the wrong
+offset (8 bytes on arm64, 4 on armv7). It's now one pointer, as in the
+engine.
 
 ## Test
 

@@ -95,8 +95,17 @@ The rest is listed for a human.
   would crash. Rebuild it with `KM_WATER_SHADER` once it has real
   addresses.
 
-Next: run `port` against the 2.11.311 libraries, review what it lists, then
-let the launcher accept 2.11.
+- `port.py structs` compares every `VALIDATE_SIZE` with the engine's own
+  DWARF debug info, which the 2.10 libraries ship. Our `CSprite2d` had an
+  extra pointer, so every widget field after the sprite was 8 bytes off on
+  arm64 (4 on armv7). Nothing read those fields yet. Fixed, along with the
+  widget sizes. All 180 comparable checks now match.
+- The launcher's required version is per architecture, so porting arm64
+  alone doesn't let armv7 phones run 2.11 on 2.10 addresses.
+
+Next: run `port` (and `structs`, if the new build kept its debug info)
+against the 2.11.311 libraries, review what it lists, then let the
+launcher accept 2.11.
 
 ---
 

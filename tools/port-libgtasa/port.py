@@ -17,6 +17,7 @@ reported for a human to check.
 Usage:
   port.py scan    OLD64.so OLD32.so                  coverage of the 2.10 addresses
   port.py check   OLD64.so OLD32.so                  armv7 and arm64 halves name the same symbol
+  port.py structs LIB64.so LIB32.so                  VALIDATE_SIZE values against the engine's DWARF
   port.py port    OLD64.so OLD32.so NEW64.so NEW32.so [--write]
                                                      report, and with --write rewrite the sources
 
@@ -469,6 +470,96 @@ def check_names(old, new):
     return missing
 
 
+SIZE_CHECK = re.compile(r"VALIDATE_SIZE\(\s*([A-Za-z_][\w:]*)\s*,\s*(.+?)\)\s*;?\s*(?://.*)?$")
+
+
+def _size_of(expr, arch):
+    """Value of a VALIDATE_SIZE size for one ABI, or None if it isn't a
+    plain number or VER_x32 ternary of numbers."""
+    expr = expr.strip()
+    while expr.startswith("(") and expr.endswith(")"):
+        expr = expr[1:-1].strip()
+    m = re.fullmatch(r"VER_x32\s*\?\s*(\w+)\s*:\s*(\w+)", expr)
+    if m:
+        expr = m.group(1) if arch == 32 else m.group(2)
+    try:
+        return int(expr, 0)
+    except ValueError:
+        return None
+
+
+def dwarf_sizes(path, names):
+    """{name: set of byte sizes} from the library's DWARF, for complete
+    struct/class/union definitions with those names."""
+    dump = READELF.replace("llvm-readelf", "llvm-dwarfdump")
+    args = [dump, "--show-children=false"]
+    for n in names:
+        args.append(f"--name={n}")
+    out = subprocess.run(args + [path], capture_output=True, text=True).stdout
+    sizes = {}
+    for block in out.split("\n\n"):
+        if not re.search(r"DW_TAG_(class|structure|union)_type", block):
+            continue
+        name = re.search(r'DW_AT_name\s+\("([^"]+)"\)', block)
+        size = re.search(r"DW_AT_byte_size\s+\((0x[0-9a-f]+)\)", block)
+        if name and size:
+            sizes.setdefault(name.group(1), set()).add(int(size.group(1), 16))
+    return sizes
+
+
+# Our names for engine classes, where they differ.
+ALIASES = {
+    "CWidgetGta": "CWidget", "CObjectGta": "CObject", "CPedGTA": "CPed",
+    "CPlayerPedGta": "CPlayerPed", "CPlayerInfoGta": "CPlayerInfo", "CVehicleGTA": "CVehicle",
+    "CColSurface": "CColSurface", "tColLighting": "tColLighting",
+}
+# Size differences checked by hand and harmless.
+KNOWN = {
+    "CBoundingBox": "mobile's CBoundingBox also holds the bounding sphere; ours keeps the "
+                    "sphere beside it in CColModel, whose size and layout match",
+}
+
+
+def structs(lib64, lib32):
+    """Compare each VALIDATE_SIZE with the engine's own debug info."""
+    checks = []
+    for root, dirs, files in os.walk(SRC):
+        dirs[:] = [d for d in dirs if d != "vendor"]
+        for f in files:
+            if not f.endswith((".cpp", ".h")):
+                continue
+            path = os.path.join(root, f)
+            for n, line in enumerate(open(path, encoding="utf-8", errors="replace"), 1):
+                m = SIZE_CHECK.search(line.strip())
+                if m and not line.lstrip().startswith(("//", "#define")):
+                    checks.append((path, n, m.group(1).split("::")[-1], m.group(2)))
+    checks = [(p, n, ALIASES.get(name, name), e) for p, n, name, e in checks]
+    names = sorted({c[2] for c in checks})
+    found = {64: dwarf_sizes(lib64, names), 32: dwarf_sizes(lib32, names)}
+    counts, bad = Counter(), 0
+    for path, n, name, expr in checks:
+        for arch in (32, 64):
+            want = _size_of(expr, arch)
+            have = found[arch].get(name)
+            where = f"{os.path.relpath(path, REPO)}:{n} {name} arm{arch}"
+            if want is None:
+                counts["not a number"] += 1
+            elif not have:
+                counts["no debug info"] += 1
+            elif want in have:
+                counts["matches"] += 1
+            elif name in KNOWN:
+                counts["known, harmless"] += 1
+            else:
+                counts["DIFFERS"] += 1
+                bad += 1
+                print(f"  {where}: we say {want:#x}, the engine says {', '.join(hex(x) for x in sorted(have))}")
+    print(f"{len(checks)} size checks")
+    for k, v in counts.most_common():
+        print(f"  {k:14} {v:5}")
+    return 1 if bad else 0
+
+
 def port(old64, old32, new64, new32, write):
     old = {64: Lib(old64), 32: Lib(old32)}
     new = {a: (Lib(p) if p != "-" else None) for a, p in ((64, new64), (32, new32))}
@@ -531,6 +622,8 @@ if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if len(args) == 3 and args[0] == "scan":
         scan(args[1], args[2])
+    elif len(args) == 3 and args[0] == "structs":
+        sys.exit(structs(args[1], args[2]))
     elif len(args) == 3 and args[0] == "check":
         sys.exit(check(args[1], args[2]))
     elif len(args) == 5 and args[0] == "port":

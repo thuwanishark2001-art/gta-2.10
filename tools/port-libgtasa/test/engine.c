@@ -38,3 +38,7 @@ int renamed_in_new(int a) { return a + 1; }
 int uses_import(void) { return imported + counter; }
 
 const char *format(void) { return "engine/%s/%d.dat"; }
+
+/* For `structs`: 16 bytes on arm64, 8 on armv7. */
+struct Gadget { void *texture; int flags; };
+struct Gadget gadget;

@@ -13,9 +13,9 @@ work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 
 for v in old new; do
     def=; [ $v = new ] && def=-DNEW
-    "$bin/clang" --target=aarch64-linux-android24 -O1 -fPIC -shared $def -Wl,--unresolved-symbols=ignore-all \
+    "$bin/clang" --target=aarch64-linux-android24 -O1 -g -fPIC -shared $def -Wl,--unresolved-symbols=ignore-all \
         -o "$work/${v}64.so" "$here/engine.c"
-    "$bin/clang" --target=armv7a-linux-androideabi24 -mthumb -O1 -fPIC -shared $def -Wl,--unresolved-symbols=ignore-all \
+    "$bin/clang" --target=armv7a-linux-androideabi24 -mthumb -O1 -g -fPIC -shared $def -Wl,--unresolved-symbols=ignore-all \
         -o "$work/${v}32.so" "$here/engine.c"
 done
 
@@ -68,6 +68,16 @@ reject "$out"   "unnamed"
 expect "$out"   "_Z14renamed_in_newi is not in the new build"
 reject "$out"   "_Z4kepti is not"
 [ "$after" != "$(cat "$work/before.cpp")" ] || { echo "FAIL: nothing was rewritten"; fail=1; }
+
+# structs: VALIDATE_SIZE against the library's debug info.
+mkdir -p "$work/structs"
+echo 'VALIDATE_SIZE(Gadget, (VER_x32 ? 0x8 : 0x10));' > "$work/structs/good.h"
+PORT_SRC=$work/structs $port structs "$work/old64.so" "$work/old32.so" >/dev/null \
+    || { echo "FAIL: structs rejected a correct size"; fail=1; }
+echo 'VALIDATE_SIZE(Gadget, (VER_x32 ? 0xC : 0x10));' > "$work/structs/good.h"
+out=$(PORT_SRC=$work/structs $port structs "$work/old64.so" "$work/old32.so" || true)
+expect "$out" "Gadget arm32: we say 0xc, the engine says 0x8"
+reject "$out" "Gadget arm64"
 
 # Porting a build to itself changes nothing.
 cp "$work/before.cpp" "$work/src/sites.cpp"
