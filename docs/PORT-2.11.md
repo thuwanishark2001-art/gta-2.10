@@ -55,6 +55,32 @@ crash reports, a game-thread hang watchdog, all saved to Downloads):
 
 Sound needs the audio packs, which other apps can't read.
 
+## Milestone 2: the multiplayer client runs on 2.11 (2026-11-01)
+
+On the same phone, `SAMP211` (the 2.11 host plus libsamp, PR #12) starts
+the client and shows SA-MP's connecting view over Santa Maria Beach,
+drawn by the 2.11 engine. The client's chat and debug overlay are up, it
+holds 30 fps, and it retries the server every 6 s without crashing. It
+can't join yet: the build points at a placeholder server address.
+
+What it took beyond the address port, in test order:
+1. `setStorageRoot` is a libsamp native, so it's called after loading
+   libsamp. The early crash left no log, so kmdiag now records Java
+   exceptions too, and the session is marked at the start of `onCreate`.
+2. Without SA-MP's `main.scm`, Rockstar's story script ran the intro
+   mission. `CTheScripts::Process` now runs only while `CGame::Initialise`
+   is on the stack. That first pass creates the player, and without it
+   the camera crashed.
+3. That first pass also fades to black for the intro, so the client
+   fades back in after `CGame::Initialise`.
+4. `CJavaWrapper` called Java through `GetEnv` without checking it, which
+   leaves the `JNIEnv` unset on an unattached thread. It now attaches the
+   thread first. The two runtime crashes before this change haven't come
+   back.
+
+Still open: the server address, the SA-MP texture database (`samp`), the
+cosmetic patches marked TODO 2.11, and sound.
+
 ## What carries over
 
 `tools/port-libgtasa/port.py port` on the arm64 build:
