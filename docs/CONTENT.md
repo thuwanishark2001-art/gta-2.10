@@ -18,6 +18,11 @@ Put files in `server/content/` on the server:
 | `background.jpg` or `background.png` | the start screen background (landscape, about 1920x1080) |
 | `sounds/<name>.mp3` (or `.ogg`, `.wav`) | `/playsound`, and the welcome sound |
 
+`./scripts/deploy.sh` puts a default Kingmakers RP logo and background into
+`content/` (from `server/content-defaults/`) if there isn't one there yet.
+To use your own, replace `content/logo.png` or `content/background.jpg`.
+Deploying never overwrites them.
+
 Rules for file names:
 - Use only letters, digits, `_`, `-`, `.` and `/`. Names with spaces are
   skipped (the content service logs them).
