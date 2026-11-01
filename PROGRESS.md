@@ -63,6 +63,52 @@ this repo's MIT license.
 
 ---
 
+## Porting to other game versions (2026-11-01)
+
+The first phone test stopped at the launcher: the phone has GTA:SA
+2.11.311 and the client needs 2.10. Turning the check off would crash,
+because the client calls and patches the engine at about 1,400 fixed 2.10
+addresses.
+
+`tools/port-libgtasa/port.py` (see its README) names each address by the
+symbol, relocation or string it points at, finds the same thing in another
+build, and rewrites the source. An address inside a function moves only if
+that function is the same code in both builds, ignoring PC-relative fields.
+The rest is listed for a human.
+
+- Against 2.10 itself: 1,403 of 1,404 addresses named, 0 changed. The one
+  left is in WaterShader, which is now switched off (below).
+- `test/test.sh` (in CI) builds two stand-in libraries with the NDK, the
+  second rearranged and with one function edited. It checks every kind of
+  address is moved, kept or reported correctly.
+- `port.py check` compares the armv7 and arm64 halves of each address. It
+  found seven pairs pointing at different functions, a crash on one
+  architecture whenever that code runs. All seven are fixed:
+  `CPickup::Remove`, `Font_SetRightJustifyWrap`, `CFont::SetDropColor`,
+  `CAnimBlendStaticAssociation(clump, hier)`, `~CAnimBlendAssocGroup`,
+  `CModelInfo::AddDamageAtomicModel`, and the `deviceChip` read in the
+  shader builder.
+- `DrawTextureUV` on armv7 jumped to an import stub with the Thumb bit set,
+  which crashes. It now calls `CSprite2d::Draw` directly.
+- The WaterShader hook (animated water) is off. Its engine addresses are not
+  functions in 2.10 on either architecture, so the first frame with water
+  would crash. Rebuild it with `KM_WATER_SHADER` once it has real
+  addresses.
+
+- `port.py structs` compares every `VALIDATE_SIZE` with the engine's own
+  DWARF debug info, which the 2.10 libraries ship. Our `CSprite2d` had an
+  extra pointer, so every widget field after the sprite was 8 bytes off on
+  arm64 (4 on armv7). Nothing read those fields yet. Fixed, along with the
+  widget sizes. All 180 comparable checks now match.
+- The launcher's required version is per architecture, so porting arm64
+  alone doesn't let armv7 phones run 2.11 on 2.10 addresses.
+
+Next: run `port` (and `structs`, if the new build kept its debug info)
+against the 2.11.311 libraries, review what it lists, then let the
+launcher accept 2.11.
+
+---
+
 ## End-to-end test bot, and a login bug it found (2026-10-31)
 
 **The bug.** Registration and login could never complete, ever since
@@ -510,7 +556,10 @@ AGP 8.4.0. Full steps in [docs/BUILD.md](docs/BUILD.md).
    keystore isn't ours and is never used again, so it has no value to us;
    rewriting history would break every fork and clone.
 3. **Engine version lock.** All hooks target GTA:SA Android 2.10. Players
-   with a different version will crash.
+   with a different version will crash, so the launcher refuses other
+   versions. The Play Store now ships 2.11.311 (seen on a test phone).
+   `tools/port-libgtasa` moves the addresses to another build once we have
+   that build's `libGTASA.so`.
 4. **Closed prebuilts.** MonetLoader and LuaJIT are removed: nothing loaded
    them, and the Lua mod loader was a cheating vector. `libImmEmulatorJ.so`
    now comes from the player's GTA:SA. `libbass.so` (proprietary, free for

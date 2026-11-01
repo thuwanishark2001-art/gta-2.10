@@ -21,4 +21,4 @@ struct __attribute__((aligned(4))) AdjustableButton
     uint8 pad0[2];
 };
 
-VALIDATE_SIZE(AdjustableButton, (VER_x32 ? 0x30 : 0x40)); // 0x28 для 40 байт, 0x40 для 64 байт
+VALIDATE_SIZE(AdjustableButton, (VER_x32 ? 0x28 : 0x30));

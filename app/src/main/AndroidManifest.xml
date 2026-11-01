@@ -65,5 +65,14 @@
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustPan"
             android:exported="false" />
+
+        <!-- GTA:SA 2.11 engine boot test (docs/PORT-2.11.md) -->
+        <activity
+            android:name="com.samp.mobile.game.Engine211Activity"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|density"
+            android:launchMode="singleTask"
+            android:exported="false" />
     </application>
 </manifest>

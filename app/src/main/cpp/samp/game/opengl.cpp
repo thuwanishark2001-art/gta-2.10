@@ -648,7 +648,7 @@ void BuildPixelSource(int flags) {
     if ((flags & 1) == 0) goto LAB_00072d64;
     snprintf(acStack_102c, 0x200, "/*ATBEGIN*/");
     strcat((char *)&pxlbuf, acStack_102c);
-    if ((*(int *) (g_libGTASA + (VER_x32 ? 0x5ddd30:0x85DC6C)) == 9) && (uVar4 != 0)) {
+    if ((*(int *) (g_libGTASA + (VER_x32 ? 0x6855CC:0x85DC6C)) == 9) && (uVar4 != 0)) {
         if ((flags & 0x800) != 0) {
             pcVar2 = "if (diffuseColor.a < 0.8) { discard; }";
             goto LAB_00072cce;

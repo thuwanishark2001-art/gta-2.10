@@ -67,6 +67,6 @@ void CAnimBlendAssocGroup::InitEmptyAssociations(RpClump* clump) {
 
 // 0x4CE1D0
 CAnimBlendAssocGroup::~CAnimBlendAssocGroup() {
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x00389800 + 1 : 0x460C3C), this);
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x003891BE + 1 : 0x460C3C), this);
 }
 

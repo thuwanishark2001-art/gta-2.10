@@ -33,7 +33,7 @@ public class GTASA extends WarMedia {
     private static synchronized void loadLibraries(android.content.Context context) {
         if (sLibrariesLoaded) return;
         System.out.println("**** Loading SO's");
-        GameFiles.loadLibraries(context);
+        GameFiles.loadLibraries(context, GameFiles.Engine.GTA_210);
         System.loadLibrary("bass");
         System.loadLibrary("samp");
         sLibrariesLoaded = true;

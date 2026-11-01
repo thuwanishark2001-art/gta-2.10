@@ -133,7 +133,6 @@ void UI::render()
         m_bNeedClearMousePos = false;
     }
 
-   //DrawServerTexture(); // render sprite
 }
 
 void UI::shutdown()
@@ -315,22 +314,3 @@ void UI::ProcessPushedTextdraws()
     }
 }
 
-#include "..//game/sprite2d.h"
-void UI::DrawServerTexture() {
-    ImGuiIO& io = ImGui::GetIO();
-    float displayWidth = io.DisplaySize.x;
-    float displayHeight = io.DisplaySize.y;
-
-    float textureWidth = 175.0f;
-    float textureHeight = 120.0f;
-    float x = 10.0f;
-    float y = displayHeight - textureHeight - 2.0f;
-
-
-    CSprite2d* server = new CSprite2d();
-    server->m_pRwTexture = (RwTexture*)CUtil::LoadTextureFromDB("samp", "serverlogo");
-
-    CRGBA color {255, 255, 255, 255};
-
-    server->Draw(x, y, textureWidth, textureHeight, &color);
-}
