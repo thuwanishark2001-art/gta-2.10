@@ -28,10 +28,12 @@ public class SAMP211 extends Engine211Activity implements CustomKeyboard.InputLi
         // has to load after the engine and before the engine starts.
         ShadowHook.init(new ShadowHook.ConfigBuilder().setMode(ShadowHook.Mode.UNIQUE).build());
         provisionClientFiles(storageRoot);
-        setStorageRoot(storageRoot);
         Log.i(TAG, "loading the client");
         System.loadLibrary("bass");
         System.loadLibrary("samp");
+        // A libsamp native, so only once it's loaded. libsamp reads the path
+        // later, when the engine calls NvUtilInit.
+        setStorageRoot(storageRoot);
         sClientLoaded = true;
         Log.i(TAG, "client loaded");
     }

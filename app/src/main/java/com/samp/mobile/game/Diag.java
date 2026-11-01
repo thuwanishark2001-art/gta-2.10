@@ -26,9 +26,25 @@ public final class Diag {
             System.loadLibrary("kmdiag");
             start(file(context).getAbsolutePath());
             sStarted = true;
+            recordJavaCrashes();
         } catch (Throwable t) {
             Log.w(TAG, "diagnostics unavailable", t);
         }
+    }
+
+    /** Java exceptions that end the app go into the file too, then on as before. */
+    private static void recordJavaCrashes() {
+        final Thread.UncaughtExceptionHandler previous = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, e) -> {
+            try {
+                java.io.StringWriter text = new java.io.StringWriter();
+                e.printStackTrace(new java.io.PrintWriter(text));
+                note("\n*** uncaught Java exception on thread " + thread.getName() + "\n" + text + "*** end");
+            } catch (Throwable ignored) {
+                // never let the report hide the crash
+            }
+            if (previous != null) previous.uncaughtException(thread, e);
+        });
     }
 
     /** Re-installs the crash handler, in case the engine replaced it. */

@@ -32,6 +32,9 @@ public class Engine211Activity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Mark first: a crash while loading the engine or the client should
+        // still leave its log for the next launch.
+        CrashLog.sessionStarted(this);
         Diag.start(this);
         Log.i(TAG, "onCreate");
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
