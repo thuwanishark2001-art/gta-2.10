@@ -234,7 +234,12 @@ mobile client's RakNet code, through the real server, twice (see
   charges, cuffs and arrests the suspect and checks the MDT. The suspect
   sees each step, is moved to the cell, serves the minute and is released.
   The script checks the charge, the ticket, the payment and the finished
-  sentence in the database. It's built with the
+  sentence in the database.
+- `jobs`: one pizza delivery and one taxi fare.
+- `mechanic` and `customer`, run together: the customer sits in a car,
+  the mechanic offers a repair (accepted and paid) and a refill (declined).
+
+Every job and every faction role is now played by a bot in `test.sh`. It's built with the
 host's `g++`, or in a `gcc` container if there is none.
 
 The test script includes every gamemode module, so it uses the real code:
