@@ -388,6 +388,13 @@ extern "C" {
 	{
 		Java_com_samp_mobile_game_SAMP_onEventBackPressed(pEnv, thiz);
 	}
+	// The engine is quitting (menu): leave the server cleanly, like the 2.10
+	// MainMenuScreen::OnExit hook. Runs on the game thread.
+	JNIEXPORT void JNICALL Java_com_samp_mobile_game_SAMP211_disconnectFromServer(JNIEnv *pEnv, jobject thiz)
+	{
+		if (pGame) pGame->bIsGameExiting = true;
+		if (pNetGame && pNetGame->GetRakClient()) pNetGame->GetRakClient()->Disconnect(300);
+	}
 	JNIEXPORT void JNICALL Java_com_samp_mobile_game_SAMP211_kmSendCommand(JNIEnv *pEnv, jobject thiz, jbyteArray command)
 	{
 		Java_com_samp_mobile_game_SAMP_kmSendCommand(pEnv, thiz, command);

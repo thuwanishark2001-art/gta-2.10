@@ -16,7 +16,8 @@ import java.io.UnsupportedEncodingException;
  * libsamp calls the methods below by name and signature (java/jniutil.cpp),
  * and every one it looks up must exist, so the list matches SAMP's exactly.
  */
-public class SAMP211 extends Engine211Activity implements CustomKeyboard.InputListener {
+public class SAMP211 extends Engine211Activity implements CustomKeyboard.InputListener,
+        com.rockstargames.oswrapper.GamePlatformServices.QuitListener {
     private static final String TAG = "SAMP211";
     private static boolean sClientLoaded;
 
@@ -100,6 +101,13 @@ public class SAMP211 extends Engine211Activity implements CustomKeyboard.InputLi
     private native void onInputEnd(byte[] str);
     public native void onEventBackPressed();
     private native void kmSendCommand(byte[] command);
+    /** Tells the server we're leaving, so it doesn't wait for a timeout. Game thread only. */
+    private native void disconnectFromServer();
+
+    @Override
+    public void onGameQuit() {
+        disconnectFromServer();
+    }
 
     private void sendKmCommand(String command) {
         try {

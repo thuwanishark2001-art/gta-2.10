@@ -2128,7 +2128,7 @@ void InstallHooks()
 
     CHook::Redirect("_Z10GetTexturePKc", &CUtil::GetTexture);
 
-#if !KM_GTA211 // TODO 2.11: MainMenuScreen::OnExit is gone; exiting from the menu doesn't disconnect yet
+#if !KM_GTA211 // 2.11 has no MainMenuScreen::OnExit; SAMP211.onGameQuit disconnects instead
     CHook::InlineHook("_ZN14MainMenuScreen6OnExitEv", &MainMenuScreen__OnExit_hook, &MainMenuScreen__OnExit);
 #endif
 
