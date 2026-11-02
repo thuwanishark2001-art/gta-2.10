@@ -8,7 +8,7 @@ def kmServerHost = project.findProperty('kmServerHost') ?: '65.20.88.67'
 def kmContentPort = (project.findProperty('kmContentPort') ?: '7780') as int
 // GitHub repository whose Releases the app updates itself from (Updater.java).
 // -PkmUpdateRepo= (empty) turns updates off.
-def kmUpdateRepo = project.findProperty('kmUpdateRepo') != null ? project.findProperty('kmUpdateRepo') : 'thuwanishark2001-art/gta-2.10'
+def kmUpdateRepo = project.findProperty('kmUpdateRepo') != null ? project.findProperty('kmUpdateRepo') : ''
 
 android {
     signingConfigs {
@@ -30,7 +30,7 @@ android {
     namespace 'com.samp.mobile'
 
     defaultConfig {
-        applicationId "com.samp.mobile"
+        applicationId "com.kingmakers.rp"
         minSdk 26
         targetSdk 34
         // Release builds pass -PkmVersionCode (the CI run number) so each one
