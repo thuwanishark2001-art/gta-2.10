@@ -67,7 +67,7 @@ You can only give levels below your own, unless you're logged into RCON
 - `/endwars`: ends every running turf war now, as if its time were up.
 
 **Gangs and turfs.** Six turfs in east Los Santos show on everyone's radar
-in the colour of the gang holding them (grey: nobody). A gang member inside
+in the colour of the gang holding them (dark grey: nobody). A gang member inside
 a turf their gang doesn't hold types `/capture`. That starts a 3-minute war,
 which everyone is told about, and the turf flashes. When it ends, the
 attackers take the turf if more of them than defenders are alive inside it.
@@ -82,6 +82,22 @@ Pershing Square (`/roulette red 100`; bets of $10-5000, cash, reason
 `/sellfish`, reason `fishing`; up to 20 fish, from $40 to $1000 each). At
 the Idlewood Pay'n'Spray they can respray their own car (`/paint 3 3`, $250,
 reason `paint`). All three places are on `/gps` and the map.
+
+**Shops, guns and crime.**
+- Binco in Ganton: `/clothes [skin id]` changes a player's everyday outfit
+  for $150. Faction uniforms aren't for sale; the server's custom skins are.
+- Ammu-Nation in Market: `/buygun`. A bat, a knife and body armour are for
+  anyone. Guns need a gun licence: `/buylicence gun` at the licensing
+  office, $2500, level 2+, not while wanted. Weapons are lost on death or
+  logout. Police rank 3+ can take a licence away with `/revokegun`.
+- Bike rental by the Unity Station spawn: `/rent` ($50) gives a Faggio until
+  `/unrent` or logout. Only the renter can ride it.
+- Store robbery: `/robstore` inside a 24/7, holding a gun, level 2+. The
+  robber stays inside for 30 seconds and gets $500-1500 cash and wanted
+  level +3. On-duty police get a dispatch message when it starts and ends.
+  Leaving early fails (wanted +1). Each shop can be robbed every 30 minutes,
+  each player every 15 (`KM_ROB_*` in `config.inc`).
+- `/top` shows the five richest characters and the five highest levels.
 - `/sethelper [player] [level 0-3]`.
 - `/createproperty [interior] [price] [name]`, `/deleteproperty`. Stand at
   the door. `/createproperty` alone lists the interiors. 5 and 6 are 24/7

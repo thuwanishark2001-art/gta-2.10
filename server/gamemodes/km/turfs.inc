@@ -39,10 +39,11 @@ stock bool:Turf_IsGang(factionId)
     return factionId > 0 && Fac_Type(factionId) == FACTION_GANG;
 }
 
-// Radar colour: the gang's colour, translucent; grey for nobody's.
+// Radar colour: the gang's colour, translucent; dark grey for nobody's, so
+// free turfs still stand out on the light map.
 stock Turf_Colour(owner)
 {
-    if (owner <= 0 || !Fac_Valid(owner)) return 0xFFFFFF33;
+    if (owner <= 0 || !Fac_Valid(owner)) return 0x20202066;   // dark grey: nobody holds it
     return (gFac[owner][fColour] & ~0xFF) | 0x66;
 }
 

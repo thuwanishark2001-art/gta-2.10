@@ -53,6 +53,11 @@
 #include "km/casino.inc"
 #include "km/fishing.inc"
 #include "km/paint.inc"
+#include "km/clothes.inc"
+#include "km/ammunation.inc"
+#include "km/rental.inc"
+#include "km/robbery.inc"
+#include "km/top.inc"
 
 forward KM_Tick();
 
@@ -83,6 +88,7 @@ public OnGameModeInit()
     Job_Init();
     Lic_Init();
     Turf_Load();
+    Places_InitLabels();
     SetTimer("Char_AutoSaveAll", KM_AUTOSAVE_MS, true);
     SetTimer("KM_Tick", 1000, true);
     return 1;
@@ -142,6 +148,9 @@ public OnPlayerDisconnect(playerid, reason)
     Wheel_Reset(playerid);
     Casino_Reset(playerid);
     Fish_Reset(playerid);
+    Gun_Reset(playerid);
+    Rent_Reset(playerid);
+    Rob_Reset(playerid);
     MapIcons_Reset(playerid);
     Spec_Reset(playerid);
     return 1;
@@ -215,6 +224,7 @@ public OnVehicleDeath(vehicleid, killerid)
 {
     Lic_OnVehicleDeath(vehicleid);
     Job_OnVehicleDeath(vehicleid);
+    Rent_OnVehicleDeath(vehicleid);
     return 1;
 }
 
@@ -228,6 +238,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
     if (Radio_OnDialog(playerid, dialogid, response, listitem)) return 1;
     if (Gps_OnDialog(playerid, dialogid, response, listitem)) return 1;
     if (Pass_OnDialog(playerid, dialogid, response, listitem)) return 1;
+    if (Gun_OnDialog(playerid, dialogid, response, listitem)) return 1;
     return 0;
 }
 
@@ -275,6 +286,7 @@ public KM_Tick()
         if (GetPlayerMoney(i) != gChar[i][cCash]) Char_SyncCash(i);
         KMUI_UpdateHud(i);
         Lic_Tick(i);
+        Rob_Tick(i);
         if (GetPlayerState(i) != PLAYER_STATE_WASTED) AC_Tick(i);
     }
     return 1;
@@ -286,14 +298,15 @@ CMD:help(playerid, params[])
     SendClientMessage(playerid, COLOR_WHITE, "General: /daily /spin /pass /bank /event /guide /gps /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
     SendClientMessage(playerid, COLOR_WHITE, "Chat: /me /do /b /s /low /w /pm /r /o  Phone: /phone /number /sms /911");
     SendClientMessage(playerid, COLOR_WHITE, "Vehicles: /engine /lights /lock /radio /park /myvehicles /buyvehicle /sellvehicle /refuel /drivingtest /licence /showlicence /tickets /paytickets");
-    SendClientMessage(playerid, COLOR_WHITE, "Fun: /roulette (casino) /fish /sellfish (pier) /paint (Pay'n'Spray) /turfs");
+    SendClientMessage(playerid, COLOR_WHITE, "Fun: /roulette (casino) /fish /sellfish (pier) /paint (Pay'n'Spray) /turfs /top");
+    SendClientMessage(playerid, COLOR_WHITE, "Shops: /clothes (Binco) /buygun (Ammu-Nation) /buylicence gun /rent /unrent  Crime: /robstore (in a 24/7)");
     SendClientMessage(playerid, COLOR_WHITE, "Jobs: /jobs /takejob /quitjob /work /stopwork /calltaxi  Property: /enter /exit /buyproperty /sellproperty /myproperties /shop /till");
     if (Fac_Valid(gChar[playerid][cFaction]))
     {
         SendClientMessage(playerid, COLOR_RADIO, "Faction: /f /duty /members /quitfaction  Leaders: /invite /uninvite /setrank /roster");
         switch (Fac_Type(gChar[playerid][cFaction]))
         {
-            case FACTION_POLICE: SendClientMessage(playerid, COLOR_RADIO, "Police: /d /cuff /uncuff /su /clearwanted /arrest /ticket /mdt");
+            case FACTION_POLICE: SendClientMessage(playerid, COLOR_RADIO, "Police: /d /cuff /uncuff /su /clearwanted /arrest /ticket /mdt /revokegun");
             case FACTION_MEDICAL: SendClientMessage(playerid, COLOR_RADIO, "Medical: /d /heal");
             case FACTION_GANG: SendClientMessage(playerid, COLOR_RADIO, "Gang: /capture (inside a turf) /turfs. Each turf pays every member at payday.");
         }

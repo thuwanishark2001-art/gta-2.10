@@ -57,6 +57,11 @@
 #include "km/casino.inc"
 #include "km/fishing.inc"
 #include "km/paint.inc"
+#include "km/clothes.inc"
+#include "km/ammunation.inc"
+#include "km/rental.inc"
+#include "km/robbery.inc"
+#include "km/top.inc"
 
 new gPass, gFail;
 
@@ -169,6 +174,13 @@ Test_Validation()
         EXPECT(!Roulette_ParseBet("blue", kind, number));
         EXPECT(!Roulette_ParseBet("", kind, number));
     }
+    // Clothes, guns, robbery, map icons
+    EXPECT(Clothes_CanWear(21) && Clothes_CanWear(0));
+    EXPECT(!Clothes_CanWear(280) && !Clothes_CanWear(274) && !Clothes_CanWear(2) && !Clothes_CanWear(300));
+    EXPECT(!Gun_NeedsLicence(0) && Gun_NeedsLicence(Gun_StockCount() - 1));
+    EXPECT(Rob_IsGun(22) && Rob_IsGun(34) && !Rob_IsGun(5) && !Rob_IsGun(0) && !Rob_IsGun(35));
+    EXPECT(Rob_Payout(0) == KM_ROB_MIN && Rob_Payout(KM_ROB_MAX - KM_ROB_MIN) == KM_ROB_MAX && Rob_Payout(99999) == KM_ROB_MAX);
+    EXPECT(MapIcons_Show(MAX_PLAYERS - 1) <= MAPICON_SHOP_FIRST);
     // Fishing
     EXPECT(Fish_TotalWeight() == 100);
     EXPECT(Fish_Value(Fish_CatchFor(0)) == 0);

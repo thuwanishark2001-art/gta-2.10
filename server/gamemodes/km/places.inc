@@ -131,6 +131,13 @@ stock bool:Place_Near(playerid, const point[E_POINT], Float:range)
 // ---- driving licence ----------------------------------------------------
 
 // Licensing office by City Hall, the test car's spawn, and the test route.
+// Binco clothes shop (/clothes), Ganton.
+stock const gClothesShop[E_POINT] = { 2244.4, -1665.5, 15.5, 0.0 };
+// Ammu-Nation (/buygun), Market.
+stock const gAmmunation[E_POINT] = { 1368.3, -1279.8, 13.5, 0.0 };
+// Bike rental (/rent), by the Unity Station spawn.
+stock const gRental[E_POINT] = { 1689.0, -1735.0, 13.5, 0.0 };
+
 // Casino (/roulette), in Pershing Square.
 stock const gCasino[E_POINT] = { 1470.0, -1655.0, 14.0, 0.0 };
 // Fishing (/fish, /sellfish): Santa Maria pier.
