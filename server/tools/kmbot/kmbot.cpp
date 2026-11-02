@@ -869,6 +869,14 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     Command("/setweather 1");
     ExpectMessage("changed the weather");
 
+    printf("== server events\n");
+    Command("/event doublepass 30");
+    ExpectMessage("EVENT: Double season pass points for 30 minutes!");
+    Command("/event");
+    ExpectMessage("Event: Double season pass points, 30 min left.");
+    Command("/event stop");
+    ExpectMessage("The event has ended: Double season pass points.");
+
     printf("== content sounds\n");
     Command("/playsound all ../secret.mp3");
     ExpectMessage("inside the content folder");

@@ -48,6 +48,7 @@
 #include "km/daily.inc"
 #include "km/pass.inc"
 #include "km/wheel.inc"
+#include "km/events.inc"
 
 forward KM_Tick();
 
@@ -255,6 +256,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 // Kingmakers client HUD and the anti-cheat.
 public KM_Tick()
 {
+    Event_Tick();
     for (new i = 0; i < MAX_PLAYERS; i++)
     {
         if (!Player_IsPlaying(i) || !gChar[i][cSpawned]) continue;
@@ -273,7 +275,7 @@ public KM_Tick()
 CMD:help(playerid, params[])
 {
     SendClientMessage(playerid, COLOR_BRAND, "Kingmakers RP commands");
-    SendClientMessage(playerid, COLOR_WHITE, "General: /daily /spin /pass /bank /guide /gps /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
+    SendClientMessage(playerid, COLOR_WHITE, "General: /daily /spin /pass /bank /event /guide /gps /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
     SendClientMessage(playerid, COLOR_WHITE, "Chat: /me /do /b /s /low /w /pm /r /o  Phone: /phone /number /sms /911");
     SendClientMessage(playerid, COLOR_WHITE, "Vehicles: /engine /lights /lock /radio /park /myvehicles /buyvehicle /sellvehicle /refuel /drivingtest /licence /showlicence /tickets /paytickets");
     SendClientMessage(playerid, COLOR_WHITE, "Jobs: /jobs /takejob /quitjob /work /stopwork /calltaxi  Property: /enter /exit /buyproperty /sellproperty /myproperties /shop /till");
@@ -291,7 +293,7 @@ CMD:help(playerid, params[])
     if (Sup_IsStaff(playerid)) SendClientMessage(playerid, COLOR_INFO, "Staff: /reports /ar /cr /h");
     if (gPlayer[playerid][pAdmin] >= ADMIN_MOD) SendClientMessage(playerid, COLOR_ADMIN, "Moderator: /a /kick /mute /unmute /goto /gethere /freeze /unfreeze /check /ajail /togooc /spec /specoff");
     if (gPlayer[playerid][pAdmin] >= ADMIN_ADMIN) SendClientMessage(playerid, COLOR_ADMIN, "Admin: /ban /unban /veh /dveh /announce /sethealth /setskin /playstream /playsound /stopstream");
-    if (gPlayer[playerid][pAdmin] >= ADMIN_LEAD) SendClientMessage(playerid, COLOR_ADMIN, "Lead: /givemoney /givepass /setfaction /sethelper /createproperty /deleteproperty /settime /setweather");
+    if (gPlayer[playerid][pAdmin] >= ADMIN_LEAD) SendClientMessage(playerid, COLOR_ADMIN, "Lead: /givemoney /givepass /event /setfaction /sethelper /createproperty /deleteproperty /settime /setweather");
     if (gPlayer[playerid][pAdmin] >= ADMIN_OWNER) SendClientMessage(playerid, COLOR_ADMIN, "Owner: /setadmin /renameaccount /testblips");
     return 1;
 }

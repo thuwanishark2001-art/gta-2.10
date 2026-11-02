@@ -50,6 +50,11 @@ You can only give levels below your own, unless you're logged into RCON
   `/stopstream`. See [CONTENT.md](CONTENT.md).
 
 **Lead (4)**
+- `/event doublepay [minutes]` / `/event doublepass [minutes]`: a server
+  event for 1-1440 minutes. Double pay doubles job pay and paydays; double
+  pass doubles the season pass points players earn (not `/givepass`).
+  Everyone sees it start and end. `/event stop` ends events early; `/event`
+  on its own (anyone) shows what's running. Events end on a server restart.
 - `/givepass [player] [points]`: season pass points (1-1000), for events
   and prizes. Players earn points themselves too: 10 per payday, 5 per
   daily reward and 2 per job payment. Every 50 points unlocks a tier, which

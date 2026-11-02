@@ -52,6 +52,7 @@
 #include "km/daily.inc"
 #include "km/pass.inc"
 #include "km/wheel.inc"
+#include "km/events.inc"
 
 new gPass, gFail;
 
@@ -114,6 +115,15 @@ Test_Validation()
     EXPECT(Daily_Reward(7) == 3000);
     EXPECT(Daily_Reward(0) == 0);
     EXPECT(Daily_Reward(8) == 0);
+    EXPECT(Event_FromName("doublepay") == EVENT_DOUBLEPAY);
+    EXPECT(Event_FromName("DoublePass") == EVENT_DOUBLEPASS);
+    EXPECT(Event_FromName("nothing") == -1);
+    EXPECT(Event_Multiplier(EVENT_DOUBLEPAY) == 1);
+    Event_Start(EVENT_DOUBLEPAY, 5);
+    EXPECT(Event_Multiplier(EVENT_DOUBLEPAY) == 2);
+    EXPECT(Event_Multiplier(EVENT_DOUBLEPASS) == 1);
+    Event_End(EVENT_DOUBLEPAY);
+    EXPECT(Event_Multiplier(EVENT_DOUBLEPAY) == 1);
     EXPECT(Wheel_TotalWeight() == 100);
     EXPECT(Wheel_PrizeFor(0) == 0);
     EXPECT(Wheel_PrizeFor(29) == 0);

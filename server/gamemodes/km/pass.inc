@@ -61,9 +61,10 @@ public Pass_OnLoad(playerid, race, charId)
 }
 
 // Adds season pass points (saved at once) and says when a tier unlocks.
-stock Pass_AddPoints(playerid, points)
+stock Pass_AddPoints(playerid, points, bool:eventBoost = true)
 {
     if (points <= 0 || gChar[playerid][cId] == 0) return;
+    if (eventBoost) points *= Event_Multiplier(EVENT_DOUBLEPASS);
     new before = Pass_TiersUnlocked(gPassPoints[playerid]);
     gPassPoints[playerid] += points;
     new query[256];
@@ -187,7 +188,7 @@ CMD:givepass(playerid, params[])
     if (!Mod_CanAct(playerid, INVALID_PLAYER_ID, ADMIN_LEAD)) return 1;
     if (!Player_IsPlaying(targetid)) return SendError(playerid, "That player isn't playing.");
     if (!(1 <= points <= 1000)) return SendError(playerid, "Points must be 1 to 1000.");
-    Pass_AddPoints(targetid, points);
+    Pass_AddPoints(targetid, points, false);
     new details[32];
     format(details, sizeof (details), "%d points", points);
     Log_Admin(Mod_ActorId(playerid), "give_pass", gPlayer[targetid][pAccountId], details);

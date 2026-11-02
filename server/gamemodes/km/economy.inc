@@ -73,9 +73,10 @@ stock Eco_Payday(playerid)
 {
     new salary = Fac_Salary(gChar[playerid][cFaction], gChar[playerid][cFactionRank]);
     new interest = Payday_Interest(gChar[playerid][cBank]);
-    new total = KM_PAYDAY_BASE + salary + interest;
+    new total = (KM_PAYDAY_BASE + salary + interest) * Event_Multiplier(EVENT_DOUBLEPAY);
     new details[64];
-    format(details, sizeof (details), "base %d, salary %d, interest %d", KM_PAYDAY_BASE, salary, interest);
+    format(details, sizeof (details), "base %d, salary %d, interest %d%s", KM_PAYDAY_BASE, salary, interest,
+        Event_Active(EVENT_DOUBLEPAY) ? ", x2 event" : "");
     Money_Give(playerid, 0, total, "payday", INVALID_PLAYER_ID, details);
 
     SendClientMessage(playerid, COLOR_BRAND, "---- Payday ----");

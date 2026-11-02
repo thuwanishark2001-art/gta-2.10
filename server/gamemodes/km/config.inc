@@ -94,3 +94,11 @@
 #define PASS_POINTS_PAYDAY      (10)
 #define PASS_POINTS_DAILY       (5)
 #define PASS_POINTS_JOB         (2)
+
+// Server events (km/events.inc).
+enum
+{
+    EVENT_DOUBLEPAY,
+    EVENT_DOUBLEPASS,
+    EVENT_COUNT
+}
