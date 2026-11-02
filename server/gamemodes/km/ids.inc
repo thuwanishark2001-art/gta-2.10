@@ -8,7 +8,8 @@
 #define JOB_TAXI        (3)
 #define JOB_MINER       (4)
 #define JOB_MECHANIC    (5)
-#define JOB_COUNT       (6)
+#define JOB_BUS         (6)
+#define JOB_COUNT       (7)
 
 // character_items.item_id
 #define ITEM_NONE       (0)

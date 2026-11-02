@@ -8,6 +8,13 @@
 #include <sstream>
 #include <unistd.h>
 #include "log.h"
+
+// The engine library: GTA:SA 2.11 renamed it (see KM_GTA211 in CMakeLists.txt).
+#if KM_GTA211
+#define KM_GAME_LIB "libGame.so"
+#else
+#define KM_GAME_LIB "libGTASA.so"
+#endif
 #include <jni.h>
 #include <cstring>
 #include "game/common.h"

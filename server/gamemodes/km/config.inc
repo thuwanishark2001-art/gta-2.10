@@ -64,6 +64,8 @@
 #define KM_PIZZAS_PER_LOAD      (5)
 #define KM_MINE_MS              (5000)
 #define KM_ORE_PAY              (90)
+#define KM_BUS_STOP_PAY         (120)     // each stop on the route
+#define KM_BUS_LOOP_BONUS       (400)     // back at the depot after the whole loop
 #define KM_SERVICE_PRICE_MAX    (2000)    // most a mechanic or medic can charge
 
 // Police

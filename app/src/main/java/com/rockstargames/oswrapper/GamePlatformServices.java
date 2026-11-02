@@ -47,8 +47,15 @@ public class GamePlatformServices {
         return 0;
     }
 
+    /** An activity that wants to know when the engine quits (e.g. to leave a server cleanly). */
+    public interface QuitListener {
+        /** Called on the game thread, before the activity finishes. */
+        void onGameQuit();
+    }
+
     public void quit() {
         trace("quit");
+        if (activity instanceof QuitListener) ((QuitListener) activity).onGameQuit();
         activity.runOnUiThread(activity::finish);
     }
 

@@ -12,7 +12,7 @@ void CLines::RenderLineNoClipping(float startX, float startY, float startZ, floa
             { .objVertex = { endX,   endY,   endZ   }, .color =   endColor >> 8 | endColor   << 24 }
     };
 
-    ((void(__cdecl *)())(g_libGTASA + (VER_x32 ? 0x3FCAF0 + 1 : 0x4E0224)))();
+    ((void(__cdecl *)())(g_libGTASA + (VER_x32 ? 0x3FCAF0 + 1 : 0x4A05D8)))();
     if (RwIm3DTransform(vertices, 2u, nullptr, 0)) {
         RwIm3DRenderLine(0, 1);
         RwIm3DEnd();

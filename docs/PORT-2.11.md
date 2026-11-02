@@ -55,6 +55,78 @@ crash reports, a game-thread hang watchdog, all saved to Downloads):
 
 Sound needs the audio packs, which other apps can't read.
 
+## Milestone 2: the multiplayer client runs on 2.11 (2026-11-01)
+
+On the same phone, `SAMP211` (the 2.11 host plus libsamp, PR #12) starts
+the client and shows SA-MP's connecting view over Santa Maria Beach,
+drawn by the 2.11 engine. The client's chat and debug overlay are up, it
+holds 30 fps, and it retries the server every 6 s without crashing. It
+can't join yet: the build points at a placeholder server address.
+
+What it took beyond the address port, in test order:
+1. `setStorageRoot` is a libsamp native, so it's called after loading
+   libsamp. The early crash left no log, so kmdiag now records Java
+   exceptions too, and the session is marked at the start of `onCreate`.
+2. Without SA-MP's `main.scm`, Rockstar's story script ran the intro
+   mission. `CTheScripts::Process` now runs only while `CGame::Initialise`
+   is on the stack. That first pass creates the player, and without it
+   the camera crashed.
+3. That first pass also fades to black for the intro, so the client
+   fades back in after `CGame::Initialise`.
+4. `CJavaWrapper` called Java through `GetEnv` without checking it, which
+   leaves the `JNIEnv` unset on an unattached thread. It now attaches the
+   thread first. The two runtime crashes before this change haven't come
+   back.
+
+Still open: the server address, the SA-MP texture database (`samp`), the
+cosmetic patches marked TODO 2.11, and sound.
+
+## Milestone 3: playing on a real server (2026-11-01)
+
+On the same phone, the client joins the Kingmakers server on a VPS
+(Mumbai), registers, logs in, spawns a character and plays: walking,
+streaming cars, the Kingmakers HUD and panels, owner commands over RCON,
+reconnecting after a dropped connection, and in-car internet radio.
+
+Fixed on the way, in test order:
+1. **Crashes in ART's fault handler** after connecting: kmdiag gave the UI
+   and game threads one shared static alternate signal stack, so two
+   threads taking a signal at once (ART uses SIGSEGV for implicit null and
+   suspend checks) overwrote each other. Each thread now gets its own. This
+   was also behind the earlier "~5 s after connect" crashes.
+2. **Crash when a vehicle streamed in** (SIGILL at libGame+0):
+   `AllVehicles__ProcessControl_hook` found the original function in a
+   table of 2.10 vtable offsets. It now reads each class's original from
+   its vtable slot before hooking.
+3. **Invisible player**: the server's skin 2 is defined only by SA-MP's data
+   pack, which the client doesn't ship. The client falls back to male01
+   (7) instead of CJ (model 0, no body without clothes); the server offers
+   only stock skins (migration 007). The client also reads the engine's own
+   model table instead of swapping its GOT slot.
+4. **No HUD**: the game's HUD was hidden for a Java HUD that only showed
+   with `hud = true`. The Java HUD is now the default.
+5. **`/rcon`** went to the gamemode as a command; it's now sent as RCON
+   (packet 201), like the PC client.
+6. **Reconnects** used the in-game (character) name; they now use the
+   login name.
+7. **Blip colours**: `GetRadarTraceColour` is inlined into
+   `DrawEntityBlip`/`DrawCoordBlip`, so SA-MP colour codes weren't
+   translated. Both functions are hooked to translate the trace colour for
+   the draw.
+8. **FPS**: `DoGameState` capped `RsGlobal.maxFPS` at 30; now 60.
+9. **Menu map**: the zone name, legend text and legend icons are hidden,
+   as on 2.10 (three calls in `Menu_MapRender`).
+10. **Quitting from the menu** (`GamePlatformServices.quit`) now disconnects
+   from the server instead of timing out.
+
+Sound: the engine's packs can't be read, so the client's BASS stream player
+carries server audio (`/radio`, `/playstream`).
+
+Still open: SA-MP's data pack (`samp` texture database, `samp.img`
+objects, extra skins, font); the aim-while-walking constant in `CTaskSimpleUseGun::SetMoveAnim`;
+and a look at the pause-menu map with the legend text and zone name hidden.
+`/testblips` showed blip colours and sprite icons drawn correctly.
+
 ## What carries over
 
 `tools/port-libgtasa/port.py port` on the arm64 build:

@@ -2,6 +2,7 @@
 #include "../main.h"
 #include <string.h>
 #include <dlfcn.h>
+#include <android/log.h>
 #include <asm/unistd.h>
 #include <unistd.h>
 #include <ctype.h>
@@ -151,8 +152,11 @@ public:
 
         auto res = (uintptr_t)dlsym(lib, sym);
         if(res == 0){
+            // abort, not exit(0): a missing engine symbol must leave a crash
+            // report (kmdiag), not quietly close the app.
             FLog("Error find %s", sym);
-            exit(0);
+            __android_log_print(ANDROID_LOG_FATAL, "CHook", "engine symbol not found: %s", sym);
+            abort();
             return 0;
         }
        // Log("getsym = %x", sym - g_libGTASA);
@@ -172,7 +176,8 @@ public:
 
         if(addr == 0){
             FLog("Error find %s", sym);
-            exit(0);
+            __android_log_print(ANDROID_LOG_FATAL, "CHook", "engine symbol not found: %s", sym);
+            abort();
         }
 
         using FuncType = Ret(__cdecl *)(Args...);

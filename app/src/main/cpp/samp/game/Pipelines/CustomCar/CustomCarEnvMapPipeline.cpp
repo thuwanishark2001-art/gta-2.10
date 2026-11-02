@@ -94,18 +94,18 @@ RpMaterial* CCustomCarEnvMapPipeline__CustomPipeMaterialSetup(RpMaterial* materi
 }
 
 void CCustomCarEnvMapPipeline::InjectHooks() {
-#if !VER_x32
+#if !VER_x32 && !KM_GTA211 // TODO 2.11: these init functions are static in the stripped build
     CHook::InlineHook(g_libGTASA + 0x2CC144, &openglWorldSectorAllInOnePipelineInit_hooked, &openglWorldSectorAllInOnePipelineInit);
     CHook::InlineHook(g_libGTASA + 0x2CB7C8, &openglAtomicAllInOnePipelineInit_hooked, &openglAtomicAllInOnePipelineInit);
 #endif
 
     //CHook::Redirect("_ZN24CCustomCarEnvMapPipeline23CustomPipeMaterialSetupEP10RpMaterialPv", &CCustomCarEnvMapPipeline__CustomPipeMaterialSetup);
 
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x6765A0 : 0x84ABB0), &ObjPipeline);
+    CHook::Write(g_libGTASA + (VER_x32 ? 0x6765A0 : 0x8377B0), &ObjPipeline);
 
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x676A7C : 0x84B558), &m_gEnvMapPipeMatDataPool);
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x676924 : 0x84B2B0), &m_gEnvMapPipeAtmDataPool);
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x678598 : 0x84EB58), &m_gSpecMapPipeMatDataPool);
+    CHook::Write(g_libGTASA + (VER_x32 ? 0x676A7C : 0x8377A8), &m_gEnvMapPipeMatDataPool);
+    CHook::Write(g_libGTASA + (VER_x32 ? 0x676924 : 0x8377E8), &m_gEnvMapPipeAtmDataPool);
+    CHook::Write(g_libGTASA + (VER_x32 ? 0x678598 : 0x8377F0), &m_gSpecMapPipeMatDataPool);
 }
 
 RwBool CCustomCarEnvMapPipeline::CustomPipeInstanceCB(void *object, RxOpenGLMeshInstanceData *instanceData, const RwBool instanceDLandVA, const RwBool reinstance) {

@@ -136,7 +136,7 @@ void BuildVertexSource(int flags) {
         strcat((char *)&vtxbuf, acStack_102c);
         snprintf(acStack_102c, 0x200, "attribute vec4 BoneIndices;");
         strcat((char *)&vtxbuf, acStack_102c);
-        snprintf(acStack_102c, 0x200, "uniform highp vec4 Bones[%d];", 3 * *(uint32_t *)(g_libGTASA + (VER_x32 ? 0x6B8BAC:0x896140)));
+        snprintf(acStack_102c, 0x200, "uniform highp vec4 Bones[%d];", 3 * *(uint32_t *)(g_libGTASA + (VER_x32 ? 0x6B8BAC:0xD13C74)));
         strcat((char *)&vtxbuf, acStack_102c);
     }
     if (uVar7 != 0) {
@@ -558,10 +558,10 @@ void BuildPixelSource(int flags) {
         if ((int) (flags << 0x14) < 0) {
             snprintf(acStack_102c, 0x200,
                      "lowp vec4 diffuseColor = texture2D(Diffuse, Out_Tex0, -2.5);");
-        } else if (*(uint8_t *)(g_libGTASA + (VER_x32 ? 0x6B8BA4:0x896138))) {
+        } else if (*(uint8_t *)(g_libGTASA + (VER_x32 ? 0x6B8BA4:0xD13C68))) {
             snprintf(acStack_102c, 0x200,
                      "lowp vec4 diffuseColor = texture2D(Diffuse, Out_Tex0, -0.5);");
-        } else if (!*(uint8_t *)(g_libGTASA + (VER_x32 ? 0x6B8BA4:0x896138))) {
+        } else if (!*(uint8_t *)(g_libGTASA + (VER_x32 ? 0x6B8BA4:0xD13C68))) {
             snprintf(acStack_102c, 0x200,
                      "lowp vec4 diffuseColor = texture2D(Diffuse, Out_Tex0, -0.5);");
         } else {
@@ -624,7 +624,7 @@ void BuildPixelSource(int flags) {
         snprintf(acStack_102c, 0x200, "fcolor.w += ReflTexture.b * 0.125;");
         strcat((char *)&pxlbuf, acStack_102c);
     }
-    if ( (flags & 0x1000040) == 1 && (flags & 0x2000) != 0 && !*(uint8_t *)(g_libGTASA + (VER_x32 ? 0x6B8BA4:0x896138)) ) {
+    if ( (flags & 0x1000040) == 1 && (flags & 0x2000) != 0 && !*(uint8_t *)(g_libGTASA + (VER_x32 ? 0x6B8BA4:0xD13C68)) ) {
         uVar3 = uVar1;
         if (uVar1 != 0) {
             uVar3 = flags & 0x2000;

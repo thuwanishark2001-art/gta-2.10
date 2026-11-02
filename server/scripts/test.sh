@@ -82,6 +82,22 @@ if [ -z "${booted:-}" ]; then
     echo "smoke test failed"; exit 1
 fi
 
+echo "== content service"
+# Serves tests/content with a manifest of sizes and SHA-256 sums (docs/CONTENT.md).
+"${COMPOSE[@]}" up -d --wait content >/dev/null
+get() { "${COMPOSE[@]}" exec -T content wget -q -O - "http://127.0.0.1/$1"; }
+manifest=$(get manifest.json)
+wav_sha=$(sha256sum tests/content/sounds/test.wav | cut -d' ' -f1)
+wav_size=$(wc -c < tests/content/sounds/test.wav | tr -d ' ')
+echo "$manifest" | grep -q "\"path\": \"sounds/test.wav\", \"size\": $wav_size, \"sha256\": \"$wav_sha\"" \
+    || { echo "manifest is missing sounds/test.wav: $manifest"; exit 1; }
+echo "$manifest" | grep -q '"path": "hello.txt"' || { echo "manifest is missing hello.txt: $manifest"; exit 1; }
+if echo "$manifest" | grep -q "gitkeep"; then echo "manifest lists hidden files"; exit 1; fi
+[ "$(get sounds/test.wav | sha256sum | cut -d' ' -f1)" = "$wav_sha" ] || { echo "sounds/test.wav download doesn't match"; exit 1; }
+if get sounds/.gitkeep >/dev/null 2>&1; then echo "content service serves hidden files"; exit 1; fi
+if get ../etc/passwd >/dev/null 2>&1; then echo "content service serves files outside the folder"; exit 1; fi
+echo "content service serves the files and manifest"
+
 echo "== end-to-end: kmbot plays through the game as a SA:MP client"
 # tools/kmbot is a headless client built from the mobile client's RakNet.
 # It registers, creates a character, spawns, runs commands, checks the UI
@@ -120,7 +136,7 @@ fi
 actions=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT GROUP_CONCAT(DISTINCT l.action ORDER BY l.action) FROM admin_log l
      JOIN accounts a ON a.id = l.admin_account_id WHERE a.username = 'kmbot_adm'")
-if [ "$actions" != "accept_report,check,close_report,create_property,give_money,set_admin,set_faction" ]; then
+if [ "$actions" != "accept_report,announce,check,close_report,create_property,delete_property,give_money,set_admin,set_faction,set_health,set_skin,set_time,set_weather" ]; then
     echo "unexpected admin_log for the admin run: $actions"; exit 1
 fi
 echo "money_log and admin_log match the admin run"
@@ -174,7 +190,7 @@ services=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$D
     "SELECT CONCAT('jobs=', (SELECT GROUP_CONCAT(m.details ORDER BY m.id) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Jobs_Bot'),
                    ' paid=', (SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_delta)) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Customer_Bot'),
                    ' earned=', (SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_delta)) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Mechanic_Bot'))")
-if [ "$services" != "jobs=pizza delivery,taxi fare paid=service_paid:-75 earned=service_earned:75" ]; then
+if [ "$services" != "jobs=pizza delivery,taxi fare,bus stop,bus stop,bus stop,bus stop,bus stop,bus stop,bus stop,bus stop,bus route paid=service_paid:-75 earned=service_earned:75" ]; then
     echo "unexpected database state after the jobs and mechanic runs: $services"; exit 1
 fi
 echo "database matches the jobs and mechanic runs"

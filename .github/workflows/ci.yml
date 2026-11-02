@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Run server/scripts/test.sh
         run: ./server/scripts/test.sh
@@ -32,9 +32,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -49,6 +49,11 @@ jobs:
       - name: Client protocol parser test
         run: ./app/src/test/kmui/run.sh
 
+      - name: Custom model texture decoder tests
+        run: |
+          python3 -c "import PIL" 2>/dev/null || python3 -m pip install --user pillow
+          ./app/src/test/txd/run.sh
+
       - name: Offset porting tool test
         run: ./tools/port-libgtasa/test/test.sh
 
@@ -62,7 +67,7 @@ jobs:
               echo "The APK must not contain GTA:SA files."; exit 1
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kingmakers-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk

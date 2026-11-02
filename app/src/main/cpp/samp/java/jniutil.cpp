@@ -2,6 +2,27 @@
 #include "game/game.h"
 extern CGame *pGame;
 
+#include <sys/prctl.h>
+
+// The calling thread's JNIEnv, attaching the thread to the VM if it isn't
+// yet. GetEnv alone leaves the pointer unset on a thread the VM doesn't
+// know (an engine or network thread on 2.11), and a JNI call through it
+// corrupts the runtime.
+JNIEnv* JavaEnv()
+{
+    JNIEnv* env = nullptr;
+    if (javaVM->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK && env) return env;
+    char name[17] = "native";
+    prctl(PR_GET_NAME, name, 0, 0, 0);
+    JavaVMAttachArgs args = { JNI_VERSION_1_6, name, nullptr };
+    if (javaVM->AttachCurrentThread(&env, &args) != JNI_OK) {
+        FLog("JavaEnv: can't attach thread '%s'", name);
+        return nullptr;
+    }
+    FLog("JavaEnv: attached thread '%s' to call Java", name);
+    return env;
+}
+
 CJavaWrapper::CJavaWrapper(JNIEnv *env, jobject activity)
 {
     this->activity = env->NewGlobalRef(activity);
@@ -57,7 +78,8 @@ CJavaWrapper::CJavaWrapper(JNIEnv *env, jobject activity)
 void CJavaWrapper::ShowKeyboard()
 {
     JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    p = JavaEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_showInputLayout);
     EXCEPTION_CHECK(p);
 }
@@ -65,7 +87,8 @@ void CJavaWrapper::ShowKeyboard()
 void CJavaWrapper::HideKeyboard()
 {
     JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    p = JavaEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_hideInputLayout);
     EXCEPTION_CHECK(p);
 }
@@ -73,7 +96,8 @@ void CJavaWrapper::HideKeyboard()
 void CJavaWrapper::ShowLoadingScreen()
 {
     JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    p = JavaEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_showLoadingScreen);
     EXCEPTION_CHECK(p);
 }
@@ -81,7 +105,8 @@ void CJavaWrapper::ShowLoadingScreen()
 void CJavaWrapper::HideLoadingScreen()
 {
     JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    p = JavaEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_hideLoadingScreen);
     EXCEPTION_CHECK(p);
 }
@@ -89,7 +114,8 @@ void CJavaWrapper::HideLoadingScreen()
 void CJavaWrapper::SetPauseState(bool pause)
 {
     JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    p = JavaEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_setPauseState, pause);
     EXCEPTION_CHECK(p);
 }
@@ -97,7 +123,7 @@ void CJavaWrapper::SetPauseState(bool pause)
 void CJavaWrapper::SetTab(int id, char* names, int score, int pings)
 {
     JNIEnv* global_env;
-    javaVM->GetEnv((void**)&global_env, JNI_VERSION_1_6);
+    global_env = JavaEnv();
 
 	if (!global_env)
 	{
@@ -116,12 +142,17 @@ void CJavaWrapper::SetTab(int id, char* names, int score, int pings)
     global_env->CallVoidMethod(activity, s_setTab, id, str1, score, pings);
 
     EXCEPTION_CHECK(global_env);
+    global_env->DeleteLocalRef(str1);
+    global_env->DeleteLocalRef(bytes);
+    global_env->DeleteLocalRef(encoding);
+    global_env->DeleteLocalRef(strClass);
 }
 
 void CJavaWrapper::ShowTab()
 {
     JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    p = JavaEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_showTab);
     EXCEPTION_CHECK(p);
 }
@@ -129,7 +160,8 @@ void CJavaWrapper::ShowTab()
 void CJavaWrapper::HideTab()
 {
     JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    p = JavaEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_hideTab);
     EXCEPTION_CHECK(p);
 }
@@ -137,7 +169,8 @@ void CJavaWrapper::HideTab()
 void CJavaWrapper::ClearTab()
 {
     JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    p = JavaEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_clearTab);
     EXCEPTION_CHECK(p);
 }
@@ -145,7 +178,7 @@ void CJavaWrapper::ClearTab()
 void CJavaWrapper::ShowDialog(int dialogStyle, int dialogID, char* title, char* text, char* button1, char* button2)
 {
 	JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
 
 	if (!env)
 	{
@@ -171,7 +204,7 @@ void CJavaWrapper::ShowDialog(int dialogStyle, int dialogID, char* title, char* 
 void CJavaWrapper::UpdateHudInfo(int health, int armour, int weaponid, int ammo, int ammoinclip, int money, int wanted)
 {
     JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
 
     if (!env)
     {
@@ -185,7 +218,7 @@ void CJavaWrapper::UpdateHudInfo(int health, int armour, int weaponid, int ammo,
 void CJavaWrapper::ShowHud()
 {
     JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
 
     if (!env)
     {
@@ -199,7 +232,7 @@ void CJavaWrapper::ShowHud()
 void CJavaWrapper::HideHud()
 {
     JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
 
     if (!env)
     {
@@ -213,7 +246,7 @@ void CJavaWrapper::HideHud()
 void CJavaWrapper::exitGame() {
 
     JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
 
     if (!env)
     {
@@ -227,7 +260,7 @@ void CJavaWrapper::exitGame() {
 void CJavaWrapper::ShowEditObject() {
 
     JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
 
     if (!env)
     {
@@ -241,7 +274,7 @@ void CJavaWrapper::ShowEditObject() {
 void CJavaWrapper::HideEditObject() {
 
     JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
 
     if (!env)
     {
@@ -256,7 +289,8 @@ void CJavaWrapper::HideEditObject() {
 void CJavaWrapper::KmHud(int cash, int bank, int level, int xp, int xpMax, const std::string& job, int wanted, int fuel)
 {
     JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
+    if (!env) return;
     if (!env || !s_kmHud) return;
     jbyteArray jJob = as_byte_array((unsigned char*)job.c_str(), job.length());
     env->CallVoidMethod(activity, s_kmHud, cash, bank, level, xp, xpMax, jJob, wanted, fuel);
@@ -267,7 +301,8 @@ void CJavaWrapper::KmHud(int cash, int bank, int level, int xp, int xpMax, const
 void CJavaWrapper::KmToast(const std::string& text)
 {
     JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
+    if (!env) return;
     if (!env || !s_kmToast) return;
     jbyteArray jText = as_byte_array((unsigned char*)text.c_str(), text.length());
     env->CallVoidMethod(activity, s_kmToast, jText);
@@ -278,7 +313,8 @@ void CJavaWrapper::KmToast(const std::string& text)
 void CJavaWrapper::KmSms(int fromNumber, const std::string& text)
 {
     JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
+    if (!env) return;
     if (!env || !s_kmSms) return;
     jbyteArray jText = as_byte_array((unsigned char*)text.c_str(), text.length());
     env->CallVoidMethod(activity, s_kmSms, fromNumber, jText);
@@ -289,7 +325,8 @@ void CJavaWrapper::KmSms(int fromNumber, const std::string& text)
 void CJavaWrapper::KmPhone(int hasPhone, int number, int bank)
 {
     JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
+    if (!env) return;
     if (!env || !s_kmPhone) return;
     env->CallVoidMethod(activity, s_kmPhone, hasPhone, number, bank);
     EXCEPTION_CHECK(env);
@@ -298,7 +335,8 @@ void CJavaWrapper::KmPhone(int hasPhone, int number, int bank)
 void CJavaWrapper::KmSpeed(int kmh, int inVehicle)
 {
     JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env = JavaEnv();
+    if (!env) return;
     if (!env || !s_kmSpeed) return;
     env->CallVoidMethod(activity, s_kmSpeed, kmh, inVehicle);
     EXCEPTION_CHECK(env);

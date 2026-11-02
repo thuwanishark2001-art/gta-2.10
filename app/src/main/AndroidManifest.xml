@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <!-- Voice chat (voice_new). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Over-the-air updates (Updater.java): installing a newer release. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Android 11+: lets the app see the player's GTA: San Andreas install. -->
     <queries>
@@ -62,6 +64,16 @@
             android:screenOrientation="landscape"
             android:theme="@style/Theme.AppCompat.NoActionBar"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustPan"
+            android:exported="false" />
+
+        <!-- The client on GTA:SA 2.11 (docs/PORT-2.11.md) -->
+        <activity
+            android:name="com.samp.mobile.game.SAMP211"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|density"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustPan"
             android:exported="false" />

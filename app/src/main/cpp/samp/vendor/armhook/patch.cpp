@@ -37,6 +37,6 @@ void CHook::InitHookStuff()
 //    mprotect((void*)(mmap_start & 0xFFFFF000), PAGE_SIZE, PROT_READ | PROT_EXEC | PROT_WRITE);
 //    mmap_end = (mmap_start + PAGE_SIZE);
 
-    lib = dlopen("libGTASA.so", RTLD_LAZY);
+    lib = dlopen(KM_GAME_LIB, RTLD_LAZY);
 }
 

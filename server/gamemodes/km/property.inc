@@ -404,6 +404,7 @@ public Prop_OnCreated(playerid, race, slot)
         return 1;
     }
     Prop_CreateMarker(slot);
+    if (gProp[slot][prType] == PROP_BUSINESS) MapIcons_RefreshShops();
     new details[80];
     format(details, sizeof (details), "property #%d %s $%d", gProp[slot][prId], gProp[slot][prName], gProp[slot][prPrice]);
     Log_Admin(gPlayerRace[playerid] == race ? Mod_ActorId(playerid) : 0, "create_property", 0, details);
@@ -427,7 +428,9 @@ CMD:deleteproperty(playerid, params[])
     format(details, sizeof (details), "property #%d %s, owner character #%d", gProp[slot][prId], gProp[slot][prName], gProp[slot][prOwner]);
     Log_Admin(Mod_ActorId(playerid), "delete_property", 0, details);
     Prop_DestroyMarker(slot);
+    new bool:wasShop = gProp[slot][prType] == PROP_BUSINESS;
     gProp[slot][prUsed] = false;
+    if (wasShop) MapIcons_RefreshShops();
     SendClientMessage(playerid, COLOR_ADMIN, "Property deleted.");
     return 1;
 }

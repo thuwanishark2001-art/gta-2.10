@@ -1,4 +1,4 @@
-// Jobs: trucker, pizza delivery, taxi, miner, mechanic.
+// Jobs: trucker, pizza delivery, taxi, miner, mechanic, bus driver.
 // /jobs shows where they are, /takejob at the site signs you up, /work starts
 // a shift (with a work vehicle where needed), /stopwork ends it. Pay goes
 // straight to cash and is logged in money_log with reason "job".
@@ -13,7 +13,8 @@ enum
     JS_CALL,        // taxi: driving to a player who called
     JS_ROCK,        // miner: walking to a rock face
     JS_MINING,
-    JS_CARRY        // miner: carrying ore to the drop-off
+    JS_CARRY,       // miner: carrying ore to the drop-off
+    JS_BUSSTOP      // bus: driving to the next stop (jsTarget), or the depot after the last
 }
 
 enum E_JOBSTATE
@@ -34,7 +35,7 @@ enum E_JOBSTATE
 new gJob[MAX_PLAYERS][E_JOBSTATE];
 new gTaxiCallTime[MAX_PLAYERS];
 
-stock const gJobNames[JOB_COUNT][16] = { "Unemployed", "Trucker", "Pizza delivery", "Taxi driver", "Miner", "Mechanic" };
+stock const gJobNames[JOB_COUNT][16] = { "Unemployed", "Trucker", "Pizza delivery", "Taxi driver", "Miner", "Mechanic", "Bus driver" };
 
 forward Job_MineDone(playerid, race);
 
@@ -47,6 +48,7 @@ stock Job_Site(job, point[E_POINT])
         case JOB_TAXI: point = gTaxiDepot;
         case JOB_MINER: point = gQuarry;
         case JOB_MECHANIC: point = gGarage;
+        case JOB_BUS: point = gBusDepot;
     }
 }
 
@@ -190,6 +192,25 @@ stock Job_NextFare(playerid)
     SendInfo(playerid, "A fare is waiting at the marker.");
 }
 
+// Stops 0..n-1 in order, then back to the depot (target n) for the bonus.
+stock Job_NextBusStop(playerid)
+{
+    new next = gJob[playerid][jsStage] == JS_BUSSTOP ? gJob[playerid][jsTarget] + 1 : 0;
+    if (next > sizeof (gBusRoute)) next = 0;
+    gJob[playerid][jsStage] = JS_BUSSTOP;
+    gJob[playerid][jsTarget] = next;
+    if (next == sizeof (gBusRoute))
+    {
+        Job_SetCheckpoint(playerid, gBusDepot, 6.0);
+        SendInfo(playerid, "Last stop done. Drive back to the airport depot for your route bonus.");
+    }
+    else
+    {
+        Job_SetCheckpoint(playerid, gBusRoute[next], 5.0);
+        SendClientMessage(playerid, COLOR_INFO, "Next stop: %d of %d. Drive to the marker.", next + 1, sizeof (gBusRoute));
+    }
+}
+
 stock Job_NextRock(playerid)
 {
     new target = RandomOther(sizeof (gQuarryRocks), gJob[playerid][jsTarget]);
@@ -277,6 +298,20 @@ stock Job_OnCheckpoint(playerid)
             SetTimerEx("Job_MineDone", KM_MINE_MS, false, "dd", playerid, gPlayerRace[playerid]);
             Chat_Action(playerid, "swings a pickaxe at the rock.");
         }
+        case JS_BUSSTOP:
+        {
+            if (!Job_InOwnVehicle(playerid)) return SendError(playerid, "You need your bus."), 1;
+            if (gJob[playerid][jsTarget] == sizeof (gBusRoute))
+            {
+                Job_Pay(playerid, KM_BUS_LOOP_BONUS, "bus route");
+                gJob[playerid][jsStage] = JS_IDLE;
+            }
+            else
+            {
+                Job_Pay(playerid, KM_BUS_STOP_PAY, "bus stop");
+            }
+            Job_NextBusStop(playerid);
+        }
         case JS_CARRY:
         {
             RemovePlayerAttachedObject(playerid, 9);
@@ -311,7 +346,7 @@ CMD:jobs(playerid, params[])
     {
         format(line, sizeof (line), "%s\t%s\n", gJobNames[job],
             job == JOB_TRUCKER ? ("Ocean Docks") : job == JOB_PIZZA ? ("Idlewood Pizza Stack") : job == JOB_TAXI ? ("Unity Station") :
-            job == JOB_MINER ? ("Hunter Quarry") : ("Idlewood garage"));
+            job == JOB_MINER ? ("Hunter Quarry") : job == JOB_MECHANIC ? ("Idlewood garage") : ("LS Airport"));
         strcat(body, line);
     }
     ShowPlayerDialog(playerid, DIALOG_JOBS, DIALOG_STYLE_TABLIST_HEADERS, "Jobs | pick one to mark it on your map", body, "Mark", "Close");
@@ -427,6 +462,14 @@ CMD:work(playerid, params[])
         case JOB_MINER:
         {
             Job_NextRock(playerid);
+        }
+        case JOB_BUS:
+        {
+            if (Job_SpawnVehicle(playerid, 431, gBusSpawn, 2, 1) == INVALID_VEHICLE_ID) {
+                Job_Stop(playerid, "no work vehicle available.");
+                return 1;
+            }
+            Job_NextBusStop(playerid);
         }
         case JOB_MECHANIC:
         {

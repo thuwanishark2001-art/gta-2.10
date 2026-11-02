@@ -10,6 +10,11 @@
 #ifndef KM_SERVER_PORT
 #define KM_SERVER_PORT 7777
 #endif
+// The server's content service (docs/CONTENT.md). The launcher downloads its
+// files; audio streams from it play from that copy (audiostream.cpp).
+#ifndef KM_CONTENT_PORT
+#define KM_CONTENT_PORT 7780
+#endif
 
 // The client picks one of these by settings.ini [client] serverid.
 // All slots point at the Kingmakers RP server for now.

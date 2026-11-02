@@ -18,6 +18,17 @@ services:
       KM_SCRIPT: ${KM_SCRIPT:-km_tests}
       # Lets tools/kmbot's admin scenario log in to RCON. Test stack only.
       KM_RCON_PASSWORD: kmbot-rcon-test
+      # The basic kmbot run checks it's made owner. Test stack only.
+      KM_OWNER_ACCOUNT: kmbot_e2e
+      # The admin kmbot run checks /playsound builds this URL. Test stack only.
+      KM_CONTENT_URL: http://content.test:7780
     ports: !reset []
     volumes: !reset []
+    restart: "no"
+  content:
+    ports: !reset []
+    volumes: !override
+      - ./tests/content:/srv/content:ro
+      - ./content-server/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./content-server/40-km-manifest.sh:/docker-entrypoint.d/40-km-manifest.sh:ro
     restart: "no"

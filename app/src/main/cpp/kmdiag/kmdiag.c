@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/syscall.h>
 #include <time.h>
 #include <ucontext.h>
@@ -96,9 +97,33 @@ static void where(const char *label, uintptr_t addr) {
     }
 }
 
-static int in_engine(uintptr_t addr) {
+// Code we can name on a crashed thread's stack: the engine, the client,
+// the Java runtime, libc and our own libraries. The unwinder can't walk
+// through Java frames, so this shows who was running when it can't.
+static int in_known_code(uintptr_t addr) {
+    static const char *const kLibs[] = { "libGame.so", "libsamp.so", "libart.so", "libc.so",
+                                         "libkm", "libandroid_runtime.so", "libGTASA.so" };
     Dl_info info;
-    return addr && dladdr((void *) addr, &info) && info.dli_fname && strstr(info.dli_fname, "libGame.so");
+    if (!addr || !dladdr((void *) addr, &info) || !info.dli_fname) return 0;
+    for (size_t i = 0; i < sizeof kLibs / sizeof kLibs[0]; i++) {
+        if (strstr(info.dli_fname, kLibs[i])) return 1;
+    }
+    return 0;
+}
+
+static void thread_name(char *out, size_t size) {
+    char path[64];
+    snprintf(path, sizeof path, "/proc/self/task/%d/comm", (int) syscall(SYS_gettid));
+    out[0] = 0;
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return;
+    ssize_t n = read(fd, out, size - 1);
+    close(fd);
+    if (n > 0) {
+        out[n] = 0;
+        char *nl = strchr(out, '\n');
+        if (nl) *nl = 0;
+    }
 }
 
 struct trace { int n; };
@@ -129,14 +154,29 @@ static void report_context(ucontext_t *uc) {
         for (int j = 1; j < 4 && i + j < 29; j++) outf(" x%-2d %016lx", i + j, (unsigned long) uc->uc_mcontext.regs[i + j]);
         out("\n", 1);
     }
+    outf("  x29 %016lx sp %016lx\n", (unsigned long) uc->uc_mcontext.regs[29], (unsigned long) sp);
     out("backtrace:\n", 11);
     struct trace t = { 0 };
     _Unwind_Backtrace(frame, &t);
-    out("engine addresses on the stack:\n", 31);
+    // Frame-pointer chain from the crashed context: still works when pc/lr
+    // are garbage (a jump to 0) and the unwinder stops at the signal frame.
+    // Each frame record is {previous fp, return address}; stop when it leaves
+    // the stack (it must grow upward from sp, by less than 1 MiB).
+    out("frame chain:\n", 13);
+    uintptr_t fp = uc->uc_mcontext.regs[29];
+    for (int i = 0; i < 32 && fp > sp && fp < sp + (1 << 20) && !(fp & 7); i++) {
+        const uintptr_t *rec = (const uintptr_t *) fp;
+        char label[16];
+        snprintf(label, sizeof label, "f%02d", i);
+        where(label, rec[1]);
+        if (rec[0] <= fp) break;
+        fp = rec[0];
+    }
+    out("code addresses on the stack:\n", 29);
     const uintptr_t *stack = (const uintptr_t *) sp;
     int found = 0;
-    for (int i = 0; i < 2048 && found < 32; i++) {
-        if (in_engine(stack[i])) {
+    for (int i = 0; i < 2048 && found < 40; i++) {
+        if (in_known_code(stack[i])) {
             char label[16];
             snprintf(label, sizeof label, "sp+%03x", i * 8);
             where(label, stack[i]);
@@ -159,8 +199,10 @@ static void on_crash(int sig, siginfo_t *info, void *uc_void) {
         return;
     }
     stamp();
-    outf("\n*** fatal signal %d (code %d) fault address %p, thread %d\n",
-         sig, info->si_code, info->si_addr, (int) syscall(SYS_gettid));
+    char name[32];
+    thread_name(name, sizeof name);
+    outf("\n*** fatal signal %d (code %d) fault address %p, thread %d \"%s\"\n",
+         sig, info->si_code, info->si_addr, (int) syscall(SYS_gettid), name);
     report_context(uc_void);
     out("*** end\n", 8);
     fsync(g_fd);
@@ -181,6 +223,8 @@ static void on_crash(int sig, siginfo_t *info, void *uc_void) {
 
 static volatile pid_t g_game_tid;
 static volatile int64_t g_heartbeat_ms;
+// Set while the activity is paused: the game thread then waits on purpose.
+static volatile int g_paused;
 static volatile int g_hang_snapshot;
 
 static int64_t now_ms(void) {
@@ -205,6 +249,7 @@ static void *watchdog(void *arg) {
     for (;;) {
         sleep(1);
         if (!g_game_tid || !g_heartbeat_ms) continue;
+        if (g_paused) { g_heartbeat_ms = now_ms(); continue; }
         int64_t idle = now_ms() - g_heartbeat_ms;
         if (idle < HANG_SECONDS * 1000) {
             g_hang_snapshot = 0;
@@ -228,15 +273,38 @@ JNIEXPORT void JNICALL Java_com_samp_mobile_game_Diag_registerGameThread(JNIEnv 
     outf("game thread is %d\n", (int) g_game_tid);
 }
 
+JNIEXPORT void JNICALL Java_com_samp_mobile_game_Diag_setPausedNative(JNIEnv *env, jclass cls, jboolean paused) {
+    (void) env; (void) cls;
+    g_heartbeat_ms = now_ms();
+    g_paused = paused ? 1 : 0;
+}
+
 JNIEXPORT void JNICALL Java_com_samp_mobile_game_Diag_heartbeatNative(JNIEnv *env, jclass cls) {
     (void) env; (void) cls;
     g_heartbeat_ms = now_ms();
 }
 
+// Signal handlers (ART's included: it handles implicit null and suspend
+// checks through SIGSEGV all the time) run on the calling thread's alternate
+// stack. That stack must belong to that thread alone. This used to install
+// one static buffer from every thread that called install_handlers() (the UI
+// thread and the game thread), so two threads taking a signal at the same
+// time overwrote each other's frames and ART crashed in its fault handler.
+// Give each calling thread its own stack, and keep bionic's if it's big enough.
+static void ensure_alt_stack(void) {
+    const size_t kSize = 64 * 1024;
+    stack_t cur;
+    if (sigaltstack(NULL, &cur) == 0 && !(cur.ss_flags & SS_DISABLE) && cur.ss_size >= kSize) return;
+    if (cur.ss_flags & SS_ONSTACK) return; // never swap the stack we're running on
+    void *mem = mmap(NULL, kSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem == MAP_FAILED) return; // keep whatever the thread already has
+    stack_t ss = { .ss_sp = mem, .ss_size = kSize, .ss_flags = 0 };
+    if (sigaltstack(&ss, NULL) != 0) munmap(mem, kSize);
+    // Deliberately never freed: the thread may run handlers on it until it exits.
+}
+
 static void install_handlers(void) {
-    static char alt[64 * 1024];
-    stack_t ss = { .ss_sp = alt, .ss_size = sizeof alt, .ss_flags = 0 };
-    sigaltstack(&ss, NULL);
+    ensure_alt_stack();
     for (size_t i = 0; i < sizeof kSignals / sizeof kSignals[0]; i++) {
         struct sigaction sa;
         memset(&sa, 0, sizeof sa);
