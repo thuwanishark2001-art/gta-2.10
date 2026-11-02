@@ -204,20 +204,37 @@ public class GameFilesActivity extends Activity {
     }
 
     private void startGame(GameFiles.Engine engine) {
-        // Every install starts with the same placeholder name, which would make
-        // every new player try to log into one account. Ask for a name first.
+        // Ask for a player name before allowing the first login.
         if (ClientSettings.needsName(this)) {
             askName(engine);
             return;
         }
+
+        // Complete server-content setup before showing the launch screen.
         if (!contentChecked) {
             syncContentThenStart(engine);
             return;
         }
-        // 2.11 (arm64): the 2.11 host with the client; 2.10 (armv7): the original.
-        Class<?> activity = engine == GameFiles.Engine.GTA_211 ? SAMP211.class : SAMP.class;
-        startActivity(new Intent(this, activity));
-        finish();
+
+        // Keep the launcher open so settings backup/import can be used.
+        showReadyToPlay(engine);
+    }
+
+    private void showReadyToPlay(GameFiles.Engine engine) {
+        message.setText("KINGMAKERS RP is ready.\n\n"
+            + "You can back up or restore your SA-MP settings before playing.");
+        progress.setVisibility(View.GONE);
+        nameInput.setVisibility(View.GONE);
+        secondary.setVisibility(View.GONE);
+
+        action.setText("Play KINGMAKERS RP");
+        action.setOnClickListener(v -> {
+            Class<?> activity = engine == GameFiles.Engine.GTA_211
+                ? SAMP211.class : SAMP.class;
+            startActivity(new Intent(this, activity));
+            finish();
+        });
+        action.setVisibility(View.VISIBLE);
     }
 
     /** Asks GitHub for a newer release of the app; offers it if there is one. */
