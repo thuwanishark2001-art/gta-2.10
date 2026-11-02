@@ -1008,6 +1008,8 @@ static void EconomyScenario(const char* host, int port, const std::string& chara
 
     printf("== ATM (Idlewood gas station)\n");
     MoveTo(1928.6f, -1786.1f, 13.5f);
+    Command("/bank");
+    ExpectMessage("KM1|bank|cash=500;bank=0;atm=1;payday=", kKmuiColour);
     Command("/deposit 200");
     ExpectMessage("Deposited $200");
     Command("/withdraw 50");

@@ -140,5 +140,6 @@ public class SAMP211 extends Engine211Activity implements CustomKeyboard.InputLi
     public void kmSms(int from, byte[] text) { ui.kmSms(from, text); }
     public void kmPhone(int hasPhone, int number, int bank) { ui.kmPhone(hasPhone, number, bank); }
     public void kmSpeed(int kmh, int inVehicle) { ui.kmSpeed(kmh, inVehicle); }
+    public void kmBank(int cash, int bank, int atm, int payday) { ui.kmBank(cash, bank, atm, payday); }
     public void kmPass(int season, int points, int claimed, int perTier, byte[] rewards, int open) { ui.kmPass(season, points, claimed, perTier, rewards, open); }
 }

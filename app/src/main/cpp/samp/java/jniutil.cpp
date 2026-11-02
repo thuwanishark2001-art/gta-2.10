@@ -78,6 +78,12 @@ CJavaWrapper::CJavaWrapper(JNIEnv *env, jobject activity)
         env->ExceptionClear();
         s_kmPass = nullptr;
     }
+    s_kmBank = env->GetMethodID(clas, "kmBank", "(IIII)V");
+    if (env->ExceptionCheck())
+    {
+        env->ExceptionClear();
+        s_kmBank = nullptr;
+    }
 
     env->DeleteLocalRef(clas);
 }
@@ -336,6 +342,14 @@ void CJavaWrapper::KmPhone(int hasPhone, int number, int bank)
     if (!env) return;
     if (!env || !s_kmPhone) return;
     env->CallVoidMethod(activity, s_kmPhone, hasPhone, number, bank);
+    EXCEPTION_CHECK(env);
+}
+
+void CJavaWrapper::KmBank(int cash, int bank, int atm, int paydayMinutes)
+{
+    JNIEnv* env = JavaEnv();
+    if (!env || !s_kmBank) return;
+    env->CallVoidMethod(activity, s_kmBank, cash, bank, atm, paydayMinutes);
     EXCEPTION_CHECK(env);
 }
 

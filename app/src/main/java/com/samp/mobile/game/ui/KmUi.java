@@ -73,6 +73,12 @@ public class KmUi {
     private final LinearLayout passTiers;
     private final TextView passClaim;
 
+    private final LinearLayout bankPanel;
+    private final TextView bankBalance;
+    private final LinearLayout bankBody;
+    private int lastCash = 0;
+    private int lastBank = 0;
+
     private boolean hudVisible = false;
     private boolean hasHud = false;
     private boolean inVehicle = false;
@@ -97,7 +103,14 @@ public class KmUi {
         statsPanel.addView(bankText);
         statsPanel.addView(jobText);
         statsPanel.addView(phoneButton, marginTop(dp(4)));
-        statsPanel.addView(button("Season pass", v -> sender.send("/pass")), marginTop(dp(4)));
+        LinearLayout statsButtons = new LinearLayout(activity);
+        statsButtons.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams half = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        LinearLayout.LayoutParams halfRight = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        halfRight.leftMargin = dp(4);
+        statsButtons.addView(button("Bank", v -> sender.send("/bank")), half);
+        statsButtons.addView(button("Pass", v -> sender.send("/pass")), halfRight);
+        statsPanel.addView(statsButtons, marginTop(dp(4)));
         FrameLayout.LayoutParams statsParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
         statsParams.setMargins(dp(12), dp(170), 0, 0);
         root.addView(statsPanel, statsParams);
@@ -169,9 +182,24 @@ public class KmUi {
         FrameLayout.LayoutParams passParams = new FrameLayout.LayoutParams(dp(560), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
         root.addView(pass, passParams);
 
+        // Bank: centred card; its balances follow the HUD while it's open.
+        bankPanel = panel(LinearLayout.VERTICAL);
+        bankPanel.setBackground(rounded(0xEE101014, GOLD));
+        bankPanel.setPadding(dp(16), dp(12), dp(16), dp(12));
+        TextView bankTitle = text(16, GOLD, true);
+        bankTitle.setText("Bank");
+        bankBalance = text(13, Color.WHITE, false);
+        bankBody = new LinearLayout(activity);
+        bankBody.setOrientation(LinearLayout.VERTICAL);
+        bankPanel.addView(bankTitle);
+        bankPanel.addView(bankBalance, marginTop(dp(2)));
+        bankPanel.addView(bankBody, marginTop(dp(8)));
+        root.addView(bankPanel, new FrameLayout.LayoutParams(dp(420), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+
         statsPanel.setVisibility(View.GONE);
         speedPanel.setVisibility(View.GONE);
         pass.setVisibility(View.GONE);
+        bankPanel.setVisibility(View.GONE);
         toast.setVisibility(View.GONE);
         phone.setVisibility(View.GONE);
     }
@@ -186,6 +214,9 @@ public class KmUi {
         bankText.setText("Bank " + money(bank));
         jobText.setText(job);
         phoneBank = bank;
+        lastCash = cash;
+        lastBank = bank;
+        if (bankPanel.getVisibility() == View.VISIBLE) updateBankBalance();
         this.fuel = fuel;
         updateFuel();
         updateVisibility();
@@ -219,6 +250,86 @@ public class KmUi {
         phoneBank = bank;
         showPhoneHome();
         phone.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * The bank panel. atm: deposits and withdrawals work here (the server
+     * still checks); payday: minutes to the next payday.
+     */
+    public void onBank(int cash, int bank, boolean atm, int payday) {
+        lastCash = cash;
+        lastBank = bank;
+        updateBankBalance();
+        bankBody.removeAllViews();
+        TextView paydayText = text(11, 0xFFB0B0B0, false);
+        paydayText.setText("Next payday in " + payday + " min");
+        bankBody.addView(paydayText);
+        if (atm) {
+            bankBody.addView(sectionLabel("Deposit cash"), marginTop(dp(8)));
+            bankBody.addView(amountRow(true), marginTop(dp(4)));
+            bankBody.addView(sectionLabel("Withdraw cash"), marginTop(dp(8)));
+            bankBody.addView(amountRow(false), marginTop(dp(4)));
+            EditText custom = input("Other amount", InputType.TYPE_CLASS_NUMBER);
+            bankBody.addView(custom, marginTop(dp(8)));
+            LinearLayout customButtons = new LinearLayout(activity);
+            customButtons.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            LinearLayout.LayoutParams right = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            right.leftMargin = dp(6);
+            customButtons.addView(button("Deposit", v -> sendAmount("/deposit", custom)), left);
+            customButtons.addView(button("Withdraw", v -> sendAmount("/withdraw", custom)), right);
+            bankBody.addView(customButtons, marginTop(dp(6)));
+        } else {
+            TextView note = text(12, 0xFFB0B0B0, false);
+            note.setText("Mobile banking: visit an ATM to deposit or withdraw cash.");
+            bankBody.addView(note, marginTop(dp(6)));
+        }
+        bankBody.addView(sectionLabel("Transfer to a player"), marginTop(dp(10)));
+        EditText who = input("Player name or ID", InputType.TYPE_CLASS_TEXT);
+        EditText amount = input("Amount", InputType.TYPE_CLASS_NUMBER);
+        bankBody.addView(who, marginTop(dp(4)));
+        bankBody.addView(amount, marginTop(dp(4)));
+        bankBody.addView(button("Transfer", v -> {
+            String target = clean(who.getText().toString()).replace(' ', '_');
+            int value = parseInt(amount.getText().toString());
+            if (target.isEmpty() || value <= 0) return;
+            sender.send("/transfer " + target + " " + value);
+        }), marginTop(dp(6)));
+        bankBody.addView(button("Close", v -> bankPanel.setVisibility(View.GONE)), marginTop(dp(10)));
+        bankPanel.setVisibility(View.VISIBLE);
+    }
+
+    private void updateBankBalance() {
+        bankBalance.setText("Cash " + money(lastCash) + "     Bank " + money(lastBank));
+    }
+
+    private TextView sectionLabel(String label) {
+        TextView view = text(12, GOLD, true);
+        view.setText(label);
+        return view;
+    }
+
+    /** $100 / $500 / $1000 / All, for deposits or withdrawals. */
+    private LinearLayout amountRow(boolean deposit) {
+        LinearLayout row = new LinearLayout(activity);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        int[] amounts = {100, 500, 1000, 0};
+        for (int i = 0; i < amounts.length; i++) {
+            int value = amounts[i];
+            TextView b = button(value == 0 ? "All" : money(value), v -> {
+                int send = value != 0 ? value : (deposit ? lastCash : lastBank);
+                if (send > 0) sender.send((deposit ? "/deposit " : "/withdraw ") + send);
+            });
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            if (i > 0) params.leftMargin = dp(4);
+            row.addView(b, params);
+        }
+        return row;
+    }
+
+    private void sendAmount(String command, EditText field) {
+        int value = parseInt(field.getText().toString());
+        if (value > 0) sender.send(command + " " + value);
     }
 
     /**
@@ -303,6 +414,10 @@ public class KmUi {
             pass.setVisibility(View.GONE);
             return true;
         }
+        if (bankPanel.getVisibility() == View.VISIBLE) {
+            bankPanel.setVisibility(View.GONE);
+            return true;
+        }
         if (phone.getVisibility() != View.VISIBLE) return false;
         phone.setVisibility(View.GONE);
         return true;
@@ -316,7 +431,8 @@ public class KmUi {
         TextView balance = text(12, Color.WHITE, false);
         balance.setText("Bank balance " + money(phoneBank));
         phoneBody.addView(balance);
-        phoneBody.addView(button("Messages (" + messages.size() + ")", v -> showMessages()), marginTop(dp(8)));
+        phoneBody.addView(button("Bank", v -> { close(); sender.send("/bank"); }), marginTop(dp(8)));
+        phoneBody.addView(button("Messages (" + messages.size() + ")", v -> showMessages()), marginTop(dp(6)));
         phoneBody.addView(button("New message", v -> showCompose()), marginTop(dp(6)));
         phoneBody.addView(button("Call a taxi", v -> { sender.send("/calltaxi"); close(); }), marginTop(dp(6)));
         phoneBody.addView(button("Emergency (911)", v -> showEmergency()), marginTop(dp(6)));

@@ -64,6 +64,10 @@ namespace
         {
             pJavaWrapper->KmPhone(FieldInt(fields, "has"), FieldInt(fields, "number"), FieldInt(fields, "bank"));
         }
+        else if (event == "bank")
+        {
+            pJavaWrapper->KmBank(FieldInt(fields, "cash"), FieldInt(fields, "bank"), FieldInt(fields, "atm"), FieldInt(fields, "payday"));
+        }
         else if (event == "pass")
         {
             pJavaWrapper->KmPass(FieldInt(fields, "s"), FieldInt(fields, "p"), FieldInt(fields, "c"),

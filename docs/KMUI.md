@@ -48,6 +48,7 @@ KM1|<event>|key=value;key=value
 | `toast` | `text` | Job pay, payday, level up, new SMS |
 | `sms` | `from` (number), `text` | Incoming `/sms` (also shown in chat) |
 | `phone` | `has` (0/1), `number`, `bank` | Answer to `/phone` |
+| `bank` | `cash`, `bank`, `atm` (1: deposits and withdrawals work here), `payday` (minutes) | Answer to `/bank`; the panel's balances then follow `hud` |
 | `pass` | `s` season, `p` points, `c` tiers claimed, `per` points per tier, `open` (1 opens the panel, 0 only refreshes it if open), `r` cash per tier, comma-separated | Answer to `/pass`; again after a claim or when points change |
 
 Example:
@@ -68,6 +69,9 @@ characters and starting with `/`:
 | Phone: New message | `/sms <number> <text>` |
 | Phone: Call a taxi | `/calltaxi` |
 | Phone: Emergency | `/911 <text>` |
+| Bank (stats panel, phone) | `/bank` |
+| Bank: Deposit / Withdraw | `/deposit <amount>`, `/withdraw <amount>` |
+| Bank: Transfer | `/transfer <player> <amount>` |
 | Season pass (stats panel) | `/pass` |
 | Season pass: Claim | `/pass claim` |
 
