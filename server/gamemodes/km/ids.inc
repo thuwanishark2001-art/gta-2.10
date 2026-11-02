@@ -24,6 +24,7 @@
 #define FACTION_POLICE      (1)
 #define FACTION_MEDICAL     (2)
 #define FACTION_GOVERNMENT  (3)
+#define FACTION_GANG        (4)
 
 // properties.type
 #define PROP_HOUSE      (1)

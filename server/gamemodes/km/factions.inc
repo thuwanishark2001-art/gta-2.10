@@ -146,6 +146,11 @@ stock Fac_DutySkin(id, gender)
         case FACTION_POLICE: return 280;
         case FACTION_MEDICAL: return 274;
         case FACTION_GOVERNMENT: return gender == 1 ? 141 : 147;
+        case FACTION_GANG:
+        {
+            if (gender == 1) return 195;
+            return id == 4 ? 104 : 106;       // Ballas- and Grove-style street clothes
+        }
     }
     return 0;
 }
@@ -185,6 +190,11 @@ stock Fac_SetDuty(playerid, bool:onDuty)
                 SetPlayerArmour(playerid, 100.0);
             }
             case FACTION_MEDICAL: GivePlayerWeapon(playerid, WEAPON_FIREEXTINGUISHER, 500);
+            case FACTION_GANG:
+            {
+                GivePlayerWeapon(playerid, WEAPON_BAT, 1);
+                GivePlayerWeapon(playerid, WEAPON_COLT45, 60);
+            }
         }
     }
     else

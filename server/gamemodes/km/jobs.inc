@@ -87,6 +87,7 @@ stock Job_SetCheckpoint(playerid, const point[E_POINT], Float:size = 4.0)
 
 stock Job_Pay(playerid, amount, const what[])
 {
+    amount *= Event_Multiplier(EVENT_DOUBLEPAY);
     Money_Give(playerid, amount, 0, "job", INVALID_PLAYER_ID, what);
     Pass_AddPoints(playerid, PASS_POINTS_JOB);
     GameTextForPlayer(playerid, "~g~+$%d", 2500, 1, amount);

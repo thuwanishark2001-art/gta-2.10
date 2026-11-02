@@ -73,13 +73,17 @@ stock Eco_Payday(playerid)
 {
     new salary = Fac_Salary(gChar[playerid][cFaction], gChar[playerid][cFactionRank]);
     new interest = Payday_Interest(gChar[playerid][cBank]);
-    new total = KM_PAYDAY_BASE + salary + interest;
-    new details[64];
-    format(details, sizeof (details), "base %d, salary %d, interest %d", KM_PAYDAY_BASE, salary, interest);
+    new turfs = Turf_Income(playerid);
+    new total = (KM_PAYDAY_BASE + salary + interest + turfs) * Event_Multiplier(EVENT_DOUBLEPAY);
+    new details[80], turfText[24];
+    if (turfs) format(turfText, sizeof (turfText), ", turfs %d", turfs);
+    format(details, sizeof (details), "base %d, salary %d, interest %d%s%s", KM_PAYDAY_BASE, salary, interest, turfText,
+        Event_Active(EVENT_DOUBLEPAY) ? ", x2 event" : "");
     Money_Give(playerid, 0, total, "payday", INVALID_PLAYER_ID, details);
 
     SendClientMessage(playerid, COLOR_BRAND, "---- Payday ----");
     SendClientMessage(playerid, COLOR_WHITE, "Base pay $%d | Salary $%d | Interest $%d", KM_PAYDAY_BASE, salary, interest);
+    if (turfs) SendClientMessage(playerid, COLOR_WHITE, "Turf income $%d (%d turfs)", turfs, turfs / KM_TURF_INCOME);
     SendClientMessage(playerid, COLOR_WHITE, "Deposited $%d. Bank balance: $%d", total, gChar[playerid][cBank]);
     new toast[48];
     format(toast, sizeof (toast), "Payday: +$%d to your bank", total);

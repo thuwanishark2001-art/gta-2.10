@@ -559,6 +559,15 @@ static void DrivingScenario(const char* host, int port, const std::string& chara
     Command("/myvehicles");
     Dialog list;
     if (ExpectDialog(8, &list) && list.text.find("Faggio") == std::string::npos) Fail("Faggio missing from /myvehicles");
+
+    printf("== paint shop\n");
+    Command("/paint 3 3");
+    ExpectMessage("at the Pay'n'Spray in Idlewood");
+    MoveTo(2071.4f, -1831.4f, 13.5f);
+    Command("/paint 3 300");
+    ExpectMessage("Usage: /paint");
+    Command("/paint 3 3");
+    ExpectMessage("Your car has a new paint job ($250)");
     ExitVehicle();
 
     printf("== trucker delivery\n");
@@ -869,6 +878,14 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     Command("/setweather 1");
     ExpectMessage("changed the weather");
 
+    printf("== server events\n");
+    Command("/event doublepass 30");
+    ExpectMessage("EVENT: Double season pass points for 30 minutes!");
+    Command("/event");
+    ExpectMessage("Event: Double season pass points, 30 min left.");
+    Command("/event stop");
+    ExpectMessage("The event has ended: Double season pass points.");
+
     printf("== content sounds\n");
     Command("/playsound all ../secret.mp3");
     ExpectMessage("inside the content folder");
@@ -947,6 +964,62 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     }
     Command("/duty");
     ExpectMessage("is now off duty");
+
+    printf("== gangs and turfs\n");
+    Command("/setfaction " + character + " 4 5");
+    ExpectMessage("Eastside Kings at rank 5");
+    Command("/capture");
+    ExpectMessage("inside a turf");
+    MoveTo(2427.0f, -1976.0f, 13.5f);           // Willowfield, nobody's
+    Command("/capture");
+    ExpectMessage("TURF WAR: Eastside Kings is taking Willowfield!");
+    Command("/capture");
+    ExpectMessage("already a war for this turf");
+    Command("/turfs");
+    ExpectMessage("Willowfield: nobody (under attack by Eastside Kings)");
+    Command("/endwars");
+    ExpectMessage("TURF WAR: Eastside Kings took Willowfield (1 against 0).");
+    Command("/capture");
+    ExpectMessage("Your gang already holds this turf");
+    Command("/setfaction " + character + " 0 0");
+    Pump(500);
+
+    printf("== casino\n");
+    Command("/roulette red 10");
+    ExpectMessage("at the casino in Pershing Square");
+    MoveTo(1470.0f, -1655.0f, 14.0f);
+    Command("/roulette blue 10");
+    ExpectMessage("Usage: /roulette");
+    Command("/roulette red 5");
+    ExpectMessage("Bets are $10 to $5000");
+    Command("/roulette 7 10");
+    ExpectMessage("The ball lands on");
+
+    printf("== fishing\n");
+    Command("/fish");
+    ExpectMessage("Santa Maria pier");
+    MoveTo(836.0f, -2063.0f, 12.9f);
+    Command("/sellfish");
+    ExpectMessage("You don't have any fish");
+    Command("/fish");
+    ExpectMessage("You cast your line");
+    Command("/fish");
+    ExpectMessage("You're already fishing");
+    bool caught = false, done = false;
+    for (uint32_t end = Now() + 11000; !done && Now() < end; Pump(100))
+    {
+        for (auto& m : g_messages)
+        {
+            if (m.text.find("You caught") != std::string::npos) caught = done = true;
+            if (m.text.find("Nothing bit") != std::string::npos) done = true;
+        }
+    }
+    if (!done) Fail("/fish never finished");
+    if (caught)
+    {
+        Command("/sellfish");
+        ExpectMessage("You sold 1 fish for $");
+    }
 
     printf("== reports\n");
     Command("/report Testing the report system");
@@ -1112,6 +1185,12 @@ int main(int argc, char** argv)
     ExpectMessage("Daily reward, day 1 of 7: $200");
     Command("/daily");
     ExpectMessage("already claimed today's reward");
+
+    printf("== lucky wheel\n");
+    Command("/spin");
+    ExpectMessage("You spin the lucky wheel... you won");
+    Command("/spin");
+    ExpectMessage("already spun the wheel today");
 
     printf("== Kingmakers UI protocol\n");
     Command("/phone");

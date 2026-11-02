@@ -51,6 +51,12 @@
 #include "km/owner.inc"
 #include "km/daily.inc"
 #include "km/pass.inc"
+#include "km/wheel.inc"
+#include "km/events.inc"
+#include "km/turfs.inc"
+#include "km/casino.inc"
+#include "km/fishing.inc"
+#include "km/paint.inc"
 
 new gPass, gFail;
 
@@ -113,6 +119,63 @@ Test_Validation()
     EXPECT(Daily_Reward(7) == 3000);
     EXPECT(Daily_Reward(0) == 0);
     EXPECT(Daily_Reward(8) == 0);
+    EXPECT(Event_FromName("doublepay") == EVENT_DOUBLEPAY);
+    EXPECT(Event_FromName("DoublePass") == EVENT_DOUBLEPASS);
+    EXPECT(Event_FromName("nothing") == -1);
+    EXPECT(Event_Multiplier(EVENT_DOUBLEPAY) == 1);
+    Event_Start(EVENT_DOUBLEPAY, 5);
+    EXPECT(Event_Multiplier(EVENT_DOUBLEPAY) == 2);
+    EXPECT(Event_Multiplier(EVENT_DOUBLEPASS) == 1);
+    Event_End(EVENT_DOUBLEPAY);
+    EXPECT(Event_Multiplier(EVENT_DOUBLEPAY) == 1);
+    EXPECT(Wheel_TotalWeight() == 100);
+    EXPECT(Wheel_PrizeFor(0) == 0);
+    EXPECT(Wheel_PrizeFor(29) == 0);
+    EXPECT(Wheel_PrizeFor(30) == 1);
+    EXPECT(Wheel_PrizeFor(97) == 5);
+    EXPECT(Wheel_PrizeFor(98) == Wheel_PrizeCount() - 1);
+    EXPECT(Wheel_PrizeFor(99) == Wheel_PrizeCount() - 1);
+    EXPECT(Wheel_PrizeCash(Wheel_PrizeCount() - 1) == 10000);
+    EXPECT(Wheel_PrizePoints(3) == 10);
+    // Turfs
+    EXPECT(Turf_Contains(0.0, 0.0, 10.0, 10.0, 5.0, 5.0));
+    EXPECT(Turf_Contains(0.0, 0.0, 10.0, 10.0, 10.0, 0.0));
+    EXPECT(!Turf_Contains(0.0, 0.0, 10.0, 10.0, 10.5, 5.0));
+    EXPECT(!Turf_Contains(-10.0, -10.0, 0.0, 0.0, 1.0, -5.0));
+    EXPECT(Turf_Winner(4, 5, 3, 2) == 5);
+    EXPECT(Turf_Winner(4, 5, 2, 2) == 4);
+    EXPECT(Turf_Winner(0, 5, 1, 0) == 5);
+    EXPECT(Turf_Winner(0, 5, 0, 0) == 0);
+    EXPECT(Turf_Winner(4, 5, 0, 0) == 4);
+    // Roulette
+    EXPECT(Roulette_IsRed(1) && Roulette_IsRed(36) && !Roulette_IsRed(2) && !Roulette_IsRed(0));
+    EXPECT(Roulette_Payout(BET_RED, 0, 3) == 2);
+    EXPECT(Roulette_Payout(BET_RED, 0, 2) == 0);
+    EXPECT(Roulette_Payout(BET_BLACK, 0, 2) == 2);
+    EXPECT(Roulette_Payout(BET_BLACK, 0, 0) == 0);
+    EXPECT(Roulette_Payout(BET_EVEN, 0, 0) == 0);
+    EXPECT(Roulette_Payout(BET_EVEN, 0, 18) == 2);
+    EXPECT(Roulette_Payout(BET_ODD, 0, 17) == 2);
+    EXPECT(Roulette_Payout(BET_NUMBER, 17, 17) == 36);
+    EXPECT(Roulette_Payout(BET_NUMBER, 0, 0) == 36);
+    EXPECT(Roulette_Payout(BET_NUMBER, 17, 16) == 0);
+    {
+        new kind, number;
+        EXPECT(Roulette_ParseBet("Red", kind, number) && kind == BET_RED);
+        EXPECT(Roulette_ParseBet("green", kind, number) && kind == BET_NUMBER && number == 0);
+        EXPECT(Roulette_ParseBet("36", kind, number) && kind == BET_NUMBER && number == 36);
+        EXPECT(!Roulette_ParseBet("37", kind, number));
+        EXPECT(!Roulette_ParseBet("-1", kind, number));
+        EXPECT(!Roulette_ParseBet("blue", kind, number));
+        EXPECT(!Roulette_ParseBet("", kind, number));
+    }
+    // Fishing
+    EXPECT(Fish_TotalWeight() == 100);
+    EXPECT(Fish_Value(Fish_CatchFor(0)) == 0);
+    EXPECT(Fish_Value(Fish_CatchFor(24)) == 0);
+    EXPECT(Fish_Value(Fish_CatchFor(25)) == 40);
+    EXPECT(Fish_Value(Fish_CatchFor(98)) == 200);
+    EXPECT(Fish_Value(Fish_CatchFor(99)) == 1000);
     EXPECT(Pass_TierReward(1) == 250);
     EXPECT(Pass_TierReward(9) == 2250);
     EXPECT(Pass_TierReward(10) == 10000);

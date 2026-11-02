@@ -141,11 +141,17 @@ fi
 # The basic run claims one daily reward (day 1, $200) and is refused a second.
 trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT CONCAT(GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, ':', m.details) ORDER BY m.id), ' streak=', c.daily_streak)
-     FROM characters c LEFT JOIN money_log m ON m.character_id = c.id WHERE c.name = 'Bot_Tester' GROUP BY c.id")
+     FROM characters c LEFT JOIN money_log m ON m.character_id = c.id AND m.reason = 'daily' WHERE c.name = 'Bot_Tester' GROUP BY c.id")
 if [ "$trail" != "daily:700:day 1 streak=1" ]; then
     echo "unexpected daily reward state for the basic run: $trail"; exit 1
 fi
 echo "daily reward paid once"
+# ...and spins the lucky wheel once: at most one cash prize, and the spin is recorded.
+wheel=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
+    "SELECT CONCAT('spun=', c.wheel_last_spin IS NOT NULL, ' cash_prizes=',
+                   (SELECT COUNT(*) FROM money_log m WHERE m.character_id = c.id AND m.reason = 'wheel'))
+     FROM characters c WHERE c.name = 'Bot_Tester'")
+case "$wheel" in "spun=1 cash_prizes=0"|"spun=1 cash_prizes=1") echo "lucky wheel spun once ($wheel)" ;; *) echo "unexpected lucky wheel state: $wheel"; exit 1 ;; esac
 # The economy run must have left exactly this money trail.
 trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, '/', m.bank_after) ORDER BY m.id) FROM money_log m
@@ -156,25 +162,34 @@ fi
 echo "money_log matches the economy run"
 trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, '/', m.bank_after) ORDER BY m.id) FROM money_log m
-     JOIN characters c ON c.id = m.character_id WHERE c.name = 'Admin_Bot'")
+     JOIN characters c ON c.id = m.character_id WHERE c.name = 'Admin_Bot' AND m.reason NOT IN ('casino', 'fishing')")
 if [ "$trail" != "admin:500/2000,property_buy:500/1000,property_sell:500/1600,pass:750/1600,pass:1250/1600" ]; then
     echo "unexpected money_log for the admin run: $trail"; exit 1
 fi
 actions=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT GROUP_CONCAT(DISTINCT l.action ORDER BY l.action) FROM admin_log l
      JOIN accounts a ON a.id = l.admin_account_id WHERE a.username = 'kmbot_adm'")
-if [ "$actions" != "accept_report,announce,check,close_report,create_property,delete_property,give_money,give_pass,set_admin,set_faction,set_health,set_skin,set_time,set_weather" ]; then
+if [ "$actions" != "accept_report,announce,check,close_report,create_property,delete_property,end_turf_wars,give_money,give_pass,set_admin,set_faction,set_health,set_skin,set_time,set_weather,start_event,stop_event" ]; then
     echo "unexpected admin_log for the admin run: $actions"; exit 1
 fi
 echo "money_log and admin_log match the admin run"
+# ...plus one roulette bet, and the turf it captured.
+games=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
+    "SELECT CONCAT('bets=', (SELECT COUNT(*) FROM money_log m JOIN characters c ON c.id = m.character_id
+                             WHERE c.name = 'Admin_Bot' AND m.reason = 'casino' AND m.details LIKE 'roulette 7 _10, ball %'),
+                   ' willowfield=', (SELECT owner_faction_id FROM turfs WHERE name = 'Willowfield'))")
+if [ "$games" != "bets=1 willowfield=4" ]; then
+    echo "unexpected casino/turf state for the admin run: $games"; exit 1
+fi
+echo "roulette bet logged and Willowfield captured"
 # Delivery pay depends on the random drop, so check the sequence, the
 # licence and the owned vehicle rather than amounts.
 driving=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT CONCAT((SELECT GROUP_CONCAT(m.reason ORDER BY m.id) FROM money_log m WHERE m.character_id = c.id),
                    ' licence=', c.driving_licence,
-                   ' vehicles=', (SELECT COUNT(*) FROM vehicles v WHERE v.owner_character_id = c.id AND v.model = 462))
+                   ' vehicles=', (SELECT COUNT(*) FROM vehicles v WHERE v.owner_character_id = c.id AND v.model = 462 AND v.color1 = 3 AND v.color2 = 3))
      FROM characters c WHERE c.name = 'Driver_Bot'")
-if [ "$driving" != "admin,driving_test,vehicle_buy,job licence=1 vehicles=1" ]; then
+if [ "$driving" != "admin,driving_test,vehicle_buy,paint,job licence=1 vehicles=1" ]; then
     echo "unexpected database state after the driving run: $driving"; exit 1
 fi
 echo "database matches the driving run"
