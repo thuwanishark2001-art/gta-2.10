@@ -63,12 +63,32 @@ void* (*kmRwTextureSetFindCallBack)(FindCB);
 
 bool (*LoadClumpFile_orig)(void* stream, unsigned int modelId);
 
+struct Tint { std::string key; uint8_t r, g, b; };   // key "" = every texture
+
 struct CustomModel {
     bool loaded = false;      // files read and textures built (once)
     bool usable = false;
-    std::vector<uint8_t> dff;
+    std::vector<uint8_t> dff; // empty: the stock model (or the base model's)
+    int base = -1;            // "base N": build this id from the game's model N
+    std::vector<Tint> tints;
+    bool inspect = false;     // "inspect": only log the texture names it uses
     std::unordered_map<std::string, void*> textures;  // Key(name) -> RwTexture*
+    std::vector<std::string> seen;                    // texture names it asked for
+    bool namesLogged = false;
 };
+
+// Bytes of stock models used as a "base", copied from the player's own game
+// as they stream in (CustomModels_OnGameInit requests them).
+std::unordered_map<int, std::vector<uint8_t>> g_baseBytes;
+std::unordered_set<int> g_wantedBases;
+
+void* (*kmRpClumpForAllAtomics)(void*, void* (*)(void*, void*), void*);
+void* (*kmRpGeometryForAllMaterials)(void*, void* (*)(void*, void*), void*);
+void* (*RpClumpStreamRead_orig)(void*);
+void (*kmRequestModel)(int, int);
+void (*kmLoadAllRequestedModels)(bool);
+void (*kmRemoveModel)(int);
+void (*kmSetModelIsDeletable)(int);
 
 std::unordered_map<unsigned int, CustomModel> g_models;
 CustomModel* g_current = nullptr;   // the model being loaded, for FindTexture
@@ -171,6 +191,46 @@ int LoadPngDir(const std::string& dir, CustomModel& model)
 
 bool IsSafeId(unsigned int id) { return id > 0 && id < 20000; }
 
+// models/<id>.cfg, one setting per line ('#' starts a comment):
+//   base 21              build this id from the game's own model 21
+//   tint * C0392B        colour every texture (RRGGBB)
+//   tint shirt 1E40AF    colour only the texture named "shirt"
+//   inspect              change nothing; log the texture names the model uses
+void ReadCfg(const std::string& path, CustomModel& m, unsigned int modelId)
+{
+    std::vector<uint8_t> raw;
+    if (!ReadFile(path, raw, 64 * 1024)) return;
+    std::string text(raw.begin(), raw.end());
+    size_t pos = 0;
+    while (pos < text.size()) {
+        size_t nl = text.find('\n', pos);
+        std::string line = text.substr(pos, nl == std::string::npos ? std::string::npos : nl - pos);
+        pos = nl == std::string::npos ? text.size() : nl + 1;
+        size_t hash = line.find('#');
+        if (hash != std::string::npos) line.resize(hash);
+        char word[16] = {}, arg1[64] = {}, arg2[16] = {};
+        int n = sscanf(line.c_str(), "%15s %63s %15s", word, arg1, arg2);
+        if (n <= 0) continue;
+        if (!strcasecmp(word, "base") && n >= 2) {
+            int base = atoi(arg1);
+            if (IsSafeId((unsigned) base) && (unsigned) base != modelId) m.base = base;
+            else FLog("CustomModels: model %u: bad base \"%s\"", modelId, arg1);
+        } else if (!strcasecmp(word, "inspect")) {
+            m.inspect = true;
+        } else if (!strcasecmp(word, "tint") && n >= 3) {
+            unsigned rgb = 0;
+            if (strlen(arg2) != 6 || sscanf(arg2, "%6x", &rgb) != 1) {
+                FLog("CustomModels: model %u: bad tint colour \"%s\" (use RRGGBB)", modelId, arg2);
+                continue;
+            }
+            Tint t{strcmp(arg1, "*") ? Key(arg1) : std::string(), (uint8_t) (rgb >> 16), (uint8_t) (rgb >> 8), (uint8_t) rgb};
+            m.tints.push_back(t);
+        } else {
+            FLog("CustomModels: model %u: unknown setting \"%s\"", modelId, line.c_str());
+        }
+    }
+}
+
 CustomModel* Find(unsigned int modelId)
 {
     if (!IsSafeId(modelId) || !g_pszStorage) return nullptr;
@@ -180,23 +240,33 @@ CustomModel* Find(unsigned int modelId)
     CustomModel& m = g_models[modelId];
     m.loaded = true;
     std::string base = std::string(g_pszStorage) + "content/models/" + std::to_string(modelId);
-    if (!ReadFile(base + ".dff", m.dff, 50u << 20)) return nullptr;
+    ReadCfg(base + ".cfg", m, modelId);
+    ReadFile(base + ".dff", m.dff, 50u << 20);
     std::vector<uint8_t> txd;
     if (ReadFile(base + ".txd", txd, 50u << 20)) {
         int n = LoadTxd(txd, m);
         FLog("CustomModels: model %u: %d textures from %u.txd", modelId, n, modelId);
     }
-    // PNG textures: the model's own folder, then the folder all custom models share.
-    std::string models = std::string(g_pszStorage) + "content/models/";
+    // PNG textures: the model's own folder, then (only for custom ids) the
+    // folder all custom models share.
     int own = LoadPngDir(base, m);
-    int shared = LoadPngDir(models + "textures", m);
+    m.usable = !m.dff.empty() || m.base >= 0 || own > 0 || !m.textures.empty() || !m.tints.empty() || m.inspect;
+    if (!m.usable) return nullptr;
+    int shared = LoadPngDir(std::string(g_pszStorage) + "content/models/textures", m);
     if (own || shared) FLog("CustomModels: model %u: %d PNG textures from models/%u/, %d from models/textures/", modelId, own, modelId, shared);
-    m.usable = true;
     return &m;
+}
+
+void Seen(const char* name)
+{
+    if (!g_current || !name) return;
+    for (auto& n : g_current->seen) if (!strcasecmp(n.c_str(), name)) return;
+    if (g_current->seen.size() < 64) g_current->seen.push_back(name);
 }
 
 void* FindTexture(const char* name)
 {
+    Seen(name);
     if (g_current && name) {
         auto it = g_current->textures.find(Key(name));
         if (it != g_current->textures.end()) return it->second;
@@ -213,6 +283,7 @@ void* FindTexture(const char* name)
 void* (*VehicleFindTextureCB_orig)(const char*);
 void* VehicleFindTextureCB_hook(const char* name)
 {
+    Seen(name);
     if (g_current && name) {
         auto it = g_current->textures.find(Key(name));
         if (it != g_current->textures.end()) return it->second;
@@ -222,29 +293,110 @@ void* VehicleFindTextureCB_hook(const char* name)
     return found;
 }
 
+// Tints: RpMaterial colour (+0x8, RwRGBA) multiplies its texture once the
+// geometry has rpGEOMETRYMODULATEMATERIALCOLOR (0x40) in its flags (+0x10).
+// RpAtomic's geometry is at +0x30; RpMaterial's texture at +0x0, and a
+// texture's name at +0x20.
+constexpr size_t kAtomicGeometry = 0x30, kGeometryFlags = 0x10, kMaterialColour = 0x8, kTextureName = 0x20;
+constexpr uint32_t kModulateMaterialColour = 0x40;
+
+void* TintMaterial(void* material, void* data)
+{
+    auto* m = (CustomModel*) data;
+    void* texture = *(void**) material;
+    std::string key = texture ? Key((const char*) texture + kTextureName) : std::string();
+    const Tint* use = nullptr;
+    for (auto& t : m->tints) {
+        if (t.key == key) { use = &t; break; }      // a named tint wins over "*"
+        if (t.key.empty() && !use) use = &t;
+    }
+    if (use) {
+        uint8_t* c = (uint8_t*) material + kMaterialColour;
+        c[0] = use->r; c[1] = use->g; c[2] = use->b; c[3] = 255;
+    }
+    return material;
+}
+
+void* TintAtomic(void* atomic, void* data)
+{
+    void* geometry = *(void**) ((uint8_t*) atomic + kAtomicGeometry);
+    if (geometry) {
+        *(uint32_t*) ((uint8_t*) geometry + kGeometryFlags) |= kModulateMaterialColour;
+        kmRpGeometryForAllMaterials(geometry, &TintMaterial, data);
+    }
+    return atomic;
+}
+
+void* RpClumpStreamRead_hook(void* stream)
+{
+    void* clump = RpClumpStreamRead_orig(stream);
+    if (clump && g_current && !g_current->tints.empty()) kmRpClumpForAllAtomics(clump, &TintAtomic, g_current);
+    return clump;
+}
+
+// A memory RwStream (type 3): its data is at +0x18, its size at +0x14.
+void CaptureBase(void* stream, unsigned int modelId)
+{
+    if (!g_wantedBases.count((int) modelId) || g_baseBytes.count((int) modelId) || !stream) return;
+    auto* s = (uint8_t*) stream;
+    if (*(int32_t*) s != kStreamMemory) return;
+    uint32_t size = *(uint32_t*) (s + 0x14);
+    const uint8_t* data = *(const uint8_t**) (s + 0x18);
+    if (!data || size < 12 || size > (50u << 20)) return;
+    uint32_t firstChunk;
+    memcpy(&firstChunk, data, 4);
+    if (firstChunk != 0x10) {
+        FLog("CustomModels: game model %u can't be a base (its data starts with chunk 0x%x)", modelId, firstChunk);
+        return;
+    }
+    g_baseBytes[(int) modelId].assign(data, data + size);
+    FLog("CustomModels: kept game model %u (%u bytes) as a base", modelId, size);
+}
+
 bool LoadClumpFile_hook(void* stream, unsigned int modelId)
 {
+    CaptureBase(stream, modelId);
     CustomModel* m = Find(modelId);
     if (!m) return LoadClumpFile_orig(stream, modelId);
 
-    KmRwMemory mem{m->dff.data(), (uint32_t) m->dff.size()};
-    void* custom = kmRwStreamOpen(kStreamMemory, kStreamRead, &mem);
-    if (!custom) return LoadClumpFile_orig(stream, modelId);
+    // Where the model comes from: its own .dff, the base model, or the stock one.
+    const std::vector<uint8_t>* bytes = nullptr;
+    if (!m->dff.empty()) bytes = &m->dff;
+    else if (m->base >= 0) {
+        auto it = g_baseBytes.find(m->base);
+        if (it != g_baseBytes.end()) bytes = &it->second;
+        else FLog("CustomModels: model %u: base model %d isn't loaded yet; using the stock model", modelId, m->base);
+    }
+    KmRwMemory mem{bytes ? const_cast<uint8_t*>(bytes->data()) : nullptr, bytes ? (uint32_t) bytes->size() : 0};
+    void* custom = bytes ? kmRwStreamOpen(kStreamMemory, kStreamRead, &mem) : nullptr;
+    if (bytes && !custom) return LoadClumpFile_orig(stream, modelId);
 
     g_gameFind = kmRwTextureGetFindCallBack();
     g_current = m;
     kmRwTextureSetFindCallBack(&FindTexture);
-    bool ok = LoadClumpFile_orig(custom, modelId);
+    bool ok = LoadClumpFile_orig(custom ? custom : stream, modelId);
     kmRwTextureSetFindCallBack(g_gameFind);
     g_current = nullptr;
-    kmRwStreamClose(custom, &mem);
+    if (custom) kmRwStreamClose(custom, &mem);
 
+    if (!m->namesLogged && !m->seen.empty()) {
+        // So the server owner knows which texture names to draw or tint.
+        std::string names;
+        for (auto& n : m->seen) names += (names.empty() ? "" : ", ") + n;
+        FLog("CustomModels: model %u uses textures: %s", modelId, names.c_str());
+        m->namesLogged = true;
+    }
+    if (!custom) {
+        FLog("CustomModels: model %u: game model with %zu custom textures, %zu tints", modelId, m->textures.size(), m->tints.size());
+        return ok;
+    }
     if (ok) {
-        FLog("CustomModels: model %u loaded from content/models/%u.dff", modelId, modelId);
+        if (m->dff.empty()) FLog("CustomModels: model %u built from game model %d", modelId, m->base);
+        else FLog("CustomModels: model %u loaded from content/models/%u.dff", modelId, modelId);
         return true;
     }
     // A broken .dff: keep the stock model, and don't try again.
-    FLog("CustomModels: model %u: %u.dff didn't load; using the stock model", modelId, modelId);
+    FLog("CustomModels: model %u: its custom model didn't load; using the stock model", modelId);
     m->usable = false;
     return LoadClumpFile_orig(stream, modelId);
 }
@@ -271,5 +423,40 @@ void CustomModels_InstallHooks()
     Sym(kmRwTextureSetFindCallBack, "_Z24RwTextureSetFindCallBackPFP9RwTexturePKcE");
     CHook::InlineHook("_ZN11CFileLoader13LoadClumpFileEP8RwStreamj", &LoadClumpFile_hook, &LoadClumpFile_orig);
     CHook::InlineHook("_ZN17CVehicleModelInfo13FindTextureCBEPKc", &VehicleFindTextureCB_hook, &VehicleFindTextureCB_orig);
+    Sym(kmRpClumpForAllAtomics, "_Z20RpClumpForAllAtomicsP7RpClumpPFP8RpAtomicS2_PvES3_");
+    Sym(kmRpGeometryForAllMaterials, "_Z25RpGeometryForAllMaterialsP10RpGeometryPFP10RpMaterialS2_PvES3_");
+    Sym(kmRequestModel, "_ZN10CStreaming12RequestModelEii");
+    Sym(kmLoadAllRequestedModels, "_ZN10CStreaming22LoadAllRequestedModelsEb");
+    Sym(kmRemoveModel, "_ZN10CStreaming11RemoveModelEi");
+    Sym(kmSetModelIsDeletable, "_ZN10CStreaming19SetModelIsDeletableEi");
+    CHook::InlineHook("_Z17RpClumpStreamReadP8RwStream", &RpClumpStreamRead_hook, &RpClumpStreamRead_orig);
     FLog("CustomModels: hooks installed");
+}
+
+// After CGame::Initialise: load each "base" game model once, so its data can
+// be kept for the custom ids built from it.
+void CustomModels_OnGameInit()
+{
+    if (!g_pszStorage) return;
+    std::string dir = std::string(g_pszStorage) + "content/models";
+    DIR* d = opendir(dir.c_str());
+    if (!d) return;
+    while (dirent* e = readdir(d)) {
+        std::string file = e->d_name;
+        if (file.size() < 5 || strcasecmp(file.c_str() + file.size() - 4, ".cfg") != 0) continue;
+        unsigned id = (unsigned) atoi(file.c_str());
+        if (!IsSafeId(id)) continue;
+        CustomModel probe;
+        ReadCfg(dir + "/" + file, probe, id);
+        if (probe.base >= 0) g_wantedBases.insert(probe.base);
+    }
+    closedir(d);
+    for (int base : g_wantedBases) {
+        if (g_baseBytes.count(base)) continue;
+        kmRemoveModel(base);           // so it streams in again and gets kept
+        kmRequestModel(base, 2);
+        kmLoadAllRequestedModels(false);
+        kmSetModelIsDeletable(base);
+        if (!g_baseBytes.count(base)) FLog("CustomModels: game model %d couldn't be kept as a base", base);
+    }
 }

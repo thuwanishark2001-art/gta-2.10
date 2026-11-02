@@ -1530,6 +1530,7 @@ void CGame__Initialise211_hook(const char* datFile)
     g_bInGameInitialise = true;
     CGame__Initialise211(datFile);
     g_bInGameInitialise = false;
+    CustomModels_OnGameInit();
 
     // The main script's first pass fades the screen to black for the intro,
     // which is what would fade it back in. Without SA-MP's main.scm the

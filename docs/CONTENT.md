@@ -18,6 +18,7 @@ Put files in `server/content/` on the server:
 | `background.jpg` or `background.png` | the start screen background (landscape, about 1920x1080) |
 | `sounds/<name>.mp3` (or `.ogg`, `.wav`) | `/playsound`, and the welcome sound |
 | `models/<id>.dff` + `models/<id>.txd` (or `models/<id>/<texture>.png`) | a custom skin (or vehicle) that replaces model `<id>` |
+| `models/<id>.cfg` | a look built from the player's own game: base model, tints |
 
 `./scripts/deploy.sh` puts a default Kingmakers RP logo and background into
 `content/` (from `server/content-defaults/`) if there isn't one there yet.
@@ -166,6 +167,68 @@ What works:
 Only use skins whose authors allow you to share them, and never files taken
 from the game itself.
 
+## Looks from the player's own game (no model files)
+
+These change how a skin looks without uploading any model. Each phone builds
+the look from its own copy of GTA. The server only sends a small settings file
+(`models/<id>.cfg`) and, for artwork, your own pictures.
+
+**Colour a skin (tint)**, for example faction colours:
+
+```
+./scripts/add-skin.sh --tint 280 1E40AF            # whole skin blue
+./scripts/add-skin.sh --tint 280 C0392B shirt      # only its "shirt" texture red
+./scripts/add-skin.sh --tint 280 off               # back to normal
+```
+
+A tint multiplies the colours: white parts become the tint colour, and
+dark parts stay dark. To change a single item of clothing, tint only that
+texture. `--inspect` shows the texture names.
+
+**Use another skin's body (base)**, so a free id can carry a variation of a
+skin players already have:
+
+```
+./scripts/add-skin.sh --base 230 280               # id 230 = the game's skin 280...
+./scripts/add-skin.sh --tint 230 C0392B            # ...in red
+```
+
+Then both 280 (blue) and 230 (red) exist, as two uniforms on the same body.
+The base model is read from each player's own game when the game starts.
+
+**Your own artwork on a game skin:**
+1. Find out the texture names the skin uses:
+   ```
+   ./scripts/add-skin.sh --inspect 230
+   ```
+2. Open the app and join. The session log then has the names:
+   `CustomModels: model 230 uses textures: ...`.
+3. Draw a picture for each texture you want to change, from scratch (not a
+   copy of the game's), and name it after the texture: `shirt.png`.
+4. Upload the folder and apply it:
+   ```
+   ./scripts/add-skin.sh --textures 230 /root/myart
+   ```
+5. Turn the name logging off again:
+   ```
+   ./scripts/add-skin.sh --inspect-off 230
+   ```
+
+Textures without a picture stay as the game's.
+
+`./scripts/add-skin.sh --list` shows every custom id and what it has.
+`--remove <id>` takes it all away. Tints, bases and pictures can be
+combined on one id.
+
+The settings file, by hand (`content/models/<id>.cfg`):
+
+```
+base 280          # build this id from the game's model 280
+tint * C0392B     # colour every texture
+tint shirt FFFFFF # this texture keeps its colour (white = unchanged)
+inspect           # log the texture names
+```
+
 ## How custom models work
 
 `CFileLoader::LoadClumpFile` is the engine function that builds each skin
@@ -177,3 +240,9 @@ or vehicle when it streams in. The client hooks it
    `pngdecode.h`, tested by `app/src/test/txd/run.sh`)
 3. serves its textures by name while the model loads, falling back to the
    game's textures for any it doesn't have
+
+Without a `.dff` (looks from the player's own game), it loads the stock
+model (or, for `base N`, the bytes of game model N it kept when that model
+streamed in at start) the same way, with the custom textures. A tint sets
+the material colours as the model is read (`RpClumpStreamRead`) and turns on
+`rpGEOMETRYMODULATEMATERIALCOLOR`, so the colour multiplies the texture.

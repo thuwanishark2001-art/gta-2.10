@@ -10,6 +10,7 @@ the app; no new APK is needed. See docs/CONTENT.md.
 | `background.jpg` or `background.png` | the start screen background (landscape, about 1920x1080) |
 | `sounds/*.mp3` (or `.ogg`, `.wav`) | `/playsound` and `KM_WELCOME_SOUND` |
 | `models/<id>.dff` + `models/<id>.txd` | a custom skin replacing skin `<id>` |
+| `models/<id>.cfg`, `models/<id>/*.png` | tints, base models, artwork (`scripts/add-skin.sh`) |
 
 After adding or changing files, run `docker compose restart content` (or
 `./scripts/deploy.sh`). Use only letters, digits, `_`, `-`, `.` and `/` in

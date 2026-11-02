@@ -7,7 +7,17 @@
 # (it matches names loosely: "Body4 (1).png" is texture "body4"), saved
 # under that loose name, which the app matches the same way. Then
 # restarts the content service so players download it.
-#   add-skin.sh --remove <id>    takes a custom model away again
+#
+# Looks built from the player's own game (nothing of Rockstar's is uploaded):
+#   add-skin.sh --base <id> <game id>       id <id> uses the game's model <game id>
+#   add-skin.sh --tint <id> <RRGGBB> [texture]   colour the model (all textures,
+#                                           or one); --tint <id> off removes tints
+#   add-skin.sh --textures <id> <folder>    your own .png artwork on the game's
+#                                           model (named after its textures)
+#   add-skin.sh --inspect <id>              log the texture names model <id> uses
+#                                           (the phone's log, "uses textures:")
+#   add-skin.sh --list                      what's custom now
+#   add-skin.sh --remove <id>               takes all of it away again
 set -euo pipefail
 # Paths the user typed are relative to where they ran it.
 abs() { case "$1" in /*) printf '%s' "$1" ;; "") ;; *) printf '%s/%s' "$PWD" "$1" ;; esac; }
@@ -15,14 +25,89 @@ args=()
 for a in "$@"; do args+=("$(abs "$a")"); done
 cd "$(dirname "$0")/.."
 
-if [ "${1:-}" = "--remove" ]; then
-    id="${2:-}"
-    [[ "$id" =~ ^[0-9]{1,5}$ ]] || { echo "usage: add-skin.sh --remove <id>" >&2; exit 2; }
-    rm -rf "content/models/$id.dff" "content/models/$id.txd" "content/models/$id"
-    docker compose restart content >/dev/null
-    echo "removed custom model $id"
-    exit 0
-fi
+restart() { docker compose restart content >/dev/null; echo "content service restarted; players get it the next time they open the app"; }
+need_id() { [[ "${1:-}" =~ ^[0-9]{1,5}$ ]] && [ "$1" -ge 1 ] || { echo "The id must be a number, like 230." >&2; exit 2; }; }
+cfg_set() {  # cfg_set <id> <key regex to drop> [new line]
+    local f="content/models/$1.cfg" tmp
+    mkdir -p content/models
+    tmp=$(mktemp)
+    [ -f "$f" ] && grep -viE "^[[:space:]]*($2)([[:space:]]|$)" "$f" > "$tmp" || true
+    [ -n "${3:-}" ] && printf '%s\n' "$3" >> "$tmp"
+    if [ -s "$tmp" ]; then mv "$tmp" "$f"; else rm -f "$tmp" "$f"; fi
+}
+
+case "${1:-}" in
+--remove)
+    need_id "${2:-}"
+    rm -rf "content/models/$2.dff" "content/models/$2.txd" "content/models/$2.cfg" "content/models/$2"
+    restart; echo "removed custom model $2"; exit 0 ;;
+--base)
+    need_id "${2:-}"; need_id "${3:-}"
+    [ "$2" != "$3" ] || { echo "A model can't be its own base." >&2; exit 2; }
+    cfg_set "$2" "base" "base $3"
+    echo "model $2 now uses the game's model $3 (from each player's own game)"
+    restart; exit 0 ;;
+--tint)
+    need_id "${2:-}"
+    colour="${3:-}"; texture="${4:-*}"
+    if [ "$colour" = "off" ]; then
+        cfg_set "$2" "tint"
+        echo "removed the tints on model $2"; restart; exit 0
+    fi
+    colour="${colour#\#}"
+    [[ "$colour" =~ ^[0-9A-Fa-f]{6}$ ]] || { echo "The colour is 6 hex digits, like C0392B (red) or 1E40AF (blue)." >&2; exit 2; }
+    [[ "$texture" == "*" || "$texture" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo "Texture names: letters, digits, _ . -" >&2; exit 2; }
+    if [ "$texture" = "*" ]; then cfg_set "$2" 'tint[[:space:]]+\*' "tint * $colour"
+    else cfg_set "$2" "tint[[:space:]]+$texture" "tint $texture $colour"; fi
+    echo "model $2: tint $texture $colour"
+    restart; exit 0 ;;
+--inspect)
+    need_id "${2:-}"
+    cfg_set "$2" "inspect" "inspect"
+    echo "model $2: the phone's log will list its textures (\"CustomModels: model $2 uses textures: ...\")"
+    echo "after you've read them: add-skin.sh --inspect-off $2"
+    restart; exit 0 ;;
+--inspect-off)
+    need_id "${2:-}"; cfg_set "$2" "inspect"; restart; exit 0 ;;
+--textures)
+    need_id "${2:-}"
+    src="${args[2]:-}"
+    [ -d "$src" ] || { echo "usage: add-skin.sh --textures <id> <folder of .png pictures>" >&2; exit 2; }
+    python3 - "$2" "$src" <<'PY'
+import os, re, shutil, sys
+model_id, src = sys.argv[1], sys.argv[2]
+def key(s):
+    s = os.path.splitext(s)[0]
+    s = re.sub(r'\s*\(\d+\)$', '', s)
+    return re.sub(r'[^a-z0-9]', '', s.lower())
+out = f'content/models/{model_id}'
+if os.path.isdir(out): shutil.rmtree(out)
+os.makedirs(out)
+n = 0
+for root, _, files in os.walk(src):
+    for f in sorted(files):
+        if f.lower().endswith('.png') and key(f):
+            shutil.copyfile(os.path.join(root, f), f'{out}/{key(f)}.png'); n += 1
+            print(f"  texture {key(f)} <- {os.path.relpath(os.path.join(root, f), src)}")
+print(f"model {model_id}: {n} pictures on the game's model (name them after its textures; see --inspect)")
+PY
+    restart; exit 0 ;;
+--list)
+    shopt -s nullglob
+    ids=$(ls content/models 2>/dev/null | sed -nE 's/^([0-9]+)(\.(dff|txd|cfg))?$/\1/p' | sort -un)
+    [ -n "$ids" ] || { echo "no custom models"; exit 0; }
+    for id in $ids; do
+        what=()
+        [ -f "content/models/$id.dff" ] && what+=("own model")
+        [ -f "content/models/$id.txd" ] && what+=(".txd")
+        [ -d "content/models/$id" ] && what+=("$(ls "content/models/$id" | wc -l) pictures")
+        [ -f "content/models/$id.cfg" ] && what+=("$(tr '\n' ';' < "content/models/$id.cfg")")
+        echo "$id: ${what[*]}"
+    done
+    exit 0 ;;
+--*)
+    echo "unknown option $1 (see the top of this script)" >&2; exit 2 ;;
+esac
 
 if [ $# -lt 2 ]; then
     echo "usage: add-skin.sh <id> <model.dff> [<textures.txd> | <folder of .png textures>]" >&2
@@ -114,5 +199,4 @@ if missing:
     print(f"  not found in {tex}: {', '.join(missing)}")
     print("  (the game's own texture is used if it has one by that name)")
 PY
-docker compose restart content >/dev/null
-echo "content service restarted; players get it the next time they open the app"
+restart
