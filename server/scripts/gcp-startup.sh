@@ -34,9 +34,18 @@ if [ ! -f .env ]; then
     sed -i "s/^KM_RCON_PASSWORD=.*/KM_RCON_PASSWORD=/" .env
     chmod 600 .env
 fi
+# deploy.sh would use `hostname -I`, which on Google Cloud is the private
+# 10.x address; players need the public one to download content.
+PUBLIC_IP=$(curl -s -H 'Metadata-Flavor: Google' \
+    http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip)
+if [ -n "$PUBLIC_IP" ] && ! grep -qE '^KM_CONTENT_URL=.+' .env; then
+    port=$(sed -n 's/^KM_CONTENT_PORT=//p' .env | tail -n 1)
+    sed -i '/^KM_CONTENT_URL=/d' .env
+    echo "KM_CONTENT_URL=http://$PUBLIC_IP:${port:-7780}" >> .env
+fi
 
 ./scripts/deploy.sh
 touch "$DIR/.setup-done"
 docker compose ps
 ss -ulnp | grep 7777 || true
-echo "KINGMAKERS READY: public IP $(curl -s -H 'Metadata-Flavor: Google' http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip)"
+echo "KINGMAKERS READY: public IP $PUBLIC_IP"
