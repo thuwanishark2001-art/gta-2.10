@@ -119,6 +119,14 @@ if ! run_bot kmbot_e2e Bot_Tester basic || ! run_bot kmbot_eco Eco_Tester econom
     "${COMPOSE[@]}" logs server | tail -30
     echo "end-to-end test failed"; exit 1
 fi
+# The basic run claims one daily reward (day 1, $200) and is refused a second.
+trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
+    "SELECT CONCAT(GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, ':', m.details) ORDER BY m.id), ' streak=', c.daily_streak)
+     FROM characters c LEFT JOIN money_log m ON m.character_id = c.id WHERE c.name = 'Bot_Tester' GROUP BY c.id")
+if [ "$trail" != "daily:700:day 1 streak=1" ]; then
+    echo "unexpected daily reward state for the basic run: $trail"; exit 1
+fi
+echo "daily reward paid once"
 # The economy run must have left exactly this money trail.
 trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, '/', m.bank_after) ORDER BY m.id) FROM money_log m

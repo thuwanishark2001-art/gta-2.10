@@ -1073,6 +1073,7 @@ int main(int argc, char** argv)
     if (ExpectDialog(D_CHAR_SKIN)) Respond(D_CHAR_SKIN, 1, 2, "");
     ExpectMessage("You are now playing as", 0, 10000);
     ExpectMessage("You're the server owner");       // KM_OWNER_ACCOUNT in the test stack
+    ExpectMessage("Your daily reward is ready");
     // The Kingmakers client HUD arrives on the next 1 s tick after spawning.
     ExpectMessage("KM1|hud|cash=500;bank=0;lvl=1", kKmuiColour, 5000);
 
@@ -1088,6 +1089,12 @@ int main(int argc, char** argv)
     ExpectMessage("waves");
     Command("/jobs");
     Pump(1000);
+
+    printf("== daily reward\n");
+    Command("/daily");
+    ExpectMessage("Daily reward, day 1 of 7: $200");
+    Command("/daily");
+    ExpectMessage("already claimed today's reward");
 
     printf("== Kingmakers UI protocol\n");
     Command("/phone");
