@@ -48,7 +48,7 @@ this repo's MIT license.
 - [ ] Look at all of it on a device and adjust sizes and positions
 - [x] Rebrand the client: "Kingmakers RP" name, placeholder gold crown icon and loading screen, other projects' logos removed
 - [ ] Replace the placeholder crown with a real logo
-- [ ] Change the package id `com.samp.mobile` (together with the game files decision: it moves the app's storage folder)
+- [x] Change the package id `com.samp.mobile` to `com.kingmakers.rp` (together with the game files decision: it moves the app's storage folder)
 
 ### Phase 4: quality and ops
 - [x] Server-side anti-cheat (weapons, jetpack, health/armour, teleport), logged in `anticheat_log`
