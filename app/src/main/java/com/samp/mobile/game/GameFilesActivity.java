@@ -1,6 +1,7 @@
 package com.samp.mobile.game;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -22,6 +23,7 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.samp.mobile.R;
 
@@ -36,6 +38,8 @@ import java.io.IOException;
 public class GameFilesActivity extends Activity {
     private static final String TAG = "GameFilesActivity";
     private static final int GOLD = 0xFFD4AF37;
+    private static final int REQUEST_EXPORT_SETTINGS = 7101;
+    private static final int REQUEST_IMPORT_SETTINGS = 7102;
 
     private TextView message;
     private ProgressBar progress;
@@ -76,6 +80,64 @@ public class GameFilesActivity extends Activity {
         if (pendingUpdate != null) return;   // still waiting for the setting; keep the prompt
         // Also re-checks after the player comes back from installing the game.
         checkAndStart();
+    }
+
+
+    private void exportSettings() {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TITLE, "Kingmakers-settings.ini");
+        startActivityForResult(intent, REQUEST_EXPORT_SETTINGS);
+    }
+
+    private void importSettings() {
+        new AlertDialog.Builder(this)
+            .setTitle("Import settings backup?")
+            .setMessage("The selected backup will replace your current SA-MP settings. A safety copy of the current file will be kept.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Continue", (dialog, which) -> {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+                startActivityForResult(intent, REQUEST_IMPORT_SETTINGS);
+            })
+            .show();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        Uri uri = data.getData();
+        try {
+            if (requestCode == REQUEST_EXPORT_SETTINGS) {
+                SettingsTransfer.exportSettings(this, uri);
+                Toast.makeText(this, "Settings backup exported.", Toast.LENGTH_LONG).show();
+            } else if (requestCode == REQUEST_IMPORT_SETTINGS) {
+                SettingsTransfer.importSettings(this, uri);
+                Toast.makeText(this, "Settings imported. Your previous settings were backed up.", Toast.LENGTH_LONG).show();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "settings transfer failed", e);
+            Toast.makeText(this, "Settings transfer failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private TextView transferButton(String text, View.OnClickListener listener) {
+        TextView button = new TextView(this);
+        button.setText(text);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(dp(8), dp(12), dp(8), dp(12));
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(0xFF2A2A30);
+        shape.setCornerRadius(dp(8));
+        shape.setStroke(dp(1), GOLD);
+        button.setBackground(shape);
+        button.setOnClickListener(listener);
+        return button;
     }
 
     private void checkAndStart() {
@@ -422,6 +484,21 @@ public class GameFilesActivity extends Activity {
         secondary.setPadding(dp(20), dp(12), dp(20), dp(8));
         secondary.setVisibility(View.GONE);
         root.addView(secondary);
+
+        LinearLayout transferRow = new LinearLayout(this);
+        transferRow.setOrientation(LinearLayout.HORIZONTAL);
+        transferRow.setGravity(Gravity.CENTER);
+        TextView exportButton = transferButton("Export settings", v -> exportSettings());
+        TextView importButton = transferButton("Import settings", v -> importSettings());
+        LinearLayout.LayoutParams transferParams =
+            new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        transferParams.setMargins(dp(4), dp(8), dp(4), dp(4));
+        transferRow.addView(exportButton, transferParams);
+        LinearLayout.LayoutParams importParams =
+            new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        importParams.setMargins(dp(4), dp(8), dp(4), dp(4));
+        transferRow.addView(importButton, importParams);
+        root.addView(transferRow);
 
         // Scrolls on short screens, so the button is never cut off.
         ScrollView scroll = new ScrollView(this);
