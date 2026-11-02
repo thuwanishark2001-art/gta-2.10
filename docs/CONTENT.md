@@ -151,7 +151,7 @@ The script:
   (it matches names loosely: `Body4 (1).png` counts as texture `body4`, and
   a texture named `23 1` is saved as `231.png`)
 - lists any it can't find
-- restarts the content service
+- re-signs the content list (`content-publish.sh`)
 
 To undo, run `./scripts/add-skin.sh --remove 230`.
 
@@ -163,7 +163,7 @@ content/models/230.txd          (or content/models/230/<texture name>.png)
 content/models/textures/*.png   (optional: pictures every custom model can use)
 ```
 
-After changing them by hand, restart the content service. Players get the files the next time they
+After changing them by hand, run `./scripts/content-publish.sh`. Players get the files the next time they
 open the app. Anyone with skin 230 then looks like your custom skin:
 `/setskin <player> 230`, or put the id in the character creation lists in
 `gamemodes/km/characters.inc`.

@@ -47,6 +47,7 @@
 #include "km/owner.inc"
 #include "km/daily.inc"
 #include "km/pass.inc"
+#include "km/wheel.inc"
 
 forward KM_Tick();
 
@@ -132,6 +133,7 @@ public OnPlayerDisconnect(playerid, reason)
     Radio_Reset(playerid);
     Daily_Reset(playerid);
     Pass_Reset(playerid);
+    Wheel_Reset(playerid);
     MapIcons_Reset(playerid);
     Spec_Reset(playerid);
     return 1;
@@ -271,7 +273,7 @@ public KM_Tick()
 CMD:help(playerid, params[])
 {
     SendClientMessage(playerid, COLOR_BRAND, "Kingmakers RP commands");
-    SendClientMessage(playerid, COLOR_WHITE, "General: /daily /pass /bank /guide /gps /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
+    SendClientMessage(playerid, COLOR_WHITE, "General: /daily /spin /pass /bank /guide /gps /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
     SendClientMessage(playerid, COLOR_WHITE, "Chat: /me /do /b /s /low /w /pm /r /o  Phone: /phone /number /sms /911");
     SendClientMessage(playerid, COLOR_WHITE, "Vehicles: /engine /lights /lock /radio /park /myvehicles /buyvehicle /sellvehicle /refuel /drivingtest /licence /showlicence /tickets /paytickets");
     SendClientMessage(playerid, COLOR_WHITE, "Jobs: /jobs /takejob /quitjob /work /stopwork /calltaxi  Property: /enter /exit /buyproperty /sellproperty /myproperties /shop /till");

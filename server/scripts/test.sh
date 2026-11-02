@@ -141,11 +141,17 @@ fi
 # The basic run claims one daily reward (day 1, $200) and is refused a second.
 trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT CONCAT(GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, ':', m.details) ORDER BY m.id), ' streak=', c.daily_streak)
-     FROM characters c LEFT JOIN money_log m ON m.character_id = c.id WHERE c.name = 'Bot_Tester' GROUP BY c.id")
+     FROM characters c LEFT JOIN money_log m ON m.character_id = c.id AND m.reason = 'daily' WHERE c.name = 'Bot_Tester' GROUP BY c.id")
 if [ "$trail" != "daily:700:day 1 streak=1" ]; then
     echo "unexpected daily reward state for the basic run: $trail"; exit 1
 fi
 echo "daily reward paid once"
+# ...and spins the lucky wheel once: at most one cash prize, and the spin is recorded.
+wheel=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
+    "SELECT CONCAT('spun=', c.wheel_last_spin IS NOT NULL, ' cash_prizes=',
+                   (SELECT COUNT(*) FROM money_log m WHERE m.character_id = c.id AND m.reason = 'wheel'))
+     FROM characters c WHERE c.name = 'Bot_Tester'")
+case "$wheel" in "spun=1 cash_prizes=0"|"spun=1 cash_prizes=1") echo "lucky wheel spun once ($wheel)" ;; *) echo "unexpected lucky wheel state: $wheel"; exit 1 ;; esac
 # The economy run must have left exactly this money trail.
 trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, '/', m.bank_after) ORDER BY m.id) FROM money_log m

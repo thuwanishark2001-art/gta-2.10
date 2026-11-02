@@ -1113,6 +1113,12 @@ int main(int argc, char** argv)
     Command("/daily");
     ExpectMessage("already claimed today's reward");
 
+    printf("== lucky wheel\n");
+    Command("/spin");
+    ExpectMessage("You spin the lucky wheel... you won");
+    Command("/spin");
+    ExpectMessage("already spun the wheel today");
+
     printf("== Kingmakers UI protocol\n");
     Command("/phone");
     ExpectMessage("KM1|phone|has=0", kKmuiColour);

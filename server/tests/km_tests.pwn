@@ -51,6 +51,7 @@
 #include "km/owner.inc"
 #include "km/daily.inc"
 #include "km/pass.inc"
+#include "km/wheel.inc"
 
 new gPass, gFail;
 
@@ -113,6 +114,15 @@ Test_Validation()
     EXPECT(Daily_Reward(7) == 3000);
     EXPECT(Daily_Reward(0) == 0);
     EXPECT(Daily_Reward(8) == 0);
+    EXPECT(Wheel_TotalWeight() == 100);
+    EXPECT(Wheel_PrizeFor(0) == 0);
+    EXPECT(Wheel_PrizeFor(29) == 0);
+    EXPECT(Wheel_PrizeFor(30) == 1);
+    EXPECT(Wheel_PrizeFor(97) == 5);
+    EXPECT(Wheel_PrizeFor(98) == Wheel_PrizeCount() - 1);
+    EXPECT(Wheel_PrizeFor(99) == Wheel_PrizeCount() - 1);
+    EXPECT(Wheel_PrizeCash(Wheel_PrizeCount() - 1) == 10000);
+    EXPECT(Wheel_PrizePoints(3) == 10);
     EXPECT(Pass_TierReward(1) == 250);
     EXPECT(Pass_TierReward(9) == 2250);
     EXPECT(Pass_TierReward(10) == 10000);
