@@ -102,3 +102,20 @@ enum
     EVENT_DOUBLEPASS,
     EVENT_COUNT
 }
+
+// Gangs and turfs (km/turfs.inc).
+#define KM_MAX_TURFS                (12)
+#define KM_TURF_WAR_SECONDS         (180)       // a /capture war
+#define KM_TURF_COOLDOWN_SECONDS    (1800)      // after a war, before the next on that turf
+#define KM_TURF_INCOME              (150)       // each payday, per turf the member's gang holds
+
+// Casino (km/casino.inc).
+#define KM_CASINO_MIN_BET           (10)
+#define KM_CASINO_MAX_BET           (5000)
+
+// Fishing (km/fishing.inc).
+#define KM_FISH_SECONDS             (8)
+#define KM_FISH_MAX                 (20)
+
+// Paint shop (km/paint.inc).
+#define KM_PAINT_PRICE              (250)

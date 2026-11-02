@@ -33,6 +33,8 @@ stock MapIcons_Show(playerid)
     MapIcon_Set(playerid, id, gQuarry, 11);             // bulldozer: miner job
     MapIcon_Set(playerid, id, gGarage, 27);             // wrench: mechanic job
     MapIcon_Set(playerid, id, gBusDepot, 0, MAPICON_COLOUR_BUS);
+    MapIcon_Set(playerid, id, gCasino, 25);             // dice: casino
+    MapIcon_Set(playerid, id, gFishPier, 9);            // boat: fishing pier
     MapIcons_ShowShops(playerid);
     return id;
 }

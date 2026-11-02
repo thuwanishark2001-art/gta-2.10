@@ -62,7 +62,26 @@ You can only give levels below your own, unless you're logged into RCON
   `KM_PASS_SEASON` in `gamemodes/km/config.inc` and deploy.
 - `/givemoney [player] [amount] [reason]`: paid into the bank. A negative
   amount takes money.
-- `/setfaction [player] [faction id, 0 = none] [rank]`.
+- `/setfaction [player] [faction id, 0 = none] [rank]`. Factions 4
+  (Eastside Kings) and 5 (Southside Saints) are gangs, ranks 1-5.
+- `/endwars`: ends every running turf war now, as if its time were up.
+
+**Gangs and turfs.** Six turfs in east Los Santos show on everyone's radar
+in the colour of the gang holding them (grey: nobody). A gang member inside
+a turf their gang doesn't hold types `/capture`. That starts a 3-minute war,
+which everyone is told about, and the turf flashes. When it ends, the
+attackers take the turf if more of them than defenders are alive inside it.
+A turf can't be attacked again for 30 minutes. Each payday, every gang
+member gets $150 per turf their gang holds. Gang members on `/duty` (at
+their HQ) get a bat and a pistol. Turfs, owners and the money are in the
+`turfs` table and `KM_TURF_*` in `gamemodes/km/config.inc`.
+
+**Casino, fishing, paint.** Players can play roulette at the casino in
+Pershing Square (`/roulette red 100`; bets of $10-5000, cash, reason
+`casino` in `money_log`). They can fish on Santa Maria pier (`/fish`, then
+`/sellfish`, reason `fishing`; up to 20 fish, from $40 to $1000 each). At
+the Idlewood Pay'n'Spray they can respray their own car (`/paint 3 3`, $250,
+reason `paint`). All three places are on `/gps` and the map.
 - `/sethelper [player] [level 0-3]`.
 - `/createproperty [interior] [price] [name]`, `/deleteproperty`. Stand at
   the door. `/createproperty` alone lists the interiors. 5 and 6 are 24/7

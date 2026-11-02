@@ -131,6 +131,12 @@ stock bool:Place_Near(playerid, const point[E_POINT], Float:range)
 // ---- driving licence ----------------------------------------------------
 
 // Licensing office by City Hall, the test car's spawn, and the test route.
+// Casino (/roulette), in Pershing Square.
+stock const gCasino[E_POINT] = { 1470.0, -1655.0, 14.0, 0.0 };
+// Fishing (/fish, /sellfish): Santa Maria pier.
+stock const gFishPier[E_POINT] = { 836.0, -2063.0, 12.9, 0.0 };
+// The paint shop (/paint) is the Pay'n'Spray at gGarage.
+
 stock const gLicenceOffice[E_POINT] = { 1490.0, -1771.0, 18.8, 0.0 };
 stock const gLicenceCarSpawn[E_POINT] = { 1497.0, -1746.0, 13.4, 270.0 };
 stock const gLicenceRoute[][E_POINT] = {

@@ -49,6 +49,10 @@
 #include "km/pass.inc"
 #include "km/wheel.inc"
 #include "km/events.inc"
+#include "km/turfs.inc"
+#include "km/casino.inc"
+#include "km/fishing.inc"
+#include "km/paint.inc"
 
 forward KM_Tick();
 
@@ -78,6 +82,7 @@ public OnGameModeInit()
     Veh_Init();
     Job_Init();
     Lic_Init();
+    Turf_Load();
     SetTimer("Char_AutoSaveAll", KM_AUTOSAVE_MS, true);
     SetTimer("KM_Tick", 1000, true);
     return 1;
@@ -135,6 +140,8 @@ public OnPlayerDisconnect(playerid, reason)
     Daily_Reset(playerid);
     Pass_Reset(playerid);
     Wheel_Reset(playerid);
+    Casino_Reset(playerid);
+    Fish_Reset(playerid);
     MapIcons_Reset(playerid);
     Spec_Reset(playerid);
     return 1;
@@ -257,6 +264,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 public KM_Tick()
 {
     Event_Tick();
+    Turf_Tick();
     for (new i = 0; i < MAX_PLAYERS; i++)
     {
         if (!Player_IsPlaying(i) || !gChar[i][cSpawned]) continue;
@@ -278,6 +286,7 @@ CMD:help(playerid, params[])
     SendClientMessage(playerid, COLOR_WHITE, "General: /daily /spin /pass /bank /event /guide /gps /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
     SendClientMessage(playerid, COLOR_WHITE, "Chat: /me /do /b /s /low /w /pm /r /o  Phone: /phone /number /sms /911");
     SendClientMessage(playerid, COLOR_WHITE, "Vehicles: /engine /lights /lock /radio /park /myvehicles /buyvehicle /sellvehicle /refuel /drivingtest /licence /showlicence /tickets /paytickets");
+    SendClientMessage(playerid, COLOR_WHITE, "Fun: /roulette (casino) /fish /sellfish (pier) /paint (Pay'n'Spray) /turfs");
     SendClientMessage(playerid, COLOR_WHITE, "Jobs: /jobs /takejob /quitjob /work /stopwork /calltaxi  Property: /enter /exit /buyproperty /sellproperty /myproperties /shop /till");
     if (Fac_Valid(gChar[playerid][cFaction]))
     {
@@ -286,6 +295,7 @@ CMD:help(playerid, params[])
         {
             case FACTION_POLICE: SendClientMessage(playerid, COLOR_RADIO, "Police: /d /cuff /uncuff /su /clearwanted /arrest /ticket /mdt");
             case FACTION_MEDICAL: SendClientMessage(playerid, COLOR_RADIO, "Medical: /d /heal");
+            case FACTION_GANG: SendClientMessage(playerid, COLOR_RADIO, "Gang: /capture (inside a turf) /turfs. Each turf pays every member at payday.");
         }
     }
     if (gChar[playerid][cJob] == JOB_TAXI) SendClientMessage(playerid, COLOR_WHITE, "Taxi: /taxiaccept");
@@ -293,7 +303,7 @@ CMD:help(playerid, params[])
     if (Sup_IsStaff(playerid)) SendClientMessage(playerid, COLOR_INFO, "Staff: /reports /ar /cr /h");
     if (gPlayer[playerid][pAdmin] >= ADMIN_MOD) SendClientMessage(playerid, COLOR_ADMIN, "Moderator: /a /kick /mute /unmute /goto /gethere /freeze /unfreeze /check /ajail /togooc /spec /specoff");
     if (gPlayer[playerid][pAdmin] >= ADMIN_ADMIN) SendClientMessage(playerid, COLOR_ADMIN, "Admin: /ban /unban /veh /dveh /announce /sethealth /setskin /playstream /playsound /stopstream");
-    if (gPlayer[playerid][pAdmin] >= ADMIN_LEAD) SendClientMessage(playerid, COLOR_ADMIN, "Lead: /givemoney /givepass /event /setfaction /sethelper /createproperty /deleteproperty /settime /setweather");
+    if (gPlayer[playerid][pAdmin] >= ADMIN_LEAD) SendClientMessage(playerid, COLOR_ADMIN, "Lead: /givemoney /givepass /event /setfaction /sethelper /createproperty /deleteproperty /settime /setweather /endwars");
     if (gPlayer[playerid][pAdmin] >= ADMIN_OWNER) SendClientMessage(playerid, COLOR_ADMIN, "Owner: /setadmin /renameaccount /testblips");
     return 1;
 }
