@@ -3,7 +3,7 @@
 
 #define MAPICON_COLOUR_GAS      (0xFF8C00FF)    // orange square
 #define MAPICON_COLOUR_SHOP     (0x2ECC71FF)    // green square: 24/7 shops (business properties)
-#define MAPICON_SHOP_FIRST      (20)
+#define MAPICON_SHOP_FIRST      (30)    // 0-29: the fixed places above
 #define MAPICON_SHOP_LAST       (89)
 
 #define MAPICON_COLOUR_TAXI     (0xFFD700FF)    // yellow square
@@ -35,6 +35,9 @@ stock MapIcons_Show(playerid)
     MapIcon_Set(playerid, id, gBusDepot, 0, MAPICON_COLOUR_BUS);
     MapIcon_Set(playerid, id, gCasino, 25);             // dice: casino
     MapIcon_Set(playerid, id, gFishPier, 9);            // boat: fishing pier
+    MapIcon_Set(playerid, id, gClothesShop, 45);        // shirt: Binco
+    MapIcon_Set(playerid, id, gAmmunation, 6);          // gun: Ammu-Nation
+    // Keep id below MAPICON_SHOP_FIRST.
     MapIcons_ShowShops(playerid);
     return id;
 }

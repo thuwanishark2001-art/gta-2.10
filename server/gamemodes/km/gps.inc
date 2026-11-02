@@ -13,6 +13,9 @@ enum
     GPS_CASINO,
     GPS_PIER,
     GPS_PAINT,
+    GPS_CLOTHES,
+    GPS_AMMU,
+    GPS_RENTAL,
     GPS_FIRST_JOB       // then one entry per job, JOB_NONE + 1 onwards
 }
 
@@ -53,7 +56,7 @@ static Gps_Mark(playerid, const point[E_POINT], const name[])
 CMD:gps(playerid, params[])
 {
     if (!Player_IsPlaying(playerid)) return 1;
-    new list[512] = "Nearest ATM\nNearest gas station\nNearest 24/7 shop\nCar dealership\nHospital\nPolice (LSPD)\nLicensing office\nCasino\nFishing pier\nPaint shop (Pay'n'Spray)";
+    new list[512] = "Nearest ATM\nNearest gas station\nNearest 24/7 shop\nCar dealership\nHospital\nPolice (LSPD)\nLicensing office\nCasino\nFishing pier\nPaint shop (Pay'n'Spray)\nClothes (Binco)\nAmmu-Nation\nBike rental";
     for (new job = JOB_NONE + 1; job < JOB_COUNT; job++)
     {
         strcat(list, "\nJob: ");
@@ -89,6 +92,9 @@ stock Gps_OnDialog(playerid, dialogid, response, listitem)
         case GPS_CASINO: Gps_Mark(playerid, gCasino, "The casino");
         case GPS_PIER: Gps_Mark(playerid, gFishPier, "Santa Maria pier");
         case GPS_PAINT: Gps_Mark(playerid, gGarage, "The Pay'n'Spray");
+        case GPS_CLOTHES: Gps_Mark(playerid, gClothesShop, "Binco");
+        case GPS_AMMU: Gps_Mark(playerid, gAmmunation, "Ammu-Nation");
+        case GPS_RENTAL: Gps_Mark(playerid, gRental, "The bike rental");
         default:
         {
             new job = listitem - GPS_FIRST_JOB + 1;

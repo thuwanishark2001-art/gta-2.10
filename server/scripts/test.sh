@@ -189,7 +189,7 @@ driving=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB
                    ' licence=', c.driving_licence,
                    ' vehicles=', (SELECT COUNT(*) FROM vehicles v WHERE v.owner_character_id = c.id AND v.model = 462 AND v.color1 = 3 AND v.color2 = 3))
      FROM characters c WHERE c.name = 'Driver_Bot'")
-if [ "$driving" != "admin,driving_test,vehicle_buy,paint,job licence=1 vehicles=1" ]; then
+if [ "$driving" != "admin,driving_test,vehicle_buy,paint,job,clothes,ammunation,rental licence=1 vehicles=1" ]; then
     echo "unexpected database state after the driving run: $driving"; exit 1
 fi
 echo "database matches the driving run"

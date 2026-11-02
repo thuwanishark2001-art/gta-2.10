@@ -371,6 +371,7 @@ stock Char_OnSpawn(playerid)
         Daily_OnFirstSpawn(playerid);
         Pass_Load(playerid);
         Fish_Load(playerid);
+        Gun_Load(playerid);
         Turf_ShowAll(playerid);
         if (gChar[playerid][cNewPlayer])
         {

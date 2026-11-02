@@ -119,3 +119,21 @@ enum
 
 // Paint shop (km/paint.inc).
 #define KM_PAINT_PRICE              (250)
+
+// Clothes shop (km/clothes.inc).
+#define KM_CLOTHES_PRICE            (150)
+
+// Ammu-Nation and gun licences (km/ammunation.inc).
+#define KM_GUN_LICENCE_PRICE        (2500)
+#define KM_GUN_LICENCE_LEVEL        (2)
+
+// Bike rental (km/rental.inc).
+#define KM_RENT_PRICE               (50)
+
+// Store robbery (km/robbery.inc).
+#define KM_ROB_SECONDS              (30)        // stay inside this long
+#define KM_ROB_MIN                  (500)
+#define KM_ROB_MAX                  (1500)
+#define KM_ROB_SHOP_COOLDOWN        (1800)      // per 24/7
+#define KM_ROB_PLAYER_COOLDOWN      (900)       // per robber
+#define KM_ROB_LEVEL                (2)

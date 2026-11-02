@@ -585,6 +585,41 @@ static void DrivingScenario(const char* host, int port, const std::string& chara
     }
     Command("/stopwork");
     ExpectMessage("Shift ended");
+
+    printf("== clothes, Ammu-Nation, rental, /top\n");
+    Command("/clothes 21");
+    ExpectMessage("at Binco in Ganton");
+    MoveTo(2244.4f, -1665.5f, 15.5f);
+    Command("/clothes 280");
+    ExpectMessage("isn't for sale");
+    Command("/clothes 22");
+    ExpectMessage("New outfit: skin 22 ($150)");
+    MoveTo(1368.3f, -1279.8f, 13.5f);
+    g_dialogs.clear();
+    Command("/buygun");
+    if (ExpectDialog(19)) Respond(19, 1, 3, "");        // the pistol: needs a licence
+    ExpectMessage("You need a gun licence");
+    g_dialogs.clear();
+    Command("/buygun");
+    if (ExpectDialog(19)) Respond(19, 1, 0, "");        // the bat
+    ExpectMessage("You bought: Baseball bat ($100)");
+    Command("/buylicence gun");
+    ExpectMessage("licensing office");
+    Command("/robstore");
+    ExpectMessage("inside a 24/7");
+    MoveTo(1689.0f, -1735.0f, 13.5f);
+    Command("/rent");
+    ExpectMessage("You rented a Faggio ($50)");
+    Pump(500);
+    if (g_vehicle == 0) Fail("not put on the rented bike");
+    Command("/rent");
+    ExpectMessage("already have a rented bike");
+    Command("/unrent");
+    ExpectMessage("You returned your rented bike");
+    g_dialogs.clear();
+    Command("/top");
+    Dialog top;
+    if (ExpectDialog(20, &top) && top.text.find("Highest level") == std::string::npos) Fail("/top is missing the level board");
     Disconnect();
 }
 
@@ -940,11 +975,11 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     Command("/createproperty 5 5000 Bot Shop");
     ExpectMessage("Created property #");
     Pump(1000);
-    if (!g_mapIcons[20]) Fail("a new shop didn't get a map icon");
+    if (!g_mapIcons[30]) Fail("a new shop didn't get a map icon");
     Command("/deleteproperty");
     ExpectMessage("Property deleted.");
     Pump(1000);
-    if (g_mapIcons[20]) Fail("a deleted shop kept its map icon");
+    if (g_mapIcons[30]) Fail("a deleted shop kept its map icon");
     Command("/stats");
     ExpectMessage("Bank $1600");
 

@@ -9,7 +9,8 @@ enum E_VEH_TYPE
     VEH_OWNED,
     VEH_JOB,
     VEH_FACTION,
-    VEH_ADMIN
+    VEH_ADMIN,
+    VEH_RENTAL      // /rent: vOwner is the renter
 }
 
 enum E_VEH
@@ -130,6 +131,7 @@ stock bool:Veh_CanDrive(playerid, vehicleid)
     {
         case VEH_OWNED: return gVeh[vehicleid][vOwner] == playerid;
         case VEH_JOB: return gVeh[vehicleid][vOwner] == playerid;
+        case VEH_RENTAL: return gVeh[vehicleid][vOwner] == playerid;
         case VEH_FACTION: return gChar[playerid][cFaction] == gVeh[vehicleid][vFaction];
         default: return true;
     }
