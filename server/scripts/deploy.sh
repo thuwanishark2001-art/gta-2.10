@@ -38,6 +38,8 @@ fi
 mkdir -p content/sounds content/models
 [ -e content/logo.png ] || cp content-defaults/logo.png content/
 [ -e content/background.jpg ] || [ -e content/background.png ] || cp content-defaults/background.jpg content/
+# Sign the content list (makes the signing key on first run).
+./scripts/content-publish.sh
 
 ./scripts/fetch-deps.sh
 docker compose build server
@@ -53,8 +55,6 @@ docker compose up -d
 # Always restart the game server, so it runs the code just built and the
 # check below only sees this run's log.
 docker compose up -d --force-recreate --no-deps server
-# The content service lists its files at start; restart it to pick up changes.
-docker compose restart content >/dev/null
 echo "== waiting for the gamemode"
 for i in $(seq 1 60); do
     logs=$(docker compose logs --since "$started" server 2>&1 || true)

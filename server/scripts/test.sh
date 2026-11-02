@@ -17,7 +17,7 @@ cd "$(dirname "$0")/.."
 
 export DB_NAME=km_test DB_USER=km_test DB_PASSWORD=km_test_pw DB_ROOT_PASSWORD=km_test_root
 COMPOSE=(docker compose -p kingmakers-test --env-file /dev/null -f docker-compose.yml -f docker-compose.test.yml)
-cleanup() { "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true; }
+cleanup() { "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true; [ -z "${content_tmp:-}" ] || rm -rf "$content_tmp"; }
 trap cleanup EXIT
 
 [ -d .deps/omp ] || ./scripts/fetch-deps.sh
@@ -83,20 +83,39 @@ if [ -z "${booted:-}" ]; then
 fi
 
 echo "== content service"
-# Serves tests/content with a manifest of sizes and SHA-256 sums (docs/CONTENT.md).
+# Serves tests/content with a signed manifest of sizes and SHA-256 sums
+# (scripts/content-publish.sh, docs/CONTENT.md), signed with a throwaway key.
+content_tmp=$(mktemp -d)
+export KM_TEST_CONTENT_META="$content_tmp/meta"
+KM_CONTENT_DIR=tests/content KM_CONTENT_META="$KM_TEST_CONTENT_META" KM_CONTENT_KEY="$content_tmp/key.pem" \
+    ./scripts/content-publish.sh >/dev/null
+openssl ec -in "$content_tmp/key.pem" -pubout -out "$content_tmp/pub.pem" 2>/dev/null
 "${COMPOSE[@]}" up -d --wait content >/dev/null
 get() { "${COMPOSE[@]}" exec -T content wget -q -O - "http://127.0.0.1/$1"; }
-manifest=$(get manifest.json)
+get manifest.json > "$content_tmp/manifest.json"
+get manifest.sig | base64 -d > "$content_tmp/manifest.sig"
+openssl dgst -sha256 -verify "$content_tmp/pub.pem" -signature "$content_tmp/manifest.sig" "$content_tmp/manifest.json" >/dev/null \
+    || { echo "the served manifest's signature doesn't verify"; exit 1; }
+printf ' ' >> "$content_tmp/manifest.json"
+if openssl dgst -sha256 -verify "$content_tmp/pub.pem" -signature "$content_tmp/manifest.sig" "$content_tmp/manifest.json" >/dev/null 2>&1; then
+    echo "a changed manifest still verified"; exit 1
+fi
 wav_sha=$(sha256sum tests/content/sounds/test.wav | cut -d' ' -f1)
 wav_size=$(wc -c < tests/content/sounds/test.wav | tr -d ' ')
-echo "$manifest" | grep -q "\"path\": \"sounds/test.wav\", \"size\": $wav_size, \"sha256\": \"$wav_sha\"" \
-    || { echo "manifest is missing sounds/test.wav: $manifest"; exit 1; }
-echo "$manifest" | grep -q '"path": "hello.txt"' || { echo "manifest is missing hello.txt: $manifest"; exit 1; }
-if echo "$manifest" | grep -q "gitkeep"; then echo "manifest lists hidden files"; exit 1; fi
+python3 - "$content_tmp/manifest.json" "$wav_size" "$wav_sha" <<'PY' || exit 1
+import json, sys
+m = json.load(open(sys.argv[1]))
+files = {f["path"]: f for f in m["files"]}
+wav = files.get("sounds/test.wav")
+if not wav or wav["size"] != int(sys.argv[2]) or wav["sha256"] != sys.argv[3]:
+    sys.exit(f"manifest is missing sounds/test.wav: {m}")
+if "hello.txt" not in files: sys.exit(f"manifest is missing hello.txt: {m}")
+if any("gitkeep" in p for p in files): sys.exit("manifest lists hidden files")
+PY
 [ "$(get sounds/test.wav | sha256sum | cut -d' ' -f1)" = "$wav_sha" ] || { echo "sounds/test.wav download doesn't match"; exit 1; }
 if get sounds/.gitkeep >/dev/null 2>&1; then echo "content service serves hidden files"; exit 1; fi
 if get ../etc/passwd >/dev/null 2>&1; then echo "content service serves files outside the folder"; exit 1; fi
-echo "content service serves the files and manifest"
+echo "content service serves the files and a signed manifest"
 
 echo "== end-to-end: kmbot plays through the game as a SA:MP client"
 # tools/kmbot is a headless client built from the mobile client's RakNet.

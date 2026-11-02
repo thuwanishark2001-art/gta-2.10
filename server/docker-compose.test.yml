@@ -29,6 +29,6 @@ services:
     ports: !reset []
     volumes: !override
       - ./tests/content:/srv/content:ro
+      - ${KM_TEST_CONTENT_META:-./tests/.content-meta}:/srv/meta:ro
       - ./content-server/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./content-server/40-km-manifest.sh:/docker-entrypoint.d/40-km-manifest.sh:ro
     restart: "no"

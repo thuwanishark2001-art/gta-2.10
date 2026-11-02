@@ -25,7 +25,7 @@ args=()
 for a in "$@"; do args+=("$(abs "$a")"); done
 cd "$(dirname "$0")/.."
 
-restart() { docker compose restart content >/dev/null; echo "content service restarted; players get it the next time they open the app"; }
+restart() { ./scripts/content-publish.sh >/dev/null; echo "content published; players get it the next time they open the app"; }
 need_id() { [[ "${1:-}" =~ ^[0-9]{1,5}$ ]] && [ "$1" -ge 1 ] || { echo "The id must be a number, like 230." >&2; exit 2; }; }
 cfg_set() {  # cfg_set <id> <key regex to drop> [new line]
     local f="content/models/$1.cfg" tmp

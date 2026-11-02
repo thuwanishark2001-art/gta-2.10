@@ -118,6 +118,25 @@ final class ContentSync {
         return true;
     }
 
+    /**
+     * True if base64 DER signature sig is the server's ECDSA P-256 / SHA-256
+     * signature of data, for the base64 X.509 public key pubKey
+     * (app/content-pubkey.pem; scripts/content-publish.sh signs).
+     */
+    static boolean verify(String pubKey, byte[] data, String sig) {
+        try {
+            java.security.PublicKey key = java.security.KeyFactory.getInstance("EC")
+                .generatePublic(new java.security.spec.X509EncodedKeySpec(android.util.Base64.decode(pubKey, android.util.Base64.DEFAULT)));
+            java.security.Signature s = java.security.Signature.getInstance("SHA256withECDSA");
+            s.initVerify(key);
+            s.update(data);
+            return s.verify(android.util.Base64.decode(sig, android.util.Base64.DEFAULT));
+        } catch (Exception e) {
+            Log.w(TAG, "content signature check failed: " + e);
+            return false;
+        }
+    }
+
     /** Parses and checks manifest.json. Throws on anything unexpected. */
     static List<Entry> parseManifest(String json) throws JSONException {
         JSONObject root = new JSONObject(json);
@@ -164,8 +183,15 @@ final class ContentSync {
         if (!dir.isDirectory() && !dir.mkdirs()) return new Result(false, 0, 0, "can't create " + dir);
         List<Entry> entries;
         try {
-            String json = new String(get(baseUrl() + "/manifest.json", 1024 * 1024), StandardCharsets.UTF_8);
-            entries = parseManifest(json);
+            byte[] manifest = get(baseUrl() + "/manifest.json", 1024 * 1024);
+            if (!BuildConfig.KM_CONTENT_PUBKEY.isEmpty()) {
+                String sig = new String(get(baseUrl() + "/manifest.sig", 4096), StandardCharsets.US_ASCII).trim();
+                if (!verify(BuildConfig.KM_CONTENT_PUBKEY, manifest, sig)) {
+                    // Keep the files we have: someone may be changing them on the way.
+                    throw new IOException("the content list's signature doesn't match this app's key");
+                }
+            }
+            entries = parseManifest(new String(manifest, StandardCharsets.UTF_8));
         } catch (IOException | JSONException e) {
             Log.w(TAG, "no content manifest from " + baseUrl() + ": " + e);
             return new Result(false, 0, 0, e.toString());
