@@ -26,6 +26,7 @@ import android.widget.TextView;
 import com.samp.mobile.R;
 
 import java.io.File;
+import java.io.IOException;
 
 /**
  * First screen of the app. Makes sure the player's own GTA: San Andreas
@@ -39,6 +40,10 @@ public class GameFilesActivity extends Activity {
     private TextView message;
     private ProgressBar progress;
     private TextView action;
+    private TextView secondary;
+    /** A downloaded update waiting for "install unknown apps" to be allowed. */
+    private File pendingUpdate;
+    private boolean updating = false;
     private EditText nameInput;
     private ImageView logo;
     private View background;
@@ -61,12 +66,24 @@ public class GameFilesActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        // Back from the "install unknown apps" setting, or from the installer.
+        if (pendingUpdate != null && Updater.canInstall(this)) {
+            File apk = pendingUpdate;
+            pendingUpdate = null;
+            startInstall(apk);
+            return;
+        }
+        if (pendingUpdate != null) return;   // still waiting for the setting; keep the prompt
         // Also re-checks after the player comes back from installing the game.
         checkAndStart();
     }
 
     private void checkAndStart() {
-        if (copying || syncing) return;
+        if (copying || syncing || updating) return;
+        if (!Updater.checkedThisProcess && Updater.enabled()) {
+            checkForUpdate();
+            return;
+        }
         if (savedLog != null) {
             String where = savedLog;
             showProblem("The game closed unexpectedly last time.\n\nA log was saved to " + where
@@ -139,6 +156,102 @@ public class GameFilesActivity extends Activity {
         Class<?> activity = engine == GameFiles.Engine.GTA_211 ? SAMP211.class : SAMP.class;
         startActivity(new Intent(this, activity));
         finish();
+    }
+
+    /** Asks GitHub for a newer release of the app; offers it if there is one. */
+    private void checkForUpdate() {
+        updating = true;
+        message.setText("Checking for app updates…");
+        progress.setIndeterminate(true);
+        progress.setVisibility(View.VISIBLE);
+        action.setVisibility(View.GONE);
+        secondary.setVisibility(View.GONE);
+        new Thread(() -> {
+            Updater.Release release = Updater.check();
+            runOnUiThread(() -> {
+                updating = false;
+                Updater.checkedThisProcess = true;
+                if (release == null) { checkAndStart(); return; }
+                offerUpdate(release);
+            });
+        }, "UpdateCheck").start();
+    }
+
+    private void offerUpdate(Updater.Release release) {
+        String text = "Kingmakers RP " + release.version + " is available (you have " + BuildConfigVersion() + ").\n"
+            + String.format(java.util.Locale.US, "%.1f MB", release.apkSize / 1048576.0);
+        if (!release.notes.isEmpty()) text += "\n\n" + release.notes;
+        message.setText(text);
+        progress.setVisibility(View.GONE);
+        action.setText("Update now");
+        action.setOnClickListener(v -> downloadUpdate(release));
+        action.setVisibility(View.VISIBLE);
+        secondary.setText("Later");
+        secondary.setOnClickListener(v -> { secondary.setVisibility(View.GONE); checkAndStart(); });
+        secondary.setVisibility(View.VISIBLE);
+    }
+
+    private static String BuildConfigVersion() {
+        return com.samp.mobile.BuildConfig.VERSION_NAME;
+    }
+
+    private void downloadUpdate(Updater.Release release) {
+        updating = true;
+        action.setVisibility(View.GONE);
+        secondary.setVisibility(View.GONE);
+        message.setText("Downloading " + release.version + "…");
+        progress.setIndeterminate(false);
+        progress.setMax(1000);
+        progress.setProgress(0);
+        progress.setVisibility(View.VISIBLE);
+        new Thread(() -> {
+            try {
+                File apk = Updater.download(this, release, (done, total) -> runOnUiThread(() -> {
+                    progress.setProgress((int) (done * 1000 / Math.max(1, total)));
+                    message.setText(String.format(java.util.Locale.US, "Downloading %s…\n%.1f of %.1f MB",
+                        release.version, done / 1048576.0, total / 1048576.0));
+                }));
+                runOnUiThread(() -> {
+                    updating = false;
+                    progress.setIndeterminate(true);
+                    if (Updater.canInstall(this)) {
+                        startInstall(apk);
+                    } else {
+                        pendingUpdate = apk;
+                        showProblem("To install updates, allow Kingmakers RP to install apps.\n"
+                            + "Turn on \"Allow from this source\", then come back.",
+                            "Open settings", v -> startActivity(Updater.allowInstallsIntent(this)));
+                        secondary.setText("Later");
+                        secondary.setOnClickListener(v -> { pendingUpdate = null; secondary.setVisibility(View.GONE); checkAndStart(); });
+                        secondary.setVisibility(View.VISIBLE);
+                    }
+                });
+            } catch (IOException e) {
+                Log.w(TAG, "update download failed", e);
+                runOnUiThread(() -> {
+                    updating = false;
+                    progress.setIndeterminate(true);
+                    showProblem("The update couldn't be downloaded: " + e.getMessage(), "Play without updating", v -> checkAndStart());
+                });
+            }
+        }, "UpdateDownload").start();
+    }
+
+    private void startInstall(File apk) {
+        message.setText("Installing the update…\nIf nothing appears, tap Install below.");
+        progress.setVisibility(View.GONE);
+        action.setText("Install");
+        action.setOnClickListener(v -> startInstall(apk));
+        action.setVisibility(View.VISIBLE);
+        secondary.setText("Play without updating");
+        secondary.setOnClickListener(v -> { secondary.setVisibility(View.GONE); checkAndStart(); });
+        secondary.setVisibility(View.VISIBLE);
+        try {
+            startActivity(Updater.installIntent(this, apk));
+        } catch (Exception e) {
+            Log.w(TAG, "can't open the installer", e);
+            message.setText("Couldn't open the installer: " + e.getMessage());
+        }
     }
 
     /** Downloads the server's content (logo, background, sounds); a failure isn't fatal. */
@@ -243,6 +356,7 @@ public class GameFilesActivity extends Activity {
         action.setText(button);
         action.setOnClickListener(listener);
         action.setVisibility(View.VISIBLE);
+        secondary.setVisibility(View.GONE);
     }
 
     private void buildLayout() {
@@ -300,6 +414,14 @@ public class GameFilesActivity extends Activity {
         action.setBackground(shape);
         action.setVisibility(View.GONE);
         root.addView(action);
+
+        secondary = new TextView(this);
+        secondary.setTextColor(0xFFBDBDBD);
+        secondary.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        secondary.setGravity(Gravity.CENTER);
+        secondary.setPadding(dp(20), dp(12), dp(20), dp(8));
+        secondary.setVisibility(View.GONE);
+        root.addView(secondary);
 
         // Scrolls on short screens, so the button is never cut off.
         ScrollView scroll = new ScrollView(this);

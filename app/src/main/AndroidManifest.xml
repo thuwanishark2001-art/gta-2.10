@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <!-- Voice chat (voice_new). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Over-the-air updates (Updater.java): installing a newer release. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Android 11+: lets the app see the player's GTA: San Andreas install. -->
     <queries>

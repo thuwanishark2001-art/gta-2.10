@@ -6,6 +6,9 @@ plugins {
 // ./gradlew -PkmServerHost=1.2.3.4 -PkmServerPort=7777 -PkmContentPort=7780 ...
 def kmServerHost = project.findProperty('kmServerHost') ?: '65.20.88.67'
 def kmContentPort = (project.findProperty('kmContentPort') ?: '7780') as int
+// GitHub repository whose Releases the app updates itself from (Updater.java).
+// -PkmUpdateRepo= (empty) turns updates off.
+def kmUpdateRepo = project.findProperty('kmUpdateRepo') != null ? project.findProperty('kmUpdateRepo') : 'thuwanishark2001-art/gta-2.10'
 
 android {
     signingConfigs {
@@ -41,6 +44,7 @@ android {
         // the launcher downloads the server's logo, background and sounds from.
         buildConfigField "String", "KM_SERVER_HOST", "\"${kmServerHost}\""
         buildConfigField "int", "KM_CONTENT_PORT", "${kmContentPort}"
+        buildConfigField "String", "KM_UPDATE_REPO", "\"${kmUpdateRepo}\""
 
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a'
