@@ -440,9 +440,14 @@ void CustomModels_OnGameInit()
     if (!g_pszStorage) return;
     std::string dir = std::string(g_pszStorage) + "content/models";
     DIR* d = opendir(dir.c_str());
-    if (!d) return;
+    if (!d) {
+        FLog("CustomModels: no custom models downloaded (%s)", dir.c_str());
+        return;
+    }
+    std::string found;
     while (dirent* e = readdir(d)) {
         std::string file = e->d_name;
+        if (file[0] != '.' && found.size() < 600) found += (found.empty() ? "" : " ") + file;
         if (file.size() < 5 || strcasecmp(file.c_str() + file.size() - 4, ".cfg") != 0) continue;
         unsigned id = (unsigned) atoi(file.c_str());
         if (!IsSafeId(id)) continue;
@@ -451,6 +456,7 @@ void CustomModels_OnGameInit()
         if (probe.base >= 0) g_wantedBases.insert(probe.base);
     }
     closedir(d);
+    FLog("CustomModels: downloaded: %s", found.empty() ? "(nothing)" : found.c_str());
     for (int base : g_wantedBases) {
         if (g_baseBytes.count(base)) continue;
         kmRemoveModel(base);           // so it streams in again and gets kept
