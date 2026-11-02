@@ -33,7 +33,9 @@ cfg_set() {  # cfg_set <id> <key regex to drop> [new line]
     tmp=$(mktemp)
     [ -f "$f" ] && grep -viE "^[[:space:]]*($2)([[:space:]]|$)" "$f" > "$tmp" || true
     [ -n "${3:-}" ] && printf '%s\n' "$3" >> "$tmp"
-    if [ -s "$tmp" ]; then mv "$tmp" "$f"; else rm -f "$tmp" "$f"; fi
+    # mktemp makes the file readable by root only; the content service (nginx)
+    # must be able to read it.
+    if [ -s "$tmp" ]; then chmod 644 "$tmp" && mv "$tmp" "$f"; else rm -f "$tmp" "$f"; fi
 }
 
 case "${1:-}" in

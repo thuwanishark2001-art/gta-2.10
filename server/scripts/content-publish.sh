@@ -31,6 +31,15 @@ if [ "${1:-}" = "--pubkey" ] || [ -n "${new_key:-}" ]; then
     [ "${1:-}" = "--pubkey" ] && exit 0
 fi
 
+# The content service (nginx, not root) must be able to read everything it
+# lists; a file copied in with tight permissions would otherwise be a 403.
+if [ -d "$src" ]; then
+    fixed=$(find "$src" \( -type f ! -perm -o=r \) -o \( -type d ! -perm -o=rx \) | wc -l)
+    find "$src" -type d -exec chmod o+rx {} + 2>/dev/null || true
+    find "$src" -type f -exec chmod o+r {} + 2>/dev/null || true
+    [ "$fixed" -eq 0 ] || echo "[content] made $fixed file(s) readable by the content service"
+fi
+
 mkdir -p "$meta"
 python3 - "$src" "$meta/manifest.json.tmp" <<'PY'
 import datetime, hashlib, json, os, re, sys
