@@ -90,7 +90,8 @@ release.
 
 ## Updates reach players by themselves
 
-From v1.4.0, the app updates itself:
+From v1.5.0 (the first `com.kingmakers.rp` release with updates on), the
+app updates itself:
 1. When a player opens it, the start screen asks GitHub for this
    repository's releases (`Updater.java`; the repository is
    `kmUpdateRepo` in `app/build.gradle`).
@@ -104,11 +105,12 @@ From v1.4.0, the app updates itself:
    apps. The app shows that setting.
 
 So to ship an update, publish a release (section 3) with a higher version
-tag: `v1.4.1` after `v1.4.0`, then `v1.5.0`, and so on. Pre-releases count.
+tag: `v1.5.1` after `v1.5.0`, then `v1.6.0`, and so on. Pre-releases count.
 Drafts and test builds (`build-N` from "Run workflow") don't. Whatever you
 write in the release's description is shown to players, so keep it short.
 
-Players on v1.3.0 or older install v1.4.0 by hand once. After that, updates
+Players install v1.5.0 by hand once (it is a new app id, so it installs next
+to older builds). After that, updates
 come by themselves.
 
 ## Switching from test builds

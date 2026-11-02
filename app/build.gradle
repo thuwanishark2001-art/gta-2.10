@@ -15,7 +15,7 @@ def kmContentPubKeyFile = file('content-pubkey.pem')
 def kmContentPubKey = kmContentPubKeyFile.exists()
     ? kmContentPubKeyFile.text.readLines().findAll { !it.startsWith('-----') }.join('').trim()
     : ''
-def kmUpdateRepo = project.findProperty('kmUpdateRepo') != null ? project.findProperty('kmUpdateRepo') : ''
+def kmUpdateRepo = project.findProperty('kmUpdateRepo') != null ? project.findProperty('kmUpdateRepo') : 'thuwanishark2001-art/gta-2.10'
 
 android {
     signingConfigs {
