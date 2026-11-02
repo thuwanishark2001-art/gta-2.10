@@ -13,7 +13,8 @@
 // suspect / officer: run together (two processes). The officer (RCON
 //          owner, LSPD on duty) pays, tickets, charges, cuffs and arrests
 //          the suspect, who checks each step and serves the jail time.
-// jobs:    one pizza delivery, then one taxi fare (pickup and drop-off)
+// jobs:    one pizza delivery, one taxi fare (pickup and drop-off), then a
+//          full bus route
 // mechanic / customer: run together. The customer (RCON owner) sits in an
 //          admin car; the mechanic starts a shift and offers a repair,
 //          which the customer accepts and pays for.
@@ -129,6 +130,42 @@ static void OnSetCheckpoint(RPCParameters* params)
 }
 
 static void OnDisableCheckpoint(RPCParameters*) { g_haveCheckpoint = false; }
+
+// Map icon ids the server has set (places on the radar).
+static bool g_mapIcons[100];
+static void OnSetMapIcon(RPCParameters* params)
+{
+    RakNet::BitStream bs(params->input, (params->numberOfBitsOfData + 7) / 8, false);
+    uint8_t id = 0;
+    bs.Read(id);
+    if (id < 100) g_mapIcons[id] = true;
+}
+static void OnDisableMapIcon(RPCParameters* params)
+{
+    RakNet::BitStream bs(params->input, (params->numberOfBitsOfData + 7) / 8, false);
+    uint8_t id = 0;
+    bs.Read(id);
+    if (id < 100) g_mapIcons[id] = false;
+}
+// The last audio stream URL the server played for us (PlayAudioStreamForPlayer).
+static std::string g_audioUrl;
+static void OnPlayAudioStream(RPCParameters* params)
+{
+    RakNet::BitStream bs(params->input, (params->numberOfBitsOfData + 7) / 8, false);
+    uint8_t len = 0;
+    char url[256] = {};
+    bs.Read(len);
+    bs.Read(url, len);
+    g_audioUrl = url;
+    printf("  << audio stream %s\n", url);
+}
+
+static int MapIconCount()
+{
+    int n = 0;
+    for (bool set : g_mapIcons) n += set;
+    return n;
+}
 
 // open.mp keeps the interior the client reports, not the one the script
 // sets, so echo it back like the client's UpdateRemoteInterior does.
@@ -320,6 +357,9 @@ static bool Connect(const char* host, int port)
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetPlayerPos, OnSetPlayerPos);
     g_client->RegisterAsRemoteProcedureCall(&RPC_SetCheckpoint, OnSetCheckpoint);
     g_client->RegisterAsRemoteProcedureCall(&RPC_DisableCheckpoint, OnDisableCheckpoint);
+    g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetMapIcon, OnSetMapIcon);
+    g_client->RegisterAsRemoteProcedureCall(&RPC_ScrDisableMapIcon, OnDisableMapIcon);
+    g_client->RegisterAsRemoteProcedureCall(&RPC_ScrPlayAudioStream, OnPlayAudioStream);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrSetInterior, OnSetInterior);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrPutPlayerInVehicle, OnPutInVehicle);
     g_client->RegisterAsRemoteProcedureCall(&RPC_ScrRemovePlayerFromVehicle, OnRemoveFromVehicle);
@@ -639,6 +679,18 @@ static void OfficerScenario(const char* host, int port, const std::string& chara
         if (mdt.text.find("Unpaid tickets: 1 ($250)") == std::string::npos) Fail("ticket missing from the MDT");
         if (mdt.text.find("In jail: yes") == std::string::npos) Fail("MDT doesn't show the jail time");
     }
+
+    printf("== spectate\n");
+    Vec3 before = g_pos;
+    Command("/specoff");
+    ExpectMessage("You're not spectating");
+    Command("/spec " + suspect);
+    ExpectMessage(("Spectating " + suspect).c_str());
+    Pump(1000);
+    Command("/specoff");
+    ExpectMessage("Stopped spectating");
+    Pump(1500);
+    if (fabsf(g_pos.x - before.x) > 3.0f || fabsf(g_pos.y - before.y) > 3.0f) Fail("/specoff didn't put us back where we were");
     Disconnect();
 }
 
@@ -693,6 +745,28 @@ static void JobsScenario(const char* host, int port, const std::string& characte
     ExpectMessage("Shift ended");
     Command("/stats");
     ExpectMessage("Job Taxi driver");
+
+    printf("== bus route (LS Airport)\n");
+    MoveTo(1685.0f, -2240.0f, 13.5f);
+    Command("/takejob");
+    ExpectMessage("You're now working as: Bus driver");
+    g_haveCheckpoint = false;
+    Command("/work");
+    ExpectMessage("Shift started as Bus driver");
+    if (g_vehicle == 0) Fail("not put in the bus");
+    for (int stop = 0; stop < 8; stop++)
+    {
+        if (!ExpectCheckpoint()) break;
+        EnterCheckpoint();
+        ExpectMessage("for bus stop", kKmuiColour, 5000);
+    }
+    if (ExpectCheckpoint())
+    {
+        EnterCheckpoint();                      // back at the depot
+        ExpectMessage("for bus route", kKmuiColour, 5000);
+    }
+    Command("/stopwork");
+    ExpectMessage("Shift ended");
     Disconnect();
 }
 
@@ -776,6 +850,35 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     ExpectMessage("Your admin level is now 5");
     Command("/check " + character);
     ExpectMessage("admin 5");
+    Command("/renameaccount " + g_name + " kmbot_renamed");
+    ExpectMessage("can only be renamed while its player is offline");
+    Command("/renameaccount kmbot_nobody kmbot_renamed");
+    ExpectMessage("No account has the old name");
+
+    printf("== admin tools\n");
+    Command("/announce Server restart in 5 minutes");
+    ExpectMessage("[Announcement] Server restart in 5 minutes");
+    Command("/sethealth " + character + " 50");
+    ExpectMessage("health to 50");
+    Command("/setskin " + character + " 2");
+    ExpectMessage("isn't in every copy of the game");
+    Command("/setskin " + character + " 21");
+    ExpectMessage("skin to 21");
+    Command("/settime 12");
+    ExpectMessage("set the time to 12:00");
+    Command("/setweather 1");
+    ExpectMessage("changed the weather");
+
+    printf("== content sounds\n");
+    Command("/playsound all ../secret.mp3");
+    ExpectMessage("inside the content folder");
+    Command("/playsound all sounds/test.wav");
+    ExpectMessage("Playing sounds/test.wav for");
+    Pump(500);
+    // KM_CONTENT_URL in docker-compose.test.yml.
+    if (g_audioUrl != "http://content.test:7780/sounds/test.wav") Fail(("/playsound sent " + g_audioUrl).c_str());
+    Command("/stopstream all");
+    Pump(300);
 
     printf("== property\n");
     Command("/createproperty 0 1000 Bot House");
@@ -799,6 +902,17 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     Pump(500);
     Command("/sellproperty confirm");
     ExpectMessage("Sold. $600 was paid");
+
+    printf("== shop on the map\n");
+    MoveTo(door.x + 12.0f, door.y, door.z);
+    Command("/createproperty 5 5000 Bot Shop");
+    ExpectMessage("Created property #");
+    Pump(1000);
+    if (!g_mapIcons[20]) Fail("a new shop didn't get a map icon");
+    Command("/deleteproperty");
+    ExpectMessage("Property deleted.");
+    Pump(1000);
+    if (g_mapIcons[20]) Fail("a deleted shop kept its map icon");
     Command("/stats");
     ExpectMessage("Bank $1600");
 
@@ -854,6 +968,28 @@ static void EconomyScenario(const char* host, int port, const std::string& chara
     if (!Connect(host, port)) return;
     RegisterAndCreate(character);
     Pump(1500);
+
+    printf("== map icons\n");
+    if (MapIconCount() < 19) { Fail("expected the 19 place icons on the map"); return; }
+    printf("  map icons: %d\n", MapIconCount());
+
+    printf("== guide\n");
+    if (!ExpectDialog(17)) return;                  // shown on a new character's first spawn
+    Command("/guide");
+    ExpectDialog(17);
+
+    printf("== gps\n");
+    g_haveCheckpoint = false;
+    Command("/gps");
+    if (ExpectDialog(16)) Respond(16, 1, 4, "");      // Hospital
+    if (ExpectCheckpoint() && (fabsf(g_checkpoint.x - 1178.4f) > 1.0f || fabsf(g_checkpoint.y + 1323.6f) > 1.0f))
+        Fail("/gps didn't mark the hospital");
+    g_haveCheckpoint = false;
+    Command("/gps");
+    if (ExpectDialog(16)) Respond(16, 1, 0, "");      // nearest ATM: Unity Station's, next to the spawn
+    ExpectMessage("The nearest ATM is marked");
+    if (ExpectCheckpoint() && (fabsf(g_checkpoint.x - 1742.3f) > 1.0f || fabsf(g_checkpoint.y + 1867.0f) > 1.0f))
+        Fail("/gps didn't pick the nearest ATM");
 
     printf("== ATM (Idlewood gas station)\n");
     MoveTo(1928.6f, -1786.1f, 13.5f);
@@ -936,6 +1072,7 @@ int main(int argc, char** argv)
     if (ExpectDialog(D_CHAR_GENDER)) Respond(D_CHAR_GENDER, 1, 0, "");
     if (ExpectDialog(D_CHAR_SKIN)) Respond(D_CHAR_SKIN, 1, 2, "");
     ExpectMessage("You are now playing as", 0, 10000);
+    ExpectMessage("You're the server owner");       // KM_OWNER_ACCOUNT in the test stack
     // The Kingmakers client HUD arrives on the next 1 s tick after spawning.
     ExpectMessage("KM1|hud|cash=500;bank=0;lvl=1", kKmuiColour, 5000);
 

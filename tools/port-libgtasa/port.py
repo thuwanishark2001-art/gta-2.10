@@ -336,6 +336,69 @@ def match_index(old_shape, idx, new_shape, minimum=6):
     return None
 
 
+def _a64_branch_target(insn, pc):
+    """Target of a B/BL at pc, else None."""
+    if insn & 0x7C000000 != 0x14000000:
+        return None
+    imm = insn & 0x3FFFFFF
+    if imm & (1 << 25):
+        imm -= 1 << 26
+    return pc + imm * 4
+
+
+def call_name(lib, target):
+    """Name of what a branch target is: the function behind a PLT stub
+    (adrp x16 / ldr x17 / add / br x17 -> its GOT slot's relocation), or
+    the symbol starting there."""
+    start, end = lib.sections.get(".plt", (0, 0))
+    if start <= target < end:
+        code = lib.read(target, 8)
+        if code:
+            adrp, ldr = struct.unpack("<II", code)
+            if adrp & 0x9F000000 == 0x90000000 and ldr & 0xFFC00000 == 0xF9400000:
+                imm = ((adrp >> 29) & 3) | (((adrp >> 5) & 0x7FFFF) << 2)
+                if imm & (1 << 20):
+                    imm -= 1 << 21
+                slot = (target & ~0xFFF) + (imm << 12) + ((ldr >> 10) & 0xFFF) * 8
+                rel = lib.relocs.get(slot)
+                if rel and rel[1]:
+                    return rel[1]
+        return None
+    hit = lib.containing(target)
+    return hit[0][3] if hit and hit[1] == 0 else None
+
+
+def _calls(lib, start, size):
+    """[(index, callee name)] for each B/BL in a function."""
+    code = lib.read(start, size) or b""
+    out = []
+    for i, (insn,) in enumerate(struct.iter_unpack("<I", code[:len(code) // 4 * 4])):
+        t = _a64_branch_target(insn, start + i * 4)
+        if t is not None and not (start <= t < start + size):
+            out.append((i, call_name(lib, t), insn & 0xFC000000))
+    return out
+
+
+def call_port(old, new, osym, nsym, delta):
+    """New address of a call inside a changed function, matched by callee:
+    the same position among calls to that callee, when both builds make the
+    same number of them, or the only such call in the new build."""
+    if delta % 4:
+        return None
+    old_calls = _calls(old, osym[0], osym[1])
+    here = [c for c in old_calls if c[0] == delta // 4]
+    if not here or not here[0][1]:
+        return None
+    _, callee, kind = here[0]
+    same_old = [c for c in old_calls if c[1] == callee and c[2] == kind]
+    same_new = [c for c in _calls(new, nsym[0], nsym[1]) if c[1] == callee and c[2] == kind]
+    if len(same_new) == 1:
+        return nsym[0] + same_new[0][0] * 4
+    if len(same_new) == len(same_old):
+        return nsym[0] + same_new[same_old.index(here[0])][0] * 4
+    return None
+
+
 def pattern_port(old, new, osym, nsym, delta):
     """New address of old function+delta inside a changed function."""
     if delta % 4:
@@ -490,10 +553,14 @@ def resolve(old, new, anc, word):
                 return moved, "xref"
         return None, f"{name} is not in the new build"
     if delta and osym[2] == "FUNC" and not same_code(old, new, osym, nsym, word):
-        moved = pattern_port(old, new, osym, nsym, delta) if word == 8 else None
-        if moved is None:
-            return None, f"{name}+{delta:#x}: function body changed"
-        return moved, "pattern"
+        if word == 8:
+            moved = pattern_port(old, new, osym, nsym, delta)
+            if moved is not None:
+                return moved, "pattern"
+            moved = call_port(old, new, osym, nsym, delta)
+            if moved is not None:
+                return moved, "call"
+        return None, f"{name}+{delta:#x}: function body changed"
     if delta and osym[2] == "OBJECT" and delta >= nsym[1]:
         return None, f"{name}+{delta:#x}: object is smaller now"
     moved = nsym[0] + delta

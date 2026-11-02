@@ -42,7 +42,8 @@ public final class GameFiles {
 
     public static final String GTA_PACKAGE = "com.rockstargames.gtasa";
     /** Game version the native addresses are written for, per ABI. */
-    private static final String REQUIRED_VERSION_ARM64 = "2.10";
+    // libsamp's arm64 addresses were ported to 2.11 (KM_GTA211, docs/PORT-2.11.md).
+    private static final String REQUIRED_VERSION_ARM64 = "2.11";
     private static final String REQUIRED_VERSION_ARMV7 = "2.10";
 
     /**
@@ -108,9 +109,8 @@ public final class GameFiles {
 
     /** The engine an installed version runs on, or null if unsupported. */
     static Engine engineFor(String version) {
-        if (versionMatches(version, requiredVersion())) return Engine.GTA_210;
-        if (android.os.Process.is64Bit() && versionMatches(version, VERSION_211)) return Engine.GTA_211;
-        return null;
+        if (!versionMatches(version, requiredVersion())) return null;
+        return android.os.Process.is64Bit() ? Engine.GTA_211 : Engine.GTA_210;
     }
 
     /** Libraries to load, in order (each one's dependencies come first). */

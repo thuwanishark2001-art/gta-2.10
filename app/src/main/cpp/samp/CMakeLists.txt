@@ -8,6 +8,14 @@ if(${ANDROID_ABI} STREQUAL "armeabi-v7a")
 elseif(${ANDROID_ABI} STREQUAL "arm64-v8a")
     add_definitions(-DVER_x32=false)
 endif()
+# Which GTA:SA build the addresses target: armv7 is 2.10 (libGTASA.so),
+# arm64 is 2.11 (libGame.so, ported by tools/port-libgtasa; docs/PORT-2.11.md).
+# KM_GTA211 guards code that differs, including 2.10 patches not ported yet.
+if(${ANDROID_ABI} STREQUAL "arm64-v8a")
+    add_definitions(-DKM_GTA211=1)
+else()
+    add_definitions(-DKM_GTA211=0)
+endif()
 
 message(WARNING "-------------------------------------------------")
 message(WARNING "")
@@ -47,7 +55,7 @@ include_directories(
 #set_target_properties(libopus PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/vendor/opus/libopus.a)
 
 add_library(samp SHARED ${SOURCES})
-target_link_libraries(samp log EGL GLESv3 opus shadowhook::shadowhook ${CMAKE_CURRENT_SOURCE_DIR}/vendor/bass/libs/${ANDROID_ABI}/libbass.so)
+target_link_libraries(samp log z EGL GLESv3 opus shadowhook::shadowhook ${CMAKE_CURRENT_SOURCE_DIR}/vendor/bass/libs/${ANDROID_ABI}/libbass.so)
 
 # Set compilation flags
 #

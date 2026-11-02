@@ -14,7 +14,7 @@ void CVehicleModelInfo::CVehicleModelInfo__SetClump(RpClump* clump)
     CClumpModelInfo__SetClump(clump);
     SetAtomicRenderCallbacks();
 
-    RwObjectNameIdAssocation* (&ms_vehicleDescs)[NUM_VEHICLE_MODEL_DESCS] = *(RwObjectNameIdAssocation*(*)[NUM_VEHICLE_MODEL_DESCS])(g_libGTASA + (VER_x32 ? 0x00687C7C : 0x8614C0));
+    RwObjectNameIdAssocation* (&ms_vehicleDescs)[NUM_VEHICLE_MODEL_DESCS] = *(RwObjectNameIdAssocation*(*)[NUM_VEHICLE_MODEL_DESCS])(g_libGTASA + (VER_x32 ? 0x00687C7C : 0x87FB40));
     CClumpModelInfo::SetFrameIds(ms_vehicleDescs[m_nVehicleType]);
     SetRenderPipelines();
     PreprocessHierarchy();

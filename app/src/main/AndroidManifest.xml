@@ -66,6 +66,16 @@
             android:windowSoftInputMode="adjustPan"
             android:exported="false" />
 
+        <!-- The client on GTA:SA 2.11 (docs/PORT-2.11.md) -->
+        <activity
+            android:name="com.samp.mobile.game.SAMP211"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|density"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustPan"
+            android:exported="false" />
+
         <!-- GTA:SA 2.11 engine boot test (docs/PORT-2.11.md) -->
         <activity
             android:name="com.samp.mobile.game.Engine211Activity"

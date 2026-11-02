@@ -30,6 +30,17 @@ Peerapol Unarak
 JavaVM* javaVM;
 
 char* g_pszStorage = nullptr;
+// 2.11: the storage root from the host, with a trailing '/' (see NvUtilInit_hook).
+char g_szStorageRoot211[512] = "";
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_samp_mobile_game_SAMP211_setStorageRoot(JNIEnv* env, jclass, jstring root)
+{
+    const char* s = env->GetStringUTFChars(root, nullptr);
+    snprintf(g_szStorageRoot211, sizeof(g_szStorageRoot211), "%s/", s);
+    env->ReleaseStringUTFChars(root, s);
+    g_pszStorage = g_szStorageRoot211;
+}
 
 UI* pUI = nullptr;
 CGame *pGame = nullptr;
@@ -98,10 +109,10 @@ void  RQ_Command_rqTextureMipMode_hook(int **a1)
     *a1 += 2;
     v2 = g_libGTASA;
     v3 = *(uintptr_t *)(v1 + 0x28);
-    if ( *(uintptr_t *)(g_libGTASA + (VER_x32 ? 0x0067A274 : 0x00852338) != 5 ))
+    if ( *(uintptr_t *)(g_libGTASA + (VER_x32 ? 0x0067A274 : 0x0088E77C) != 5 ))
     {
         glActiveTexture(0x84C5u);
-        *(uintptr_t *)(v2 + VER_x32 ? 0x0067A274 : 0x00852338) = 5; 
+        *(uintptr_t *)(v2 + VER_x32 ? 0x0067A274 : 0x0088E77C) = 5; 
     }
     glBindTexture(0xDE1u, v3);
     *(uintptr_t *)(g_libGTASA + (VER_x32 ? 0x1D02E8 : 0x265800)) = v3; 
@@ -260,7 +271,7 @@ void DoInitStuff() {
 
         if (bDebug) {
             CCamera &TheCamera = *reinterpret_cast<CCamera *>(g_libGTASA +
-                                                              (VER_x32 ? 0x00951FA8 : 0xBBA8D0));
+                                                              (VER_x32 ? 0x00951FA8 : 0x9F86F8));
             //TheCamera.Restore();
             CCamera::SetBehindPlayer();
             pGame->DisplayHUD(true);
@@ -364,6 +375,30 @@ extern "C" {
 		pEnv->ReleaseByteArrayElements(command, bytes, JNI_ABORT);
 		KMUI::QueueCommand(text);
 	}
+	// SAMP211 (the client on GTA:SA 2.11) has the same natives as SAMP.
+	JNIEXPORT void JNICALL Java_com_samp_mobile_game_SAMP211_initializeSAMP(JNIEnv *pEnv, jobject thiz)
+	{
+		Java_com_samp_mobile_game_SAMP_initializeSAMP(pEnv, thiz);
+	}
+	JNIEXPORT void JNICALL Java_com_samp_mobile_game_SAMP211_onInputEnd(JNIEnv *pEnv, jobject thiz, jbyteArray str)
+	{
+		Java_com_samp_mobile_game_SAMP_onInputEnd(pEnv, thiz, str);
+	}
+	JNIEXPORT void JNICALL Java_com_samp_mobile_game_SAMP211_onEventBackPressed(JNIEnv *pEnv, jobject thiz)
+	{
+		Java_com_samp_mobile_game_SAMP_onEventBackPressed(pEnv, thiz);
+	}
+	// The engine is quitting (menu): leave the server cleanly, like the 2.10
+	// MainMenuScreen::OnExit hook. Runs on the game thread.
+	JNIEXPORT void JNICALL Java_com_samp_mobile_game_SAMP211_disconnectFromServer(JNIEnv *pEnv, jobject thiz)
+	{
+		if (pGame) pGame->bIsGameExiting = true;
+		if (pNetGame && pNetGame->GetRakClient()) pNetGame->GetRakClient()->Disconnect(300);
+	}
+	JNIEXPORT void JNICALL Java_com_samp_mobile_game_SAMP211_kmSendCommand(JNIEnv *pEnv, jobject thiz, jbyteArray command)
+	{
+		Java_com_samp_mobile_game_SAMP_kmSendCommand(pEnv, thiz, command);
+	}
 	JNIEXPORT void JNICALL Java_com_samp_mobile_game_ui_dialog_DialogManager_sendDialogResponse(JNIEnv* pEnv, jobject thiz, jint i3, jint i, jint i2, jbyteArray str)
 	{
 		jboolean isCopy = true;
@@ -409,6 +444,20 @@ void InitGui()
 	Plugin::OnSampLoad();
 
 	std::string font_path = string_format("%sSAMP/fonts/%s", g_pszStorage, FONT_NAME);
+	// The client's font comes with the SA-MP cache, which a fresh install
+	// doesn't have; ImGui can't run without a font, so use one of Android's.
+	if (access(font_path.c_str(), R_OK) != 0)
+	{
+		static const char* kSystemFonts[] = {
+			"/system/fonts/Roboto-Bold.ttf", "/system/fonts/Roboto-Regular.ttf",
+			"/system/fonts/DroidSans-Bold.ttf", "/system/fonts/DroidSans.ttf",
+		};
+		for (const char* f : kSystemFonts)
+		{
+			if (access(f, R_OK) == 0) { font_path = f; break; }
+		}
+		FLog("Font %s missing; using %s", FONT_NAME, font_path.c_str());
+	}
 	pUI = new UI(ImVec2(RsGlobal->maximumWidth, RsGlobal->maximumHeight), font_path.c_str());
 	pUI->initialize();
 	pUI->performLayout();
@@ -445,9 +494,9 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
               "                   by github.com/kuzia15                   ",
               "                                                           ", 0);
 
-	g_libGTASA = CUtil::FindLib(MAKEOBF("libGTASA.so"));
+	g_libGTASA = CUtil::FindLib(MAKEOBF(KM_GAME_LIB));
 	if (g_libGTASA == 0x00) {
-		LOGE(OBF("libGTASA.so address was not found! "));
+		LOGE(OBF(KM_GAME_LIB " address was not found! "));
 		return JNI_VERSION_1_6;
 	}
 
@@ -459,11 +508,11 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 
 	firebase::crashlytics::Initialize();
 
-	uintptr_t libgtasa = CUtil::FindLib(MAKEOBF("libGTASA.so"));
+	uintptr_t libgtasa = CUtil::FindLib(MAKEOBF(KM_GAME_LIB));
 	uintptr_t libsamp = CUtil::FindLib(MAKEOBF("libsamp.so"));
 	uintptr_t libc = CUtil::FindLib(MAKEOBF("libc.so"));
 
-	FLog(OBF("libGTASA.so: 0x%x"), libgtasa);
+	FLog(OBF(KM_GAME_LIB ": 0x%x"), libgtasa);
 	FLog(OBF("libsamp.so: 0x%x"), libsamp);
 	FLog(OBF("libc.so: 0x%x"), libc);
 
@@ -484,7 +533,12 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
     //CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x1D0350 : 0x265688), &RQ_Command_rqTextureMipMode_hook, &RQ_Command_rqTextureMipMode);
     //SetUpGLHooks();
     InitRenderWareFunctions();
+#if !KM_GTA211
+    // 2.10: extra touch pointers through the NVEvent queue. 2.11 already
+    // supports 4 pointers and has no NVEvent; touches reach the client
+    // through its AND_TouchEvent hook either way.
     MultiTouch::initialize();
+#endif
 
 	pGame = new CGame();
 

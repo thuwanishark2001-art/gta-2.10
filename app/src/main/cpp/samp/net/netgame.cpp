@@ -1,4 +1,5 @@
 #include "../main.h"
+#include <strings.h>
 #include "../game/game.h"
 #include "netgame.h"
 #include "../gui/gui.h"
@@ -66,6 +67,8 @@ CNetGame::CNetGame(const char* szHostOrIp, int iPort, const char *szPlayerName, 
 	InitializePools();
 
 	GetPlayerPool()->SetLocalPlayerName(szPlayerName);
+	strncpy(m_szLoginName, szPlayerName, sizeof(m_szLoginName) - 1);
+	m_szLoginName[sizeof(m_szLoginName) - 1] = '\0';
 
 	RegisterRPCs(m_pRakClient);
 	RegisterScriptRPCs(m_pRakClient);
@@ -588,6 +591,8 @@ void CNetGame::Packet_ConnectionSucceeded(Packet *pkt)
 
 	SetGameState(GAMESTATE_AWAIT_JOIN);
 
+	// Always join as the login name, not a name the server set last session.
+	GetPlayerPool()->SetLocalPlayerName(m_szLoginName);
 	uint8_t byteNameLen = strlen(GetPlayerPool()->GetLocalPlayerName());
 	uint8_t byteAuthBSLen = strlen(AUTH_BS);
 	uint8_t byteClientVerLen = strlen(SAMP_VERSION);
@@ -990,6 +995,21 @@ void CNetGame::SendChatMessage(const char* szMsg)
 void CNetGame::SendChatCommand(const char* szCommand)
 {
 	if (GetGameState() != GAMESTATE_CONNECTED) return;
+
+	// "/rcon <command>" goes to the server's RCON, not the gamemode: packet
+	// 201 with a 32-bit length and the text, as the PC client sends it.
+	if (!strncasecmp(szCommand, "/rcon ", 6))
+	{
+		const char* rcon = szCommand + 6;
+		uint32_t len = (uint32_t) strlen(rcon);
+		if (len == 0) return;
+		RakNet::BitStream bsRcon;
+		bsRcon.Write((uint8_t) 201); // ID_RCON_COMMAND
+		bsRcon.Write(len);
+		bsRcon.Write(rcon, len);
+		m_pRakClient->Send(&bsRcon, HIGH_PRIORITY, RELIABLE, 0);
+		return;
+	}
 
 	RakNet::BitStream bsParams;
 	int iStrlen = strlen(szCommand);

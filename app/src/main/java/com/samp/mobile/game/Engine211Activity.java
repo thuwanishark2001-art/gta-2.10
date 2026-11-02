@@ -29,23 +29,29 @@ public class Engine211Activity extends Activity {
 
     private GameView view;
 
+    /** Set when onCreate sent the player to the launcher instead of starting. */
+    protected boolean redirected = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Opened without the launcher in this process (from recents, or as
+        // the task's root): go through it, so it checks the game files and
+        // downloads the server's content first.
+        if (!ContentSync.checkedThisProcess) {
+            Log.i(TAG, "started without the launcher; going through it first");
+            redirected = true;
+            startActivity(new android.content.Intent(this, GameFilesActivity.class));
+            finish();
+            return;
+        }
+        // Mark first: a crash while loading the engine or the client should
+        // still leave its log for the next launch.
+        CrashLog.sessionStarted(this);
         Diag.start(this);
         Log.i(TAG, "onCreate");
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideSystemUi();
-
-        synchronized (Engine211Activity.class) {
-            if (!sLoaded) {
-                Log.i(TAG, "loading engine libraries");
-                GameFiles.loadLibraries(this, GameFiles.Engine.GTA_211);
-                Log.i(TAG, "engine libraries loaded");
-                Engine211Patches.applyAll(true); // only data_main is passed (see below)
-                sLoaded = true;
-            }
-        }
 
         // Paths the engine reads through NvUtil: this app's own storage, so
         // saves and settings stay apart from the real game's.
@@ -58,8 +64,20 @@ public class Engine211Activity extends Activity {
         NvUtil.getInstance().setAppLocalValue("STORAGE_ROOT", root);
         NvUtil.getInstance().setAppLocalValue("STORAGE_ROOT_BASE", base);
 
+        synchronized (Engine211Activity.class) {
+            if (!sLoaded) {
+                Log.i(TAG, "loading engine libraries");
+                GameFiles.loadLibraries(this, GameFiles.Engine.GTA_211);
+                Log.i(TAG, "engine libraries loaded");
+                Engine211Patches.applyAll(true); // only data_main is passed (see below)
+                onEngineLoaded(root);
+                sLoaded = true;
+            }
+        }
+
         view = new GameView(this);
         setContentView(view);
+        onGameViewReady();
         GamePlatformServices services = new GamePlatformServices(this, view, gameVersion());
         GameThread.start(services);
 
@@ -83,7 +101,23 @@ public class Engine211Activity extends Activity {
             Diag.reinstall();
         });
 
-        Toast.makeText(this, "GTA:SA 2.11 engine test: multiplayer isn't connected yet.", Toast.LENGTH_LONG).show();
+        if (showsBootTestNotice()) {
+            Toast.makeText(this, "GTA:SA 2.11 engine test: multiplayer isn't connected yet.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * After the engine (and its patches) are loaded, before it starts:
+     * where to load code that hooks it. Runs once per process.
+     */
+    protected void onEngineLoaded(String storageRoot) {}
+
+    /** After the game view is the content view: where to add overlays. */
+    protected void onGameViewReady() {}
+
+    /** The plain boot test says that multiplayer isn't connected. */
+    protected boolean showsBootTestNotice() {
+        return true;
     }
 
     private String gameVersion() {
@@ -120,6 +154,7 @@ public class Engine211Activity extends Activity {
     @Override
     protected void onStop() {
         CrashLog.sessionEnded(this);
+        CrashLog.saveSessionLog(this);
         super.onStop();
     }
 
@@ -127,12 +162,14 @@ public class Engine211Activity extends Activity {
     protected void onResume() {
         super.onResume();
         Log.i(TAG, "onResume");
+        Diag.setPaused(false);
         GameThread.post(GameNative::implOnResume);
     }
 
     @Override
     protected void onPause() {
         Log.i(TAG, "onPause");
+        Diag.setPaused(true);
         GameThread.post(GameNative::implOnPause);
         super.onPause();
     }
@@ -150,6 +187,10 @@ public class Engine211Activity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (redirected) {   // the engine never started
+            super.onDestroy();
+            return;
+        }
         GameThread.post(GameNative::implOnActivityDestroyed);
         GameThread.stop();
         super.onDestroy();

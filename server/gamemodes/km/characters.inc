@@ -31,7 +31,8 @@ enum E_CHAR
     bool:cDied,         // respawn at the hospital
     bool:cOnDuty,
     bool:cCuffed,
-    bool:cDrivingLicence
+    bool:cDrivingLicence,
+    bool:cNewPlayer         // no time played yet: show the guide on the first spawn
 }
 
 new gChar[MAX_PLAYERS][E_CHAR];
@@ -40,7 +41,7 @@ new gChar[MAX_PLAYERS][E_CHAR];
 #define CHAR_SELECT_SQL \
     "SELECT id, name, gender, skin, level, xp, cash, bank, job, IFNULL(faction_id, 0) AS faction_id, faction_rank, \
      payday_seconds, wanted, jail_seconds, IFNULL(phone_number, 0) AS phone_number, driving_licence, \
-     health, armour, pos_x, pos_y, pos_z, pos_a, interior, virtual_world \
+     health, armour, pos_x, pos_y, pos_z, pos_a, interior, virtual_world, played_seconds \
      FROM characters WHERE id = %d AND account_id = %d"
 
 #define CHAR_SAVE_SQL \
@@ -56,7 +57,10 @@ new gCharListId[MAX_PLAYERS][KM_MAX_CHARACTERS];
 new gNewCharName[MAX_PLAYERS][MAX_PLAYER_NAME];
 new gNewCharGender[MAX_PLAYERS];
 
-static const gSkinsMale[] = { 2, 7, 14, 15, 20, 22, 23, 29, 46, 47, 48, 59, 60, 67, 72, 98, 101, 170, 185, 188, 250 };
+// Only skins every copy of GTA: San Andreas has: the mobile client has no SA-MP
+// data pack, so SA-MP-only skins (1-6, 8, 42, 65, 86, 119, 149, 208, 273, 289,
+// 300-311) don't exist there.
+static const gSkinsMale[] = { 21, 7, 14, 15, 20, 22, 23, 29, 46, 47, 48, 59, 60, 67, 72, 98, 101, 170, 185, 188, 250 };
 static const gSkinsFemale[] = { 12, 13, 31, 40, 41, 55, 56, 69, 76, 91, 93, 141, 148, 150, 169, 190, 192, 193, 211, 216, 233 };
 
 forward Char_OnListLoaded(playerid, race);
@@ -293,6 +297,9 @@ public Char_OnLoaded(playerid, race)
     cache_get_value_name(0, "name", gChar[playerid][cName], MAX_PLAYER_NAME);
     cache_get_value_name_int(0, "gender", gChar[playerid][cGender]);
     cache_get_value_name_int(0, "skin", gChar[playerid][cSkin]);
+    new playedSeconds;
+    cache_get_value_name_int(0, "played_seconds", playedSeconds);
+    gChar[playerid][cNewPlayer] = playedSeconds == 0;
     cache_get_value_name_int(0, "level", gChar[playerid][cLevel]);
     cache_get_value_name_int(0, "xp", gChar[playerid][cXp]);
     cache_get_value_name_int(0, "cash", gChar[playerid][cCash]);
@@ -361,6 +368,11 @@ stock Char_OnSpawn(playerid)
         SetPlayerHealth(playerid, gChar[playerid][cHealth] < 1.0 ? 100.0 : gChar[playerid][cHealth]);
         SetPlayerArmour(playerid, gChar[playerid][cArmour]);
         SendClientMessage(playerid, COLOR_BRAND, "You are now playing as %s. Type /help for commands.", gChar[playerid][cName]);
+        if (gChar[playerid][cNewPlayer])
+        {
+            gChar[playerid][cNewPlayer] = false;
+            Guide_Show(playerid);
+        }
     }
     else
     {
@@ -429,7 +441,14 @@ stock Char_Save(playerid)
     new Float:health, Float:armour;
     GetPlayerHealth(playerid, health);
     GetPlayerArmour(playerid, armour);
-    if (health < 1.0 || gChar[playerid][cJailSeconds] > 0)
+    if (Spec_IsSpectating(playerid))
+    {
+        // The camera is somewhere else: keep where the admin was standing.
+        Spec_SavedPlace(playerid, gChar[playerid][cX], gChar[playerid][cY], gChar[playerid][cZ], gChar[playerid][cA],
+            gChar[playerid][cInterior], gChar[playerid][cWorld]);
+        if (health < 1.0) health = 100.0;
+    }
+    else if (health < 1.0 || gChar[playerid][cJailSeconds] > 0)
     {
         // Dead (respawns at the hospital) or in jail: keep the last position.
         if (health < 1.0) health = 100.0;

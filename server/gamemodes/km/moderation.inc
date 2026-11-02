@@ -2,6 +2,7 @@
 // Every action is written to admin_log.
 
 forward Mod_OnUnban(playerid, race, const target[]);
+forward Mod_OnRenameAccount(playerid, race, const oldName[], const newName[]);
 
 // Admin account id for logging, 0 for console / system.
 stock Mod_ActorId(playerid)
@@ -222,5 +223,74 @@ CMD:setadmin(playerid, params[])
     Log_Admin(Mod_ActorId(playerid), "set_admin", gPlayer[targetid][pAccountId], details);
     SendClientMessage(targetid, COLOR_ADMIN, "Your admin level is now %d.", level);
     if (targetid != playerid) SendClientMessage(playerid, COLOR_ADMIN, "Admin level set to %d.", level);
+    return 1;
+}
+
+// Owner tool: renames an account (its characters, money and admin level stay).
+// The player has to be offline; they log in with the new name and the same password.
+CMD:renameaccount(playerid, params[])
+{
+    new oldName[MAX_PLAYER_NAME], newName[MAX_PLAYER_NAME];
+    if (sscanf(params, "s[24]s[24]", oldName, newName)) return SendInfo(playerid, "Usage: /renameaccount [old account name] [new account name]");
+    if (!Mod_CanAct(playerid, INVALID_PLAYER_ID, ADMIN_OWNER)) return 1;
+    if (!IsValidAccountName(newName)) return SendError(playerid, "The new name must be 3-20 letters, digits or underscores.");
+    for (new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if (IsPlayerConnected(i) && strcmp(gPlayer[i][pUsername], oldName, true) == 0)
+            return SendError(playerid, "That account is in use. It can only be renamed while its player is offline.");
+    }
+    new query[256];
+    // The derived table lets MariaDB check the new name in the same table.
+    mysql_format(gDB, query, sizeof (query),
+        "UPDATE accounts SET username = '%e' WHERE username = '%e' \
+         AND NOT EXISTS (SELECT 1 FROM (SELECT id FROM accounts WHERE username = '%e') taken)",
+        newName, oldName, newName);
+    mysql_tquery(gDB, query, "Mod_OnRenameAccount", "ddss", playerid, gPlayerRace[playerid], oldName, newName);
+    return 1;
+}
+
+public Mod_OnRenameAccount(playerid, race, const oldName[], const newName[])
+{
+    new renamed = cache_affected_rows();
+    if (gPlayerRace[playerid] == race)
+    {
+        if (renamed > 0) SendClientMessage(playerid, COLOR_ADMIN, "Renamed account %s to %s.", oldName, newName);
+        else SendError(playerid, "No account has the old name, or the new name is already taken.");
+    }
+    if (renamed > 0)
+    {
+        new details[64];
+        format(details, sizeof (details), "%s -> %s", oldName, newName);
+        Log_Admin(gPlayerRace[playerid] == race ? Mod_ActorId(playerid) : 0, "rename_account", 0, details);
+    }
+    return 1;
+}
+
+// Owner tool: puts test map icons and a checkpoint around you, to check how
+// the client draws radar blips (coloured squares and sprite icons).
+//   /testblips      show them        /testblips off   remove them
+CMD:testblips(playerid, params[])
+{
+    if (gPlayer[playerid][pAdmin] < ADMIN_OWNER) return SendError(playerid, "You don't have permission to use this command.");
+    if (!isnull(params) && strcmp(params, "off", true) == 0)
+    {
+        for (new i = 90; i <= 95; i++) RemovePlayerMapIcon(playerid, i);
+        DisablePlayerCheckpoint(playerid);
+        SendClientMessage(playerid, COLOR_ADMIN, "Test blips removed.");
+        return 1;
+    }
+    new Float:x, Float:y, Float:z;
+    GetPlayerPos(playerid, x, y, z);
+    // Coloured squares: the colour is sent as RGBA, like player markers.
+    SetPlayerMapIcon(playerid, 90, x + 60.0, y, z, 0, 0xFF0000FF, MAPICON_GLOBAL);   // red
+    SetPlayerMapIcon(playerid, 91, x, y + 60.0, z, 0, 0x00FF00FF, MAPICON_GLOBAL);   // green
+    SetPlayerMapIcon(playerid, 92, x - 60.0, y, z, 0, 0x3399FFFF, MAPICON_GLOBAL);   // blue
+    // Sprite icons: should keep their own colours.
+    SetPlayerMapIcon(playerid, 93, x, y - 60.0, z, 6, 0, MAPICON_GLOBAL);            // Ammu-Nation
+    SetPlayerMapIcon(playerid, 94, x + 45.0, y + 45.0, z, 10, 0, MAPICON_GLOBAL);    // Burger Shot
+    SetPlayerMapIcon(playerid, 95, x - 45.0, y - 45.0, z, 52, 0, MAPICON_GLOBAL);    // cash
+    SetPlayerCheckpoint(playerid, x + 20.0, y + 20.0, z, 3.0);
+    SendClientMessage(playerid, COLOR_ADMIN, "Test blips: red east, green north, blue west; gun shop south; burger NE; cash SW; checkpoint nearby.");
+    SendClientMessage(playerid, COLOR_ADMIN, "Screenshot the radar and the pause-menu map. /testblips off removes them.");
     return 1;
 }
