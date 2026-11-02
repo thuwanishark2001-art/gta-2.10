@@ -29,9 +29,22 @@ public class Engine211Activity extends Activity {
 
     private GameView view;
 
+    /** Set when onCreate sent the player to the launcher instead of starting. */
+    protected boolean redirected = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Opened without the launcher in this process (from recents, or as
+        // the task's root): go through it, so it checks the game files and
+        // downloads the server's content first.
+        if (!ContentSync.checkedThisProcess) {
+            Log.i(TAG, "started without the launcher; going through it first");
+            redirected = true;
+            startActivity(new android.content.Intent(this, GameFilesActivity.class));
+            finish();
+            return;
+        }
         // Mark first: a crash while loading the engine or the client should
         // still leave its log for the next launch.
         CrashLog.sessionStarted(this);
@@ -174,6 +187,10 @@ public class Engine211Activity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (redirected) {   // the engine never started
+            super.onDestroy();
+            return;
+        }
         GameThread.post(GameNative::implOnActivityDestroyed);
         GameThread.stop();
         super.onDestroy();

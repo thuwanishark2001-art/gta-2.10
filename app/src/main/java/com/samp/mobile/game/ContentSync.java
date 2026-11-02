@@ -84,6 +84,13 @@ final class ContentSync {
         }
     }
 
+    /**
+     * Set once the launcher has synced in this process. Android can reopen
+     * the game screen without the launcher (from recents, or the task's
+     * root), which would skip downloading the server's content.
+     */
+    static volatile boolean checkedThisProcess = false;
+
     private ContentSync() {}
 
     /** http://host:port of the content service, from the build's server address. */
@@ -137,6 +144,22 @@ final class ContentSync {
 
     /** Brings content/ in line with the server. Never throws; a failure keeps the old files. */
     static Result sync(Context context, Progress progress) {
+        Result r = syncInner(context, progress);
+        // The game's session log prints this (custommodels.cpp), since the
+        // launcher's own log isn't in it.
+        String report = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(new java.util.Date())
+            + " " + baseUrl() + (r.reachedServer ? " reached" : " NOT reached")
+            + ", downloaded " + r.downloaded + ", removed " + r.removed
+            + (r.error != null ? ", error: " + r.error : "") + "\n";
+        try (OutputStream out = new FileOutputStream(new File(dir(context), ".sync.txt"))) {
+            out.write(report.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            Log.w(TAG, "can't write the sync report: " + e);
+        }
+        return r;
+    }
+
+    private static Result syncInner(Context context, Progress progress) {
         File dir = dir(context);
         if (!dir.isDirectory() && !dir.mkdirs()) return new Result(false, 0, 0, "can't create " + dir);
         List<Entry> entries;

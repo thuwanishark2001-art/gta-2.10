@@ -162,6 +162,7 @@ public class GameFilesActivity extends Activity {
             runOnUiThread(() -> {
                 syncing = false;
                 contentChecked = true;
+                ContentSync.checkedThisProcess = true;
                 progress.setIndeterminate(true);
                 applyServerArt();
                 startGame(engine);

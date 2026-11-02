@@ -438,6 +438,14 @@ void CustomModels_InstallHooks()
 void CustomModels_OnGameInit()
 {
     if (!g_pszStorage) return;
+    std::vector<uint8_t> report;
+    if (ReadFile(std::string(g_pszStorage) + "content/.sync.txt", report, 4096)) {
+        std::string text(report.begin(), report.end());
+        while (!text.empty() && (text.back() == '\n' || text.back() == '\r')) text.pop_back();
+        FLog("CustomModels: last content sync: %s", text.c_str());
+    } else {
+        FLog("CustomModels: the launcher hasn't synced content yet");
+    }
     std::string dir = std::string(g_pszStorage) + "content/models";
     DIR* d = opendir(dir.c_str());
     if (!d) {
