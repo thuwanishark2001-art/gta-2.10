@@ -50,6 +50,11 @@ You can only give levels below your own, unless you're logged into RCON
   `/stopstream`. See [CONTENT.md](CONTENT.md).
 
 **Lead (4)**
+- `/givepass [player] [points]`: season pass points (1-1000), for events
+  and prizes. Players earn points themselves too: 10 per payday, 5 per
+  daily reward and 2 per job payment. Every 50 points unlocks a tier, which
+  they claim with `/pass`. To start a new season for everyone, raise
+  `KM_PASS_SEASON` in `gamemodes/km/config.inc` and deploy.
 - `/givemoney [player] [amount] [reason]`: paid into the bank. A negative
   amount takes money.
 - `/setfaction [player] [faction id, 0 = none] [rank]`.

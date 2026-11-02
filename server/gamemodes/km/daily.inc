@@ -71,6 +71,7 @@ public Daily_OnStreak(playerid, race, charId)
     new details[16];
     format(details, sizeof (details), "day %d", day);
     Money_Give(playerid, reward, 0, "daily", INVALID_PLAYER_ID, details);
+    Pass_AddPoints(playerid, PASS_POINTS_DAILY);
     if (day == DAILY_DAYS)
         SendClientMessage(playerid, COLOR_SUCCESS, "Daily reward, day 7 of 7: $%d! Your streak starts over tomorrow.", reward);
     else

@@ -460,7 +460,6 @@ like a typed command. Details in [docs/KMUI.md](docs/KMUI.md).
 | `app/src/main/assets/` | **Rockstar game data** (`Text/*.gxt`, `data/mainV1.scm`, `handling.cfg`, `socialclub/`), fonts, client `settings.ini`. |
 | `app/src/main/res/` | Android layouts and images for the Java HUD and dialogs. |
 | `dumps_libGTASA_32and64/` | Symbol dumps of `libGTASA.so` (offset reference for hooks). |
-| `.safedk/` | Leftovers from an ad-SDK scanner. Not used by the build. |
 
 ### How the client connects
 

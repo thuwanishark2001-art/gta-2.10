@@ -85,6 +85,7 @@ stock Eco_Payday(playerid)
     format(toast, sizeof (toast), "Payday: +$%d to your bank", total);
     KMUI_Toast(playerid, toast);
 
+    Pass_AddPoints(playerid, PASS_POINTS_PAYDAY);
     gChar[playerid][cXp]++;
     new needed = Level_XpNeeded(gChar[playerid][cLevel]);
     if (gChar[playerid][cXp] >= needed)

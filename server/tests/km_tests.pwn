@@ -50,6 +50,7 @@
 #include "km/guide.inc"
 #include "km/owner.inc"
 #include "km/daily.inc"
+#include "km/pass.inc"
 
 new gPass, gFail;
 
@@ -112,6 +113,15 @@ Test_Validation()
     EXPECT(Daily_Reward(7) == 3000);
     EXPECT(Daily_Reward(0) == 0);
     EXPECT(Daily_Reward(8) == 0);
+    EXPECT(Pass_TierReward(1) == 250);
+    EXPECT(Pass_TierReward(9) == 2250);
+    EXPECT(Pass_TierReward(10) == 10000);
+    EXPECT(Pass_TierReward(11) == 0);
+    EXPECT(Pass_TiersUnlocked(0) == 0);
+    EXPECT(Pass_TiersUnlocked(49) == 0);
+    EXPECT(Pass_TiersUnlocked(50) == 1);
+    EXPECT(Pass_TiersUnlocked(125) == 2);
+    EXPECT(Pass_TiersUnlocked(100000) == 10);
     EXPECT(Content_IsValidSoundPath("sounds/welcome.mp3"));
     EXPECT(Content_IsValidSoundPath("sounds/Bell_2.ogg"));
     EXPECT(Content_IsValidSoundPath("horn.wav"));

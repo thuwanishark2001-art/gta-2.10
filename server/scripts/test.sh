@@ -157,13 +157,13 @@ echo "money_log matches the economy run"
 trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, '/', m.bank_after) ORDER BY m.id) FROM money_log m
      JOIN characters c ON c.id = m.character_id WHERE c.name = 'Admin_Bot'")
-if [ "$trail" != "admin:500/2000,property_buy:500/1000,property_sell:500/1600" ]; then
+if [ "$trail" != "admin:500/2000,property_buy:500/1000,property_sell:500/1600,pass:750/1600,pass:1250/1600" ]; then
     echo "unexpected money_log for the admin run: $trail"; exit 1
 fi
 actions=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT GROUP_CONCAT(DISTINCT l.action ORDER BY l.action) FROM admin_log l
      JOIN accounts a ON a.id = l.admin_account_id WHERE a.username = 'kmbot_adm'")
-if [ "$actions" != "accept_report,announce,check,close_report,create_property,delete_property,give_money,set_admin,set_faction,set_health,set_skin,set_time,set_weather" ]; then
+if [ "$actions" != "accept_report,announce,check,close_report,create_property,delete_property,give_money,give_pass,set_admin,set_faction,set_health,set_skin,set_time,set_weather" ]; then
     echo "unexpected admin_log for the admin run: $actions"; exit 1
 fi
 echo "money_log and admin_log match the admin run"

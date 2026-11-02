@@ -86,3 +86,11 @@
 
 // Anti-cheat, vehicles
 #define KM_AC_MAX_KMH           (330)     // ground vehicles
+
+// Season pass (km/pass.inc). Bump KM_PASS_SEASON to start a new season.
+#define KM_PASS_SEASON          (1)
+#define KM_PASS_TIERS           (10)
+#define KM_PASS_TIER_POINTS     (50)
+#define PASS_POINTS_PAYDAY      (10)
+#define PASS_POINTS_DAILY       (5)
+#define PASS_POINTS_JOB         (2)

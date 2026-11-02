@@ -369,6 +369,7 @@ stock Char_OnSpawn(playerid)
         SetPlayerArmour(playerid, gChar[playerid][cArmour]);
         SendClientMessage(playerid, COLOR_BRAND, "You are now playing as %s. Type /help for commands.", gChar[playerid][cName]);
         Daily_OnFirstSpawn(playerid);
+        Pass_Load(playerid);
         if (gChar[playerid][cNewPlayer])
         {
             gChar[playerid][cNewPlayer] = false;
