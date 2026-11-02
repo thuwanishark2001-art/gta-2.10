@@ -67,7 +67,7 @@ You can only give levels below your own, unless you're logged into RCON
 - `/endwars`: ends every running turf war now, as if its time were up.
 
 **Gangs and turfs.** Six turfs in east Los Santos show on everyone's radar
-in the colour of the gang holding them (grey: nobody). A gang member inside
+in the colour of the gang holding them (dark grey: nobody). A gang member inside
 a turf their gang doesn't hold types `/capture`. That starts a 3-minute war,
 which everyone is told about, and the turf flashes. When it ends, the
 attackers take the turf if more of them than defenders are alive inside it.
