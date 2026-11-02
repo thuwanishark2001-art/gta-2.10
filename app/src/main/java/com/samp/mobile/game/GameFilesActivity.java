@@ -52,6 +52,7 @@ public class GameFilesActivity extends Activity {
     private ImageView logo;
     private View background;
     private boolean copying = false;
+    private boolean launching = false;
     /** Server content (ContentSync) is checked once per launch. */
     private boolean contentChecked = false;
     private boolean syncing = false;
@@ -147,14 +148,10 @@ public class GameFilesActivity extends Activity {
             return;
         }
         if (savedLog != null) {
-            String where = savedLog;
-            showProblem("The game closed unexpectedly last time.\n\nA log was saved to " + where
-                + ". Please send it to the Kingmakers team so we can fix it.",
-                "Continue", v -> {
-                    savedLog = null;
-                    checkAndStart();
-                });
-            return;
+            Toast.makeText(this,
+                "Previous crash log saved: " + savedLog,
+                Toast.LENGTH_LONG).show();
+            savedLog = null;
         }
         GameFiles.Status status = GameFiles.check(this);
         switch (status.state) {
@@ -216,25 +213,29 @@ public class GameFilesActivity extends Activity {
             return;
         }
 
-        // Keep the launcher open so settings backup/import can be used.
-        showReadyToPlay(engine);
+        launchGame(engine);
     }
 
-    private void showReadyToPlay(GameFiles.Engine engine) {
-        message.setText("KINGMAKERS RP is ready.\n\n"
-            + "You can back up or restore your SA-MP settings before playing.");
-        progress.setVisibility(View.GONE);
-        nameInput.setVisibility(View.GONE);
-        secondary.setVisibility(View.GONE);
+    private void launchGame(GameFiles.Engine engine) {
+        if (launching || isFinishing()) return;
 
-        action.setText("Play KINGMAKERS RP");
-        action.setOnClickListener(v -> {
+        launching = true;
+        message.setText("KINGMAKERS RP is ready.\nLaunching game...");
+        progress.setIndeterminate(true);
+        progress.setVisibility(View.VISIBLE);
+        action.setVisibility(View.GONE);
+        secondary.setVisibility(View.GONE);
+        nameInput.setVisibility(View.GONE);
+
+        new android.os.Handler(getMainLooper()).postDelayed(() -> {
+            if (isFinishing()) return;
+
             Class<?> activity = engine == GameFiles.Engine.GTA_211
                 ? SAMP211.class : SAMP.class;
+
             startActivity(new Intent(this, activity));
             finish();
-        });
-        action.setVisibility(View.VISIBLE);
+        }, 350);
     }
 
     /** Asks GitHub for a newer release of the app; offers it if there is one. */
@@ -502,20 +503,20 @@ public class GameFilesActivity extends Activity {
         secondary.setVisibility(View.GONE);
         root.addView(secondary);
 
-        LinearLayout transferRow = new LinearLayout(this);
-        transferRow.setOrientation(LinearLayout.HORIZONTAL);
-        transferRow.setGravity(Gravity.CENTER);
-        TextView exportButton = transferButton("Export settings", v -> exportSettings());
-        TextView importButton = transferButton("Import settings", v -> importSettings());
-        LinearLayout.LayoutParams transferParams =
-            new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        transferParams.setMargins(dp(4), dp(8), dp(4), dp(4));
-        transferRow.addView(exportButton, transferParams);
-        LinearLayout.LayoutParams importParams =
-            new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        importParams.setMargins(dp(4), dp(8), dp(4), dp(4));
-        transferRow.addView(importButton, importParams);
-        root.addView(transferRow);
+        // Long-press the crown logo for optional settings backup/restore.
+        logo.setOnLongClickListener(v -> {
+            new AlertDialog.Builder(this)
+                .setTitle("SA-MP settings")
+                .setItems(new String[] {
+                    "Export settings backup",
+                    "Import settings backup"
+                }, (dialog, which) -> {
+                    if (which == 0) exportSettings();
+                    else importSettings();
+                })
+                .show();
+            return true;
+        });
 
         // Scrolls on short screens, so the button is never cut off.
         ScrollView scroll = new ScrollView(this);
