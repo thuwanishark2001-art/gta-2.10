@@ -207,6 +207,21 @@ void* FindTexture(const char* name)
     return found;
 }
 
+// Vehicles: LoadClumpFile swaps in CVehicleModelInfo::FindTextureCB, which
+// only searches the vehicle texture database and doesn't chain to the
+// previous callback, so a custom vehicle's own textures are served here.
+void* (*VehicleFindTextureCB_orig)(const char*);
+void* VehicleFindTextureCB_hook(const char* name)
+{
+    if (g_current && name) {
+        auto it = g_current->textures.find(Key(name));
+        if (it != g_current->textures.end()) return it->second;
+    }
+    void* found = VehicleFindTextureCB_orig(name);
+    if (!found && g_current && name) FLog("CustomModels: the vehicle wants texture \"%s\", which isn't in its files", name);
+    return found;
+}
+
 bool LoadClumpFile_hook(void* stream, unsigned int modelId)
 {
     CustomModel* m = Find(modelId);
@@ -255,5 +270,6 @@ void CustomModels_InstallHooks()
     Sym(kmRwTextureGetFindCallBack, "_Z24RwTextureGetFindCallBackv");
     Sym(kmRwTextureSetFindCallBack, "_Z24RwTextureSetFindCallBackPFP9RwTexturePKcE");
     CHook::InlineHook("_ZN11CFileLoader13LoadClumpFileEP8RwStreamj", &LoadClumpFile_hook, &LoadClumpFile_orig);
+    CHook::InlineHook("_ZN17CVehicleModelInfo13FindTextureCBEPKc", &VehicleFindTextureCB_hook, &VehicleFindTextureCB_orig);
     FLog("CustomModels: hooks installed");
 }
