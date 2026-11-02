@@ -18,6 +18,29 @@ if [ "${1:-}" = "--pull" ]; then
     git pull --ff-only
 fi
 
+# The content service (docs/CONTENT.md) needs the server's public address.
+content_port=$(sed -n 's/^KM_CONTENT_PORT=//p' .env | tail -n 1)
+content_port=${content_port:-7780}
+if ! grep -qE '^KM_CONTENT_URL=.+' .env; then
+    ip=$(hostname -I 2>/dev/null | awk '{ print $1 }')
+    if [ -n "$ip" ]; then
+        sed -i '/^KM_CONTENT_URL=/d' .env
+        echo "KM_CONTENT_URL=http://$ip:$content_port" >> .env
+        echo "== set KM_CONTENT_URL=http://$ip:$content_port in .env (change it if players use another address)"
+    fi
+fi
+# Vultr and similar images enable ufw with only SSH open.
+if [ "$(id -u)" = 0 ] && command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
+    ufw allow "$content_port"/tcp >/dev/null
+fi
+
+# Start-screen art: the defaults, unless you've put your own in content/.
+mkdir -p content/sounds content/models
+[ -e content/logo.png ] || cp content-defaults/logo.png content/
+[ -e content/background.jpg ] || [ -e content/background.png ] || cp content-defaults/background.jpg content/
+# Sign the content list (makes the signing key on first run).
+./scripts/content-publish.sh
+
 ./scripts/fetch-deps.sh
 docker compose build server
 

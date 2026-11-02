@@ -1,0 +1,114 @@
+# Builds the signed release APK.
+#
+# Run it from the Actions tab ("Release APK" > Run workflow), or push a tag
+# like v1.0.0 to also publish a GitHub Release with the APK attached.
+#
+# Needs four repository secrets (Settings > Secrets and variables > Actions):
+#   KM_KEYSTORE_BASE64    the release keystore, base64-encoded
+#   KM_KEYSTORE_PASSWORD  its password
+#   KM_KEY_ALIAS          the key's alias
+#   KM_KEY_PASSWORD       the key's password (often the same as the keystore's)
+# The keystore never goes into the repository. See docs/RELEASE.md.
+name: Release APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # to attach the APK to a GitHub Release on tags
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Signed release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the signing secrets are set
+        env:
+          KS: ${{ secrets.KM_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KM_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.KM_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KM_KEY_PASSWORD }}
+        run: |
+          missing=""
+          [ -n "$KS" ] || missing="$missing KM_KEYSTORE_BASE64"
+          [ -n "$KS_PASS" ] || missing="$missing KM_KEYSTORE_PASSWORD"
+          [ -n "$ALIAS" ] || missing="$missing KM_KEY_ALIAS"
+          [ -n "$KEY_PASS" ] || missing="$missing KM_KEY_PASSWORD"
+          if [ -n "$missing" ]; then
+              echo "Missing repository secrets:$missing (see docs/RELEASE.md)"; exit 1
+          fi
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install the NDK and CMake the build pins
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" \
+              "ndk;26.2.11394342" "cmake;3.22.1" >/dev/null
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      - name: Write the keystore (runner only, never committed)
+        env:
+          KS: ${{ secrets.KM_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KM_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.KM_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KM_KEY_PASSWORD }}
+        run: |
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          {
+              echo "storeFile=$RUNNER_TEMP/release.keystore"
+              echo "storePassword=$KS_PASS"
+              echo "keyAlias=$ALIAS"
+              echo "keyPassword=$KEY_PASS"
+          } > keystore.properties
+
+      - name: Build the release APK
+        run: |
+          name="${GITHUB_REF_NAME}"
+          case "$GITHUB_REF" in refs/tags/*) ;; *) name="build-${GITHUB_RUN_NUMBER}" ;; esac
+          ./gradlew assembleRelease --no-daemon \
+              -PkmVersionCode="$((100 + GITHUB_RUN_NUMBER))" -PkmVersionName="$name"
+
+      - name: Check the APK is signed and has no Rockstar files
+        run: |
+          apk=app/build/outputs/apk/release/app-release.apk
+          [ -f "$apk" ] || { echo "No signed APK was built."; ls app/build/outputs/apk/release/; exit 1; }
+          if unzip -l "$apk" | grep -E "libGTASA|libSCAnd|libImmEmulatorJ|assets/(data|Text)/"; then
+              echo "The APK must not contain GTA:SA files."; exit 1
+          fi
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs "$apk" | grep "SHA-256"
+          cp "$apk" "kingmakers-rp-${GITHUB_REF_NAME//\//-}.apk"
+          rm -f keystore.properties "$RUNNER_TEMP/release.keystore"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kingmakers-rp-release-apk
+          path: kingmakers-rp-*.apk
+          retention-days: 30
+
+      - name: Publish a GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A release made on github.com (which creates the tag) gets the APK
+          # attached; a pushed tag gets a new release.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+              gh release upload "$GITHUB_REF_NAME" kingmakers-rp-*.apk --clobber
+          else
+              gh release create "$GITHUB_REF_NAME" kingmakers-rp-*.apk \
+                  --title "Kingmakers RP $GITHUB_REF_NAME" \
+                  --notes "Signed release APK. Install over earlier release builds; the first time, uninstall test (debug) builds first."
+          fi

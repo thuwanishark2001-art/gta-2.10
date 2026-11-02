@@ -488,7 +488,7 @@ void CLocalPlayer::ProcessSpectating()
 
 	uint16_t lrAnalog, udAnalog;
 	uint16_t wKeys = m_pPlayerPed->GetKeys(&lrAnalog, &udAnalog);
-    CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0xBBA8D0));
+    CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0x9F86F8));
     matPos = TheCamera.GetMatrix().ToRwMatrix();
 
 	CPlayerPool* pPlayerPool = pNetGame->GetPlayerPool();
@@ -560,7 +560,7 @@ void CLocalPlayer::ProcessSpectating()
 			if (pPlayerPed)
 			{
 				dwGTAId = pPlayerPed->m_dwGTAId;
-                CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0xBBA8D0));
+                CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0x9F86F8));
 
                 TheCamera.TakeControl(pPlayerPed->m_pPed, static_cast<eCamMode>(m_byteSpectateMode), eSwitchType::JUMPCUT, 1);
 				//pGame->GetCamera()->AttachToEntity(m_pPlayerPed);
@@ -577,7 +577,7 @@ void CLocalPlayer::ProcessSpectating()
 		if (pVehicle)
 		{
 			dwGTAId = pVehicle->m_dwGTAId;
-            CCamera &TheCamera = *reinterpret_cast<CCamera *>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0xBBA8D0));
+            CCamera &TheCamera = *reinterpret_cast<CCamera *>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0x9F86F8));
 
             TheCamera.TakeControl(pVehicle->m_pVehicle, static_cast<eCamMode>(m_byteSpectateMode), eSwitchType::JUMPCUT, 1);
 			//pGame->GetCamera()->AttachToEntity(pVehicle);
@@ -598,12 +598,12 @@ bool CLocalPlayer::Spawn()
 
     if(pSettings && pSettings->GetReadOnly().iHud)
     {
-        *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009ff3A8)) = 0;
+        *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009F13E8)) = 0;
         pJavaWrapper->ShowHud();
     }
     else
     {
-        *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009ff3A8)) = 1;
+        *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00819D88 + 1 : 0x009F13E8)) = 1;
         pJavaWrapper->HideHud();
     }
 
@@ -1580,6 +1580,8 @@ void CLocalPlayer::SetSpawnInfo(PLAYER_SPAWN_INFO* pSpawnInfo)
 {
 	memcpy(&m_SpawnInfo, pSpawnInfo, sizeof(PLAYER_SPAWN_INFO));
 	m_bHasSpawnInfo = true;
+	FLog("SetSpawnInfo: skin %d team %d at %.1f %.1f %.1f", m_SpawnInfo.iSkin, m_SpawnInfo.byteTeam,
+		m_SpawnInfo.vecPos.x, m_SpawnInfo.vecPos.y, m_SpawnInfo.vecPos.z);
 }
 // 0.3.7
 void CLocalPlayer::HandleClassSelectionOutcome(bool bOutcome)

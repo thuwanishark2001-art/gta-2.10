@@ -17,7 +17,7 @@ cd "$(dirname "$0")/.."
 
 export DB_NAME=km_test DB_USER=km_test DB_PASSWORD=km_test_pw DB_ROOT_PASSWORD=km_test_root
 COMPOSE=(docker compose -p kingmakers-test --env-file /dev/null -f docker-compose.yml -f docker-compose.test.yml)
-cleanup() { "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true; }
+cleanup() { "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true; [ -z "${content_tmp:-}" ] || rm -rf "$content_tmp"; }
 trap cleanup EXIT
 
 [ -d .deps/omp ] || ./scripts/fetch-deps.sh
@@ -82,6 +82,41 @@ if [ -z "${booted:-}" ]; then
     echo "smoke test failed"; exit 1
 fi
 
+echo "== content service"
+# Serves tests/content with a signed manifest of sizes and SHA-256 sums
+# (scripts/content-publish.sh, docs/CONTENT.md), signed with a throwaway key.
+content_tmp=$(mktemp -d)
+export KM_TEST_CONTENT_META="$content_tmp/meta"
+KM_CONTENT_DIR=tests/content KM_CONTENT_META="$KM_TEST_CONTENT_META" KM_CONTENT_KEY="$content_tmp/key.pem" \
+    ./scripts/content-publish.sh >/dev/null
+openssl ec -in "$content_tmp/key.pem" -pubout -out "$content_tmp/pub.pem" 2>/dev/null
+"${COMPOSE[@]}" up -d --wait content >/dev/null
+get() { "${COMPOSE[@]}" exec -T content wget -q -O - "http://127.0.0.1/$1"; }
+get manifest.json > "$content_tmp/manifest.json"
+get manifest.sig | base64 -d > "$content_tmp/manifest.sig"
+openssl dgst -sha256 -verify "$content_tmp/pub.pem" -signature "$content_tmp/manifest.sig" "$content_tmp/manifest.json" >/dev/null \
+    || { echo "the served manifest's signature doesn't verify"; exit 1; }
+printf ' ' >> "$content_tmp/manifest.json"
+if openssl dgst -sha256 -verify "$content_tmp/pub.pem" -signature "$content_tmp/manifest.sig" "$content_tmp/manifest.json" >/dev/null 2>&1; then
+    echo "a changed manifest still verified"; exit 1
+fi
+wav_sha=$(sha256sum tests/content/sounds/test.wav | cut -d' ' -f1)
+wav_size=$(wc -c < tests/content/sounds/test.wav | tr -d ' ')
+python3 - "$content_tmp/manifest.json" "$wav_size" "$wav_sha" <<'PY' || exit 1
+import json, sys
+m = json.load(open(sys.argv[1]))
+files = {f["path"]: f for f in m["files"]}
+wav = files.get("sounds/test.wav")
+if not wav or wav["size"] != int(sys.argv[2]) or wav["sha256"] != sys.argv[3]:
+    sys.exit(f"manifest is missing sounds/test.wav: {m}")
+if "hello.txt" not in files: sys.exit(f"manifest is missing hello.txt: {m}")
+if any("gitkeep" in p for p in files): sys.exit("manifest lists hidden files")
+PY
+[ "$(get sounds/test.wav | sha256sum | cut -d' ' -f1)" = "$wav_sha" ] || { echo "sounds/test.wav download doesn't match"; exit 1; }
+if get sounds/.gitkeep >/dev/null 2>&1; then echo "content service serves hidden files"; exit 1; fi
+if get ../etc/passwd >/dev/null 2>&1; then echo "content service serves files outside the folder"; exit 1; fi
+echo "content service serves the files and a signed manifest"
+
 echo "== end-to-end: kmbot plays through the game as a SA:MP client"
 # tools/kmbot is a headless client built from the mobile client's RakNet.
 # It registers, creates a character, spawns, runs commands, checks the UI
@@ -103,6 +138,14 @@ if ! run_bot kmbot_e2e Bot_Tester basic || ! run_bot kmbot_eco Eco_Tester econom
     "${COMPOSE[@]}" logs server | tail -30
     echo "end-to-end test failed"; exit 1
 fi
+# The basic run claims one daily reward (day 1, $200) and is refused a second.
+trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
+    "SELECT CONCAT(GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, ':', m.details) ORDER BY m.id), ' streak=', c.daily_streak)
+     FROM characters c LEFT JOIN money_log m ON m.character_id = c.id WHERE c.name = 'Bot_Tester' GROUP BY c.id")
+if [ "$trail" != "daily:700:day 1 streak=1" ]; then
+    echo "unexpected daily reward state for the basic run: $trail"; exit 1
+fi
+echo "daily reward paid once"
 # The economy run must have left exactly this money trail.
 trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, '/', m.bank_after) ORDER BY m.id) FROM money_log m
@@ -114,13 +157,13 @@ echo "money_log matches the economy run"
 trail=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_after, '/', m.bank_after) ORDER BY m.id) FROM money_log m
      JOIN characters c ON c.id = m.character_id WHERE c.name = 'Admin_Bot'")
-if [ "$trail" != "admin:500/2000,property_buy:500/1000,property_sell:500/1600" ]; then
+if [ "$trail" != "admin:500/2000,property_buy:500/1000,property_sell:500/1600,pass:750/1600,pass:1250/1600" ]; then
     echo "unexpected money_log for the admin run: $trail"; exit 1
 fi
 actions=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$DB_USER" -N -B "$DB_NAME" -e \
     "SELECT GROUP_CONCAT(DISTINCT l.action ORDER BY l.action) FROM admin_log l
      JOIN accounts a ON a.id = l.admin_account_id WHERE a.username = 'kmbot_adm'")
-if [ "$actions" != "accept_report,check,close_report,create_property,give_money,set_admin,set_faction" ]; then
+if [ "$actions" != "accept_report,announce,check,close_report,create_property,delete_property,give_money,give_pass,set_admin,set_faction,set_health,set_skin,set_time,set_weather" ]; then
     echo "unexpected admin_log for the admin run: $actions"; exit 1
 fi
 echo "money_log and admin_log match the admin run"
@@ -174,7 +217,7 @@ services=$("${COMPOSE[@]}" exec -T -e MYSQL_PWD="$DB_PASSWORD" db mariadb -u "$D
     "SELECT CONCAT('jobs=', (SELECT GROUP_CONCAT(m.details ORDER BY m.id) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Jobs_Bot'),
                    ' paid=', (SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_delta)) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Customer_Bot'),
                    ' earned=', (SELECT GROUP_CONCAT(CONCAT(m.reason, ':', m.cash_delta)) FROM money_log m JOIN characters c ON c.id = m.character_id WHERE c.name = 'Mechanic_Bot'))")
-if [ "$services" != "jobs=pizza delivery,taxi fare paid=service_paid:-75 earned=service_earned:75" ]; then
+if [ "$services" != "jobs=pizza delivery,taxi fare,bus stop,bus stop,bus stop,bus stop,bus stop,bus stop,bus stop,bus stop,bus route paid=service_paid:-75 earned=service_earned:75" ]; then
     echo "unexpected database state after the jobs and mechanic runs: $services"; exit 1
 fi
 echo "database matches the jobs and mechanic runs"

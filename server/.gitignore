@@ -1,3 +1,16 @@
 .deps/
 .env
 data/
+# Server content is the operator's own files; only the README and folders are tracked.
+content/*
+!content/README.md
+!content/sounds/
+content/sounds/*
+!content/sounds/.gitkeep
+!content/models/
+content/models/*
+!content/models/.gitkeep
+# The content signing key (never commit it) and the signed manifest.
+content-keys/
+content-meta/
+tests/.content-meta/

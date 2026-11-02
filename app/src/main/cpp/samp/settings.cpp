@@ -80,7 +80,8 @@ CSettings::CSettings()
 	m_Settings.iAndroidKeyboard = reader.GetBoolean("gui", "androidkeyboard", false);
 	m_Settings.iFirstPerson = reader.GetBoolean("gui", "firstperson", true);
 	m_Settings.iCutout = reader.GetBoolean("gui", "cutout", false);
-	m_Settings.iFPSCounter = reader.GetBoolean("gui", "fps", true);
+	// Developer overlay (FPS, memory, position, build); off for players.
+	m_Settings.iFPSCounter = reader.GetBoolean("gui", "fps", false);
 	m_Settings.iFPSCount = reader.GetInteger("gui", "FPSLimit", 60);
 	m_Settings.iHPArmourText = reader.GetBoolean("gui", "hparmourtext", false);
 	m_Settings.iOutfitGuns = reader.GetBoolean("gui", "outfitguns", false);
@@ -88,7 +89,9 @@ CSettings::CSettings()
 	m_Settings.iRadarRect = reader.GetBoolean("gui", "radarrect", false);
 	m_Settings.iSkyBox = reader.GetBoolean("gui", "skybox", false);
 	m_Settings.iSnow = reader.GetBoolean("gui", "snow", false);
-    m_Settings.iHud = reader.GetBoolean("gui", "hud", false);
+    // The Kingmakers HUD (health, money, weapon, KMUI cash/level/job) is the
+    // default; hud = false gives the game's own HUD instead.
+    m_Settings.iHud = reader.GetBoolean("gui", "hud", true);
 	FLog("Settings loaded.");
 }
 

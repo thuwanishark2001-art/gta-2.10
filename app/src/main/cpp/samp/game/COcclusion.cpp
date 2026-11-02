@@ -7,6 +7,6 @@
 
 void COcclusion::InjectHooks()
 {
-    CHook::Write(g_libGTASA+(VER_x32 ? 0xA41140 : 0xCE3EE8), &aOccluders);
-    CHook::Write(g_libGTASA+(VER_x32 ? 0xA45790:0xCE8538), &NumOccludersOnMap);
+    CHook::Write(g_libGTASA+(VER_x32 ? 0xA41140 : 0xC89C68), &aOccluders);
+    CHook::Write(g_libGTASA+(VER_x32 ? 0xA45790:0xC8E2B8), &NumOccludersOnMap);
 }

@@ -64,6 +64,8 @@
 #define KM_PIZZAS_PER_LOAD      (5)
 #define KM_MINE_MS              (5000)
 #define KM_ORE_PAY              (90)
+#define KM_BUS_STOP_PAY         (120)     // each stop on the route
+#define KM_BUS_LOOP_BONUS       (400)     // back at the depot after the whole loop
 #define KM_SERVICE_PRICE_MAX    (2000)    // most a mechanic or medic can charge
 
 // Police
@@ -84,3 +86,11 @@
 
 // Anti-cheat, vehicles
 #define KM_AC_MAX_KMH           (330)     // ground vehicles
+
+// Season pass (km/pass.inc). Bump KM_PASS_SEASON to start a new season.
+#define KM_PASS_SEASON          (1)
+#define KM_PASS_TIERS           (10)
+#define KM_PASS_TIER_POINTS     (50)
+#define PASS_POINTS_PAYDAY      (10)
+#define PASS_POINTS_DAILY       (5)
+#define PASS_POINTS_JOB         (2)

@@ -14,5 +14,5 @@ public:
     static void InjectHooks();
 };
 
-VALIDATE_SIZE(CWidgetRadar, (VER_x32 ? 0x9C : 0xC0));
+VALIDATE_SIZE(CWidgetRadar, (VER_x32 ? 0x94 : 0xB0));
 

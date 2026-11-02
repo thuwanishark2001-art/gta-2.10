@@ -8,7 +8,7 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.samp.mobile" />
+                  <option name="appId" value="com.kingmakers.rp" />
                   <option name="mobileSdkAppId" value="1:384675259373:android:f3f8e21ddafb7bf16a3de4" />
                   <option name="projectId" value="samp-mobile-b726b" />
                   <option name="projectNumber" value="384675259373" />

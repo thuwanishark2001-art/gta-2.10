@@ -78,6 +78,10 @@ public:
 
 	char	m_szHostName[256 + 1];
 	char	m_szHostOrIp[256 + 1];
+	// The name we log in with (settings.ini). The server may rename the
+	// player in game (e.g. to the character name); reconnects must still
+	// join with this one, or the server looks up the wrong account.
+	char	m_szLoginName[MAX_PLAYER_NAME + 1];
 	int		m_iPort;
 	bool	m_bLanMode;
 

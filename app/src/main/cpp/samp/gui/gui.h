@@ -96,7 +96,6 @@ public:
 
     void renderDebug();
 
-    void DrawServerTexture();
 
     void ProcessPushedTextdraws();
     void PushToBufferedQueueTextDrawPressed(uint16_t textdrawId);

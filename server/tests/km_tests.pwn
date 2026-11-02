@@ -41,6 +41,16 @@
 #include "km/kmui.inc"
 #include "km/anticheat.inc"
 #include "km/licence.inc"
+#include "km/radio.inc"
+#include "km/content.inc"
+#include "km/mapicons.inc"
+#include "km/admintools.inc"
+#include "km/spectate.inc"
+#include "km/gps.inc"
+#include "km/guide.inc"
+#include "km/owner.inc"
+#include "km/daily.inc"
+#include "km/pass.inc"
 
 new gPass, gFail;
 
@@ -94,6 +104,51 @@ Test_Validation()
     EXPECT(!IsValidAccountName("waytoolongaccountname1"));
     EXPECT(!IsValidAccountName("bad name"));
     EXPECT(!IsValidAccountName("bad[tag]"));
+
+    EXPECT(Radio_IsValidUrl("http://stream.radioparadise.com/mp3-128"));
+    EXPECT(Radio_IsValidUrl("https://ice1.somafm.com/groovesalad-128-mp3"));
+    EXPECT(!Radio_IsValidUrl("ftp://example.com/stream"));
+    EXPECT(Daily_Reward(1) == 200);
+    EXPECT(Daily_Reward(6) == 1200);
+    EXPECT(Daily_Reward(7) == 3000);
+    EXPECT(Daily_Reward(0) == 0);
+    EXPECT(Daily_Reward(8) == 0);
+    EXPECT(Pass_TierReward(1) == 250);
+    EXPECT(Pass_TierReward(9) == 2250);
+    EXPECT(Pass_TierReward(10) == 10000);
+    EXPECT(Pass_TierReward(11) == 0);
+    EXPECT(Pass_TiersUnlocked(0) == 0);
+    EXPECT(Pass_TiersUnlocked(49) == 0);
+    EXPECT(Pass_TiersUnlocked(50) == 1);
+    EXPECT(Pass_TiersUnlocked(125) == 2);
+    EXPECT(Pass_TiersUnlocked(100000) == 10);
+    EXPECT(Content_IsValidSoundPath("sounds/welcome.mp3"));
+    EXPECT(Content_IsValidSoundPath("sounds/Bell_2.ogg"));
+    EXPECT(Content_IsValidSoundPath("horn.wav"));
+    EXPECT(!Content_IsValidSoundPath("../secret.mp3"));
+    EXPECT(!Content_IsValidSoundPath("sounds/../../x.mp3"));
+    EXPECT(!Content_IsValidSoundPath("/etc/x.mp3"));
+    EXPECT(!Content_IsValidSoundPath("sounds//x.mp3"));
+    EXPECT(!Content_IsValidSoundPath("sounds/x y.mp3"));
+    EXPECT(!Content_IsValidSoundPath("manifest.json"));
+    EXPECT(!Content_IsValidSoundPath("sounds/x.mp3?a=1"));
+    EXPECT(!Radio_IsValidUrl("http://bad url"));
+    EXPECT(!Radio_IsValidUrl("http://example.com/a\"b"));
+    EXPECT(!Radio_IsValidUrl("http://x"));
+    EXPECT(Radio_StationCount() > 0);
+    EXPECT(Radio_IsValidStation(0));
+    EXPECT(!Radio_IsValidStation(RADIO_OFF));
+    EXPECT(!Radio_IsValidStation(Radio_StationCount()));
+
+    EXPECT(IsStockSkin(0));
+    EXPECT(IsStockSkin(7));
+    EXPECT(IsStockSkin(21));
+    EXPECT(IsStockSkin(280));
+    EXPECT(!IsStockSkin(2));
+    EXPECT(!IsStockSkin(74));
+    EXPECT(!IsStockSkin(306));
+    EXPECT(!IsStockSkin(-1));
+    EXPECT(!IsStockSkin(312));
 
     EXPECT(IsValidCharacterName("Marcus_Reed"));
     EXPECT(IsValidCharacterName("Al_Li"));
@@ -314,6 +369,7 @@ Test_Rules()
     EXPECT(sizeof (gItems) == ITEM_COUNT && sizeof (gJobNames) == JOB_COUNT);
     EXPECT(strcmp(gItems[ITEM_PHONE][itName], "Phone") == 0 && gItems[ITEM_PHONE][itMax] == 1);
     EXPECT(strcmp(gJobNames[JOB_MECHANIC], "Mechanic") == 0);
+    EXPECT(strcmp(gJobNames[JOB_BUS], "Bus driver") == 0 && sizeof (gBusRoute) == 8);
     // Every dealership model is a real vehicle model.
     ok = true;
     for (new i = 0; i < sizeof (gDealerStock); i++)
