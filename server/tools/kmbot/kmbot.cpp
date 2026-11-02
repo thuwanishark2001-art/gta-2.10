@@ -448,7 +448,7 @@ static bool ExpectMessage(const char* needle, uint32_t colour = 0, uint32_t time
 }
 
 // Dialog ids from server/gamemodes/km/players.inc.
-enum { D_REGISTER = 1, D_REGISTER_CONFIRM = 2, D_LOGIN = 3, D_CHAR_SELECT = 4, D_CHAR_NAME = 5, D_CHAR_GENDER = 6, D_CHAR_SKIN = 7, D_PASS = 18 };
+enum { D_REGISTER = 1, D_REGISTER_CONFIRM = 2, D_LOGIN = 3, D_CHAR_SELECT = 4, D_CHAR_NAME = 5, D_CHAR_GENDER = 6, D_CHAR_SKIN = 7 };
 static const uint32_t kKmuiColour = 0x4B4D5501;
 
 // Moves to a point and gives the server a moment to see it.
@@ -907,19 +907,15 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     Command("/givepass " + character + " 120");
     ExpectMessage("Season pass: tier 2 unlocked");
     ExpectMessage("season pass points (120 now)");
+    // The bot speaks KMUI like the app, so /pass opens the app's panel.
     Command("/pass");
-    Dialog pass;
-    if (ExpectDialog(D_PASS, &pass))
-    {
-        if (pass.text.find("Tier 1: $250") == std::string::npos || pass.text.find("tap to claim") == std::string::npos)
-            Fail("the pass doesn't offer tier 1");
-        Respond(D_PASS, 1, 1, "");   // tapping tier 2 claims tier 1 first
-    }
+    ExpectMessage("KM1|pass|s=1;p=120;c=0;per=50;open=1;r=250,500,750,1000,1250,1500,1750,2000,2250,10000", kKmuiColour);
+    Command("/pass claim");
     ExpectMessage("Season pass tier 1 claimed: $250");
-    if (ExpectDialog(D_PASS)) Respond(D_PASS, 1, 1, "");
+    ExpectMessage("KM1|pass|s=1;p=120;c=1;per=50;open=0", kKmuiColour);
+    Command("/pass claim");
     ExpectMessage("Season pass tier 2 claimed: $500");
-    Command("/pass");
-    if (ExpectDialog(D_PASS)) Respond(D_PASS, 1, 2, "");
+    Command("/pass claim");
     ExpectMessage("Tier 3 needs 150 points; you have 120");
 
     printf("== shop on the map\n");

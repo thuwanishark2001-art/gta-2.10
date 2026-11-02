@@ -126,6 +126,11 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
         runOnUiThread(() -> mKmUi.onPhone(hasPhone != 0, number, bank));
     }
 
+    public void kmPass(int season, int points, int claimed, int perTier, byte[] rewards, int open) {
+        final String list = new String(rewards, StandardCharsets.UTF_8);
+        runOnUiThread(() -> mKmUi.onPass(season, points, claimed, perTier, list, open != 0));
+    }
+
     public void kmSpeed(int kmh, int inVehicle) {
         runOnUiThread(() -> mKmUi.onSpeed(kmh, inVehicle != 0));
     }

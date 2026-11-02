@@ -111,6 +111,10 @@ final class ClientUi {
 
     void kmPhone(int hasPhone, int number, int bank) { ui(() -> kmUi.onPhone(hasPhone != 0, number, bank)); }
     void kmSpeed(int kmh, int inVehicle) { ui(() -> kmUi.onSpeed(kmh, inVehicle != 0)); }
+    void kmPass(int season, int points, int claimed, int perTier, byte[] rewards, int open) {
+        final String list = new String(rewards, java.nio.charset.StandardCharsets.UTF_8);
+        ui(() -> kmUi.onPass(season, points, claimed, perTier, list, open != 0));
+    }
 
     /** True if a Kingmakers panel took the back press. Call on the UI thread. */
     boolean onBack() { return kmUi.onBack(); }

@@ -73,6 +73,7 @@ stock Pass_AddPoints(playerid, points)
         gChar[playerid][cId], KM_PASS_SEASON, points);
     mysql_tquery(gDB, query);
     new after = Pass_TiersUnlocked(gPassPoints[playerid]);
+    if (gPassLoaded[playerid]) Pass_Send(playerid, 0);   // refreshes the app's panel if open
     if (gPassLoaded[playerid] && after > before)
     {
         SendClientMessage(playerid, COLOR_SUCCESS, "Season pass: tier %d unlocked! Claim it with /pass.", after);
@@ -80,6 +81,20 @@ stock Pass_AddPoints(playerid, points)
         format(toast, sizeof (toast), "Season pass tier %d unlocked", after);
         KMUI_Toast(playerid, toast);
     }
+}
+
+// Kingmakers app: the pass panel (KMUI "pass" event, docs/KMUI.md). open=1
+// opens it; open=0 only refreshes it if it's already open.
+stock Pass_Send(playerid, open)
+{
+    new payload[160], rewards[96];
+    for (new t = 1; t <= KM_PASS_TIERS; t++)
+    {
+        format(rewards, sizeof (rewards), "%s%s%d", rewards, t > 1 ? "," : "", Pass_TierReward(t));
+    }
+    format(payload, sizeof (payload), "s=%d;p=%d;c=%d;per=%d;open=%d;r=%s",
+        KM_PASS_SEASON, gPassPoints[playerid], gPassClaimed[playerid], KM_PASS_TIER_POINTS, open, rewards);
+    KMUI_Send(playerid, "pass", payload);
 }
 
 stock Pass_Show(playerid)
@@ -102,11 +117,37 @@ stock Pass_Show(playerid)
     ShowPlayerDialog(playerid, DIALOG_PASS, DIALOG_STYLE_LIST, title, list, "Claim", "Close");
 }
 
+// "/pass" opens the pass (a panel in the Kingmakers app, a list elsewhere);
+// "/pass claim" claims the next unlocked tier (the app's Claim button).
 CMD:pass(playerid, params[])
 {
     if (!Player_IsPlaying(playerid)) return 1;
     if (!gPassLoaded[playerid]) return SendInfo(playerid, "Your season pass is still loading. Try again in a moment.");
-    Pass_Show(playerid);
+    if (!isnull(params) && strcmp(params, "claim", true) == 0)
+    {
+        Pass_ClaimNext(playerid);
+        return 1;
+    }
+    if (KMUI_Enabled(playerid)) Pass_Send(playerid, 1);
+    else Pass_Show(playerid);
+    return 1;
+}
+
+// Claims the next tier if it's unlocked.
+stock Pass_ClaimNext(playerid)
+{
+    new tier = gPassClaimed[playerid] + 1;
+    if (tier > KM_PASS_TIERS) return SendInfo(playerid, "You've claimed every tier this season."), 0;
+    if (tier > Pass_TiersUnlocked(gPassPoints[playerid]))
+        return SendClientMessage(playerid, COLOR_INFO, "Tier %d needs %d points; you have %d.", tier, tier * KM_PASS_TIER_POINTS, gPassPoints[playerid]), 0;
+    if (gPassBusy[playerid]) return 0;
+    gPassBusy[playerid] = true;
+    new query[256];
+    mysql_format(gDB, query, sizeof (query),
+        "UPDATE pass_progress SET claimed_tier = claimed_tier + 1 \
+         WHERE character_id = %d AND season = %d AND claimed_tier = %d AND points >= %d",
+        gChar[playerid][cId], KM_PASS_SEASON, tier - 1, tier * KM_PASS_TIER_POINTS);
+    mysql_tquery(gDB, query, "Pass_OnClaim", "dddd", playerid, gPlayerRace[playerid], gChar[playerid][cId], tier);
     return 1;
 }
 
@@ -119,15 +160,7 @@ stock Pass_OnDialog(playerid, dialogid, response, listitem)
     if (tier > Pass_TiersUnlocked(gPassPoints[playerid]))
         return SendClientMessage(playerid, COLOR_INFO, "Tier %d needs %d points; you have %d.", tier, tier * KM_PASS_TIER_POINTS, gPassPoints[playerid]), 1;
     // Tiers are claimed in order; tapping a later one claims the next one first.
-    tier = gPassClaimed[playerid] + 1;
-    if (gPassBusy[playerid]) return 1;
-    gPassBusy[playerid] = true;
-    new query[256];
-    mysql_format(gDB, query, sizeof (query),
-        "UPDATE pass_progress SET claimed_tier = claimed_tier + 1 \
-         WHERE character_id = %d AND season = %d AND claimed_tier = %d AND points >= %d",
-        gChar[playerid][cId], KM_PASS_SEASON, tier - 1, tier * KM_PASS_TIER_POINTS);
-    mysql_tquery(gDB, query, "Pass_OnClaim", "dddd", playerid, gPlayerRace[playerid], gChar[playerid][cId], tier);
+    Pass_ClaimNext(playerid);
     return 1;
 }
 
@@ -141,7 +174,8 @@ public Pass_OnClaim(playerid, race, charId, tier)
     format(details, sizeof (details), "season %d tier %d", KM_PASS_SEASON, tier);
     Money_Give(playerid, reward, 0, "pass", INVALID_PLAYER_ID, details);
     SendClientMessage(playerid, COLOR_SUCCESS, "Season pass tier %d claimed: $%d.", tier, reward);
-    if (tier < Pass_TiersUnlocked(gPassPoints[playerid])) Pass_Show(playerid);
+    if (KMUI_Enabled(playerid)) Pass_Send(playerid, 0);
+    else if (tier < Pass_TiersUnlocked(gPassPoints[playerid])) Pass_Show(playerid);
     return 1;
 }
 

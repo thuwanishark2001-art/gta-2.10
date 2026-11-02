@@ -64,6 +64,11 @@ namespace
         {
             pJavaWrapper->KmPhone(FieldInt(fields, "has"), FieldInt(fields, "number"), FieldInt(fields, "bank"));
         }
+        else if (event == "pass")
+        {
+            pJavaWrapper->KmPass(FieldInt(fields, "s"), FieldInt(fields, "p"), FieldInt(fields, "c"),
+                FieldInt(fields, "per", 50), FieldText(fields, "r"), FieldInt(fields, "open"));
+        }
         else if (event == "hello")
         {
             FLog("KMUI: server speaks protocol v%d", FieldInt(fields, "v"));

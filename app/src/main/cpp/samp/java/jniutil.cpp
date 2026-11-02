@@ -71,6 +71,13 @@ CJavaWrapper::CJavaWrapper(JNIEnv *env, jobject activity)
         FLog("Kingmakers UI methods missing");
         s_kmHud = s_kmToast = s_kmSms = s_kmPhone = s_kmSpeed = nullptr;
     }
+    // Looked up on its own: an older activity without it keeps the rest.
+    s_kmPass = env->GetMethodID(clas, "kmPass", "(IIII[BI)V");
+    if (env->ExceptionCheck())
+    {
+        env->ExceptionClear();
+        s_kmPass = nullptr;
+    }
 
     env->DeleteLocalRef(clas);
 }
@@ -329,6 +336,16 @@ void CJavaWrapper::KmPhone(int hasPhone, int number, int bank)
     if (!env) return;
     if (!env || !s_kmPhone) return;
     env->CallVoidMethod(activity, s_kmPhone, hasPhone, number, bank);
+    EXCEPTION_CHECK(env);
+}
+
+void CJavaWrapper::KmPass(int season, int points, int claimed, int perTier, const std::string& rewards, int open)
+{
+    JNIEnv* env = JavaEnv();
+    if (!env || !s_kmPass) return;
+    jbyteArray jRewards = as_byte_array((unsigned char*)rewards.c_str(), rewards.length());
+    env->CallVoidMethod(activity, s_kmPass, season, points, claimed, perTier, jRewards, open);
+    env->DeleteLocalRef(jRewards);
     EXCEPTION_CHECK(env);
 }
 
