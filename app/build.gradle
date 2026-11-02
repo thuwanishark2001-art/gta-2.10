@@ -8,6 +8,13 @@ def kmServerHost = project.findProperty('kmServerHost') ?: '65.20.88.67'
 def kmContentPort = (project.findProperty('kmContentPort') ?: '7780') as int
 // GitHub repository whose Releases the app updates itself from (Updater.java).
 // -PkmUpdateRepo= (empty) turns updates off.
+// The content service's public key (server/scripts/content-publish.sh --pubkey).
+// With it, the app only accepts a signed content list; without the file,
+// content isn't checked (development builds).
+def kmContentPubKeyFile = file('content-pubkey.pem')
+def kmContentPubKey = kmContentPubKeyFile.exists()
+    ? kmContentPubKeyFile.text.readLines().findAll { !it.startsWith('-----') }.join('').trim()
+    : ''
 def kmUpdateRepo = project.findProperty('kmUpdateRepo') != null ? project.findProperty('kmUpdateRepo') : ''
 
 android {
@@ -44,6 +51,7 @@ android {
         // the launcher downloads the server's logo, background and sounds from.
         buildConfigField "String", "KM_SERVER_HOST", "\"${kmServerHost}\""
         buildConfigField "int", "KM_CONTENT_PORT", "${kmContentPort}"
+        buildConfigField "String", "KM_CONTENT_PUBKEY", "\"${kmContentPubKey}\""
         buildConfigField "String", "KM_UPDATE_REPO", "\"${kmUpdateRepo}\""
 
         ndk {

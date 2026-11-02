@@ -12,7 +12,7 @@ the app; no new APK is needed. See docs/CONTENT.md.
 | `models/<id>.dff` + `models/<id>.txd` | a custom skin replacing skin `<id>` |
 | `models/<id>.cfg`, `models/<id>/*.png` | tints, base models, artwork (`scripts/add-skin.sh`) |
 
-After adding or changing files, run `docker compose restart content` (or
-`./scripts/deploy.sh`). Use only letters, digits, `_`, `-`, `.` and `/` in
+After adding or changing files, run `./scripts/content-publish.sh` (or
+`./scripts/deploy.sh`), which signs the list of files for the app. Use only letters, digits, `_`, `-`, `.` and `/` in
 names. Only add files you made or have the rights to share: never game
 files from GTA: San Andreas.

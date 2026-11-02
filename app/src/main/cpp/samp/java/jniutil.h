@@ -57,6 +57,8 @@ public:
     void KmToast(const std::string& text);
     void KmSms(int fromNumber, const std::string& text);
     void KmPhone(int hasPhone, int number, int bank);
+    void KmBank(int cash, int bank, int atm, int paydayMinutes);
+    void KmPass(int season, int points, int claimed, int perTier, const std::string& rewards, int open);
     void KmSpeed(int kmh, int inVehicle);
 
     jobject activity;
@@ -82,5 +84,7 @@ public:
     jmethodID s_kmToast;
     jmethodID s_kmSms;
     jmethodID s_kmPhone;
+    jmethodID s_kmPass;
+    jmethodID s_kmBank;
     jmethodID s_kmSpeed;
 };

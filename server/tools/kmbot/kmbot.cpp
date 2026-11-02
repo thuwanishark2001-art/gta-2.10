@@ -903,6 +903,21 @@ static void AdminScenario(const char* host, int port, const std::string& charact
     Command("/sellproperty confirm");
     ExpectMessage("Sold. $600 was paid");
 
+    printf("== season pass\n");
+    Command("/givepass " + character + " 120");
+    ExpectMessage("Season pass: tier 2 unlocked");
+    ExpectMessage("season pass points (120 now)");
+    // The bot speaks KMUI like the app, so /pass opens the app's panel.
+    Command("/pass");
+    ExpectMessage("KM1|pass|s=1;p=120;c=0;per=50;open=1;r=250,500,750,1000,1250,1500,1750,2000,2250,10000", kKmuiColour);
+    Command("/pass claim");
+    ExpectMessage("Season pass tier 1 claimed: $250");
+    ExpectMessage("KM1|pass|s=1;p=120;c=1;per=50;open=0", kKmuiColour);
+    Command("/pass claim");
+    ExpectMessage("Season pass tier 2 claimed: $500");
+    Command("/pass claim");
+    ExpectMessage("Tier 3 needs 150 points; you have 120");
+
     printf("== shop on the map\n");
     MoveTo(door.x + 12.0f, door.y, door.z);
     Command("/createproperty 5 5000 Bot Shop");
@@ -993,6 +1008,8 @@ static void EconomyScenario(const char* host, int port, const std::string& chara
 
     printf("== ATM (Idlewood gas station)\n");
     MoveTo(1928.6f, -1786.1f, 13.5f);
+    Command("/bank");
+    ExpectMessage("KM1|bank|cash=500;bank=0;atm=1;payday=", kKmuiColour);
     Command("/deposit 200");
     ExpectMessage("Deposited $200");
     Command("/withdraw 50");
@@ -1073,6 +1090,7 @@ int main(int argc, char** argv)
     if (ExpectDialog(D_CHAR_SKIN)) Respond(D_CHAR_SKIN, 1, 2, "");
     ExpectMessage("You are now playing as", 0, 10000);
     ExpectMessage("You're the server owner");       // KM_OWNER_ACCOUNT in the test stack
+    ExpectMessage("Your daily reward is ready");
     // The Kingmakers client HUD arrives on the next 1 s tick after spawning.
     ExpectMessage("KM1|hud|cash=500;bank=0;lvl=1", kKmuiColour, 5000);
 
@@ -1088,6 +1106,12 @@ int main(int argc, char** argv)
     ExpectMessage("waves");
     Command("/jobs");
     Pump(1000);
+
+    printf("== daily reward\n");
+    Command("/daily");
+    ExpectMessage("Daily reward, day 1 of 7: $200");
+    Command("/daily");
+    ExpectMessage("already claimed today's reward");
 
     printf("== Kingmakers UI protocol\n");
     Command("/phone");

@@ -48,7 +48,7 @@ this repo's MIT license.
 - [ ] Look at all of it on a device and adjust sizes and positions
 - [x] Rebrand the client: "Kingmakers RP" name, placeholder gold crown icon and loading screen, other projects' logos removed
 - [ ] Replace the placeholder crown with a real logo
-- [ ] Change the package id `com.samp.mobile` (together with the game files decision: it moves the app's storage folder)
+- [x] Change the package id `com.samp.mobile` to `com.kingmakers.rp` (together with the game files decision: it moves the app's storage folder)
 
 ### Phase 4: quality and ops
 - [x] Server-side anti-cheat (weapons, jetpack, health/armour, teleport), logged in `anticheat_log`
@@ -460,7 +460,6 @@ like a typed command. Details in [docs/KMUI.md](docs/KMUI.md).
 | `app/src/main/assets/` | **Rockstar game data** (`Text/*.gxt`, `data/mainV1.scm`, `handling.cfg`, `socialclub/`), fonts, client `settings.ini`. |
 | `app/src/main/res/` | Android layouts and images for the Java HUD and dialogs. |
 | `dumps_libGTASA_32and64/` | Symbol dumps of `libGTASA.so` (offset reference for hooks). |
-| `.safedk/` | Leftovers from an ad-SDK scanner. Not used by the build. |
 
 ### How the client connects
 

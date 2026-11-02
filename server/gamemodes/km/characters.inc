@@ -368,6 +368,8 @@ stock Char_OnSpawn(playerid)
         SetPlayerHealth(playerid, gChar[playerid][cHealth] < 1.0 ? 100.0 : gChar[playerid][cHealth]);
         SetPlayerArmour(playerid, gChar[playerid][cArmour]);
         SendClientMessage(playerid, COLOR_BRAND, "You are now playing as %s. Type /help for commands.", gChar[playerid][cName]);
+        Daily_OnFirstSpawn(playerid);
+        Pass_Load(playerid);
         if (gChar[playerid][cNewPlayer])
         {
             gChar[playerid][cNewPlayer] = false;

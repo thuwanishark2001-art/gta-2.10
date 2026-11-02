@@ -10,3 +10,7 @@ content/sounds/*
 !content/models/
 content/models/*
 !content/models/.gitkeep
+# The content signing key (never commit it) and the signed manifest.
+content-keys/
+content-meta/
+tests/.content-meta/

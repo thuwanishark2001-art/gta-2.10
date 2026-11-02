@@ -10,6 +10,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -26,7 +27,8 @@ import java.util.ArrayDeque;
 
 /**
  * Kingmakers UI, driven by the server through the KMUI protocol
- * (docs/KMUI.md): a stats panel, a speedometer with fuel, toasts and a phone.
+ * (docs/KMUI.md): a stats panel, a speedometer with fuel, toasts, a phone and
+ * the season pass.
  * All methods must be called on the UI thread.
  */
 public class KmUi {
@@ -64,6 +66,19 @@ public class KmUi {
     private int phoneNumber = 0;
     private int phoneBank = 0;
 
+    private final LinearLayout pass;
+    private final TextView passTitle;
+    private final TextView passSummary;
+    private final ProgressBar passBar;
+    private final LinearLayout passTiers;
+    private final TextView passClaim;
+
+    private final LinearLayout bankPanel;
+    private final TextView bankBalance;
+    private final LinearLayout bankBody;
+    private int lastCash = 0;
+    private int lastBank = 0;
+
     private boolean hudVisible = false;
     private boolean hasHud = false;
     private boolean inVehicle = false;
@@ -88,6 +103,14 @@ public class KmUi {
         statsPanel.addView(bankText);
         statsPanel.addView(jobText);
         statsPanel.addView(phoneButton, marginTop(dp(4)));
+        LinearLayout statsButtons = new LinearLayout(activity);
+        statsButtons.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams half = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        LinearLayout.LayoutParams halfRight = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        halfRight.leftMargin = dp(4);
+        statsButtons.addView(button("Bank", v -> sender.send("/bank")), half);
+        statsButtons.addView(button("Pass", v -> sender.send("/pass")), halfRight);
+        statsPanel.addView(statsButtons, marginTop(dp(4)));
         FrameLayout.LayoutParams statsParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
         statsParams.setMargins(dp(12), dp(170), 0, 0);
         root.addView(statsPanel, statsParams);
@@ -128,8 +151,55 @@ public class KmUi {
         FrameLayout.LayoutParams phoneParams = new FrameLayout.LayoutParams(dp(300), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
         root.addView(phone, phoneParams);
 
+        // Season pass: wide centred card with a row of tiers.
+        pass = panel(LinearLayout.VERTICAL);
+        pass.setBackground(rounded(0xEE101014, GOLD));
+        pass.setPadding(dp(16), dp(12), dp(16), dp(12));
+        passTitle = text(16, GOLD, true);
+        passSummary = text(12, Color.WHITE, false);
+        passBar = bar(GOLD);
+        passTiers = new LinearLayout(activity);
+        passTiers.setOrientation(LinearLayout.HORIZONTAL);
+        HorizontalScrollView tierScroll = new HorizontalScrollView(activity);
+        tierScroll.setHorizontalScrollBarEnabled(false);
+        tierScroll.addView(passTiers);
+        TextView passHelp = text(11, 0xFFB0B0B0, false);
+        passHelp.setText("Earn points: payday +10, daily reward (/daily) +5, every job payment +2.");
+        passClaim = button("Claim", v -> sender.send("/pass claim"));
+        TextView passClose = button("Close", v -> pass.setVisibility(View.GONE));
+        LinearLayout passButtons = new LinearLayout(activity);
+        passButtons.setOrientation(LinearLayout.HORIZONTAL);
+        passButtons.addView(passClaim, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f));
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        closeParams.leftMargin = dp(8);
+        passButtons.addView(passClose, closeParams);
+        pass.addView(passTitle);
+        pass.addView(passSummary, marginTop(dp(2)));
+        pass.addView(passBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(6)));
+        pass.addView(tierScroll, marginTop(dp(10)));
+        pass.addView(passHelp, marginTop(dp(8)));
+        pass.addView(passButtons, marginTop(dp(10)));
+        FrameLayout.LayoutParams passParams = new FrameLayout.LayoutParams(dp(560), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        root.addView(pass, passParams);
+
+        // Bank: centred card; its balances follow the HUD while it's open.
+        bankPanel = panel(LinearLayout.VERTICAL);
+        bankPanel.setBackground(rounded(0xEE101014, GOLD));
+        bankPanel.setPadding(dp(16), dp(12), dp(16), dp(12));
+        TextView bankTitle = text(16, GOLD, true);
+        bankTitle.setText("Bank");
+        bankBalance = text(13, Color.WHITE, false);
+        bankBody = new LinearLayout(activity);
+        bankBody.setOrientation(LinearLayout.VERTICAL);
+        bankPanel.addView(bankTitle);
+        bankPanel.addView(bankBalance, marginTop(dp(2)));
+        bankPanel.addView(bankBody, marginTop(dp(8)));
+        root.addView(bankPanel, new FrameLayout.LayoutParams(dp(420), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+
         statsPanel.setVisibility(View.GONE);
         speedPanel.setVisibility(View.GONE);
+        pass.setVisibility(View.GONE);
+        bankPanel.setVisibility(View.GONE);
         toast.setVisibility(View.GONE);
         phone.setVisibility(View.GONE);
     }
@@ -144,6 +214,9 @@ public class KmUi {
         bankText.setText("Bank " + money(bank));
         jobText.setText(job);
         phoneBank = bank;
+        lastCash = cash;
+        lastBank = bank;
+        if (bankPanel.getVisibility() == View.VISIBLE) updateBankBalance();
         this.fuel = fuel;
         updateFuel();
         updateVisibility();
@@ -179,13 +252,172 @@ public class KmUi {
         phone.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * The bank panel. atm: deposits and withdrawals work here (the server
+     * still checks); payday: minutes to the next payday.
+     */
+    public void onBank(int cash, int bank, boolean atm, int payday) {
+        lastCash = cash;
+        lastBank = bank;
+        updateBankBalance();
+        bankBody.removeAllViews();
+        TextView paydayText = text(11, 0xFFB0B0B0, false);
+        paydayText.setText("Next payday in " + payday + " min");
+        bankBody.addView(paydayText);
+        if (atm) {
+            bankBody.addView(sectionLabel("Deposit cash"), marginTop(dp(8)));
+            bankBody.addView(amountRow(true), marginTop(dp(4)));
+            bankBody.addView(sectionLabel("Withdraw cash"), marginTop(dp(8)));
+            bankBody.addView(amountRow(false), marginTop(dp(4)));
+            EditText custom = input("Other amount", InputType.TYPE_CLASS_NUMBER);
+            bankBody.addView(custom, marginTop(dp(8)));
+            LinearLayout customButtons = new LinearLayout(activity);
+            customButtons.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            LinearLayout.LayoutParams right = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            right.leftMargin = dp(6);
+            customButtons.addView(button("Deposit", v -> sendAmount("/deposit", custom)), left);
+            customButtons.addView(button("Withdraw", v -> sendAmount("/withdraw", custom)), right);
+            bankBody.addView(customButtons, marginTop(dp(6)));
+        } else {
+            TextView note = text(12, 0xFFB0B0B0, false);
+            note.setText("Mobile banking: visit an ATM to deposit or withdraw cash.");
+            bankBody.addView(note, marginTop(dp(6)));
+        }
+        bankBody.addView(sectionLabel("Transfer to a player"), marginTop(dp(10)));
+        EditText who = input("Player name or ID", InputType.TYPE_CLASS_TEXT);
+        EditText amount = input("Amount", InputType.TYPE_CLASS_NUMBER);
+        bankBody.addView(who, marginTop(dp(4)));
+        bankBody.addView(amount, marginTop(dp(4)));
+        bankBody.addView(button("Transfer", v -> {
+            String target = clean(who.getText().toString()).replace(' ', '_');
+            int value = parseInt(amount.getText().toString());
+            if (target.isEmpty() || value <= 0) return;
+            sender.send("/transfer " + target + " " + value);
+        }), marginTop(dp(6)));
+        bankBody.addView(button("Close", v -> bankPanel.setVisibility(View.GONE)), marginTop(dp(10)));
+        bankPanel.setVisibility(View.VISIBLE);
+    }
+
+    private void updateBankBalance() {
+        bankBalance.setText("Cash " + money(lastCash) + "     Bank " + money(lastBank));
+    }
+
+    private TextView sectionLabel(String label) {
+        TextView view = text(12, GOLD, true);
+        view.setText(label);
+        return view;
+    }
+
+    /** $100 / $500 / $1000 / All, for deposits or withdrawals. */
+    private LinearLayout amountRow(boolean deposit) {
+        LinearLayout row = new LinearLayout(activity);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        int[] amounts = {100, 500, 1000, 0};
+        for (int i = 0; i < amounts.length; i++) {
+            int value = amounts[i];
+            TextView b = button(value == 0 ? "All" : money(value), v -> {
+                int send = value != 0 ? value : (deposit ? lastCash : lastBank);
+                if (send > 0) sender.send((deposit ? "/deposit " : "/withdraw ") + send);
+            });
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            if (i > 0) params.leftMargin = dp(4);
+            row.addView(b, params);
+        }
+        return row;
+    }
+
+    private void sendAmount(String command, EditText field) {
+        int value = parseInt(field.getText().toString());
+        if (value > 0) sender.send(command + " " + value);
+    }
+
+    /**
+     * Season pass state: tiers unlock every perTier points; rewards is the
+     * comma-separated cash per tier. Opens the panel if open, else only
+     * refreshes it when it's showing.
+     */
+    public void onPass(int season, int points, int claimed, int perTier, String rewards, boolean open) {
+        if (!open && pass.getVisibility() != View.VISIBLE) return;
+        String[] parts = rewards.isEmpty() ? new String[0] : rewards.split(",");
+        int tiers = parts.length;
+        int per = Math.max(1, perTier);
+        int unlocked = Math.min(tiers, points / per);
+
+        passTitle.setText("Season " + season + " pass");
+        if (claimed >= tiers && tiers > 0) {
+            passSummary.setText(points + " points. Every tier claimed this season!");
+        } else if (unlocked < tiers) {
+            int next = (unlocked + 1) * per;
+            passSummary.setText(points + " points. " + (next - points) + " more to tier " + (unlocked + 1) + ".");
+        } else {
+            passSummary.setText(points + " points. Every tier unlocked.");
+        }
+        passBar.setMax(Math.max(1, tiers * per));
+        passBar.setProgress(Math.min(points, tiers * per));
+
+        passTiers.removeAllViews();
+        for (int i = 0; i < tiers; i++) {
+            int tier = i + 1;
+            boolean isClaimed = tier <= claimed;
+            boolean ready = !isClaimed && tier <= unlocked;
+            LinearLayout card = new LinearLayout(activity);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setGravity(Gravity.CENTER);
+            card.setPadding(dp(6), dp(8), dp(6), dp(8));
+            card.setBackground(rounded(ready ? 0xFF3A3320 : 0xFF1E1E22, ready ? GOLD : (isClaimed ? 0xFF7FD17F : 0xFF3A3A40)));
+            TextView name = text(11, 0xFFB0B0B0, false);
+            name.setText("Tier " + tier);
+            name.setGravity(Gravity.CENTER);
+            TextView reward = text(14, isClaimed ? 0xFF7FD17F : (ready ? GOLD : Color.WHITE), true);
+            reward.setText(money(parseInt(parts[i])));
+            reward.setGravity(Gravity.CENTER);
+            TextView state = text(10, isClaimed ? 0xFF7FD17F : (ready ? GOLD : 0xFF808080), false);
+            state.setText(isClaimed ? "Claimed" : (ready ? "Ready" : (tier * per) + " pts"));
+            state.setGravity(Gravity.CENTER);
+            card.addView(name);
+            card.addView(reward);
+            card.addView(state);
+            LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(dp(84), ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (i > 0) cardParams.leftMargin = dp(6);
+            passTiers.addView(card, cardParams);
+        }
+
+        boolean canClaim = claimed < unlocked;
+        if (canClaim) {
+            int next = claimed + 1;
+            passClaim.setText("Claim tier " + next + "  " + money(parseInt(parts[next - 1])));
+        } else {
+            passClaim.setText(claimed >= tiers && tiers > 0 ? "All claimed" : "Keep playing to unlock");
+        }
+        passClaim.setEnabled(canClaim);
+        passClaim.setAlpha(canClaim ? 1f : 0.5f);
+        pass.setVisibility(View.VISIBLE);
+    }
+
+    private static int parseInt(String s) {
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     public void setHudVisible(boolean visible) {
         hudVisible = visible;
         updateVisibility();
     }
 
-    /** Back button: closes the phone if it's open. */
+    /** Back button: closes the season pass or the phone if one is open. */
     public boolean onBack() {
+        if (pass.getVisibility() == View.VISIBLE) {
+            pass.setVisibility(View.GONE);
+            return true;
+        }
+        if (bankPanel.getVisibility() == View.VISIBLE) {
+            bankPanel.setVisibility(View.GONE);
+            return true;
+        }
         if (phone.getVisibility() != View.VISIBLE) return false;
         phone.setVisibility(View.GONE);
         return true;
@@ -199,7 +431,8 @@ public class KmUi {
         TextView balance = text(12, Color.WHITE, false);
         balance.setText("Bank balance " + money(phoneBank));
         phoneBody.addView(balance);
-        phoneBody.addView(button("Messages (" + messages.size() + ")", v -> showMessages()), marginTop(dp(8)));
+        phoneBody.addView(button("Bank", v -> { close(); sender.send("/bank"); }), marginTop(dp(8)));
+        phoneBody.addView(button("Messages (" + messages.size() + ")", v -> showMessages()), marginTop(dp(6)));
         phoneBody.addView(button("New message", v -> showCompose()), marginTop(dp(6)));
         phoneBody.addView(button("Call a taxi", v -> { sender.send("/calltaxi"); close(); }), marginTop(dp(6)));
         phoneBody.addView(button("Emergency (911)", v -> showEmergency()), marginTop(dp(6)));

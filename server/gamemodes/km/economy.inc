@@ -85,6 +85,7 @@ stock Eco_Payday(playerid)
     format(toast, sizeof (toast), "Payday: +$%d to your bank", total);
     KMUI_Toast(playerid, toast);
 
+    Pass_AddPoints(playerid, PASS_POINTS_PAYDAY);
     gChar[playerid][cXp]++;
     new needed = Level_XpNeeded(gChar[playerid][cLevel]);
     if (gChar[playerid][cXp] >= needed)
@@ -129,6 +130,26 @@ CMD:withdraw(playerid, params[])
     if (!Eco_NearAtm(playerid)) return SendError(playerid, "You need to be at an ATM.");
     if (!Money_Give(playerid, amount, -amount, "withdraw")) return SendError(playerid, "You don't have that much in the bank.");
     SendClientMessage(playerid, COLOR_SUCCESS, "Withdrew $%d. Bank balance: $%d", amount, gChar[playerid][cBank]);
+    return 1;
+}
+
+// The bank: a panel in the Kingmakers app (KMUI "bank" event: cash, bank,
+// atm = deposits and withdrawals possible here, payday = minutes to the next
+// one), the /balance line elsewhere. At an ATM, or anywhere with a phone.
+CMD:bank(playerid, params[])
+{
+    if (!Player_IsPlaying(playerid)) return 1;
+    new bool:atm = Eco_NearAtm(playerid);
+    if (!atm && !Inv_Has(playerid, ITEM_PHONE)) return SendError(playerid, "Use an ATM, or buy a phone for mobile banking.");
+    new payday = (KM_PAYDAY_SECONDS - gChar[playerid][cPaydaySeconds] + 59) / 60;
+    if (!KMUI_Enabled(playerid))
+    {
+        SendClientMessage(playerid, COLOR_INFO, "Cash: $%d | Bank: $%d | Next payday in %d min", gChar[playerid][cCash], gChar[playerid][cBank], payday);
+        return 1;
+    }
+    new payload[96];
+    format(payload, sizeof (payload), "cash=%d;bank=%d;atm=%d;payday=%d", gChar[playerid][cCash], gChar[playerid][cBank], atm ? 1 : 0, payday);
+    KMUI_Send(playerid, "bank", payload);
     return 1;
 }
 

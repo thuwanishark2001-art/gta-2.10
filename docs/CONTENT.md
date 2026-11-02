@@ -44,7 +44,7 @@ Then, on the VPS:
 
 ```
 cd /opt/kingmakers/server
-docker compose restart content
+./scripts/content-publish.sh
 ```
 
 Players get the new files the next time they open the app. The app shows
@@ -87,16 +87,38 @@ The app finds the content service at the server address it was built with
 (`kmServerHost` in `app/build.gradle`) on port 7780. To use another port, set
 `KM_CONTENT_PORT` in `.env` and build the app with `-PkmContentPort=<port>`.
 
+## Signed content (once per server)
+
+The app only trusts content signed by your server. That stops someone
+between your server and a player (public Wi-Fi, for example) from slipping
+in other files.
+
+1. **The key.** The first time `./scripts/deploy.sh` (or
+   `./scripts/content-publish.sh`) runs, it makes a signing key in
+   `server/content-keys/manifest-key.pem`. That's your private key: never
+   share it or commit it, and keep a backup. A new key means every player
+   needs a new app build.
+2. **The public key.** Show it with
+   `./scripts/content-publish.sh --pubkey`. Put the lines from
+   `-----BEGIN PUBLIC KEY-----` to `-----END PUBLIC KEY-----` in
+   `app/content-pubkey.pem` in the repository, then make a release.
+3. **What players see.** From then on, the app rejects a content list that
+   isn't signed with that key and keeps the files it already has.
+
+An app built without `app/content-pubkey.pem` (a development build) doesn't
+check signatures.
+
 ## How it works
 
 1. **The content service.** In `docker-compose.yml`, `content` is nginx. It
    serves `server/content/` read-only.
-2. **The manifest.** At start, `content-server/40-km-manifest.sh` writes
-   `manifest.json`, listing each file's path, size and SHA-256.
+2. **The manifest.** `scripts/content-publish.sh` writes `manifest.json`,
+   listing each file's path, size and SHA-256, and signs it into
+   `manifest.sig`. `deploy.sh` and `add-skin.sh` run it for you.
 3. **Downloading.** The app's start screen fetches the manifest
    (`ContentSync.java`). It then:
    - downloads what changed into its own folder
-     (`Android/data/com.samp.mobile/files/content/`)
+     (`Android/data/com.kingmakers.rp/files/content/`)
    - checks each file's size and SHA-256 before using it
    - deletes files the server no longer lists
 

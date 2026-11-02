@@ -45,6 +45,8 @@
 #include "km/gps.inc"
 #include "km/guide.inc"
 #include "km/owner.inc"
+#include "km/daily.inc"
+#include "km/pass.inc"
 
 forward KM_Tick();
 
@@ -128,6 +130,8 @@ public OnPlayerDisconnect(playerid, reason)
     Inv_Reset(playerid);
     KMUI_Reset(playerid);
     Radio_Reset(playerid);
+    Daily_Reset(playerid);
+    Pass_Reset(playerid);
     MapIcons_Reset(playerid);
     Spec_Reset(playerid);
     return 1;
@@ -213,6 +217,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
     if (Inv_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
     if (Radio_OnDialog(playerid, dialogid, response, listitem)) return 1;
     if (Gps_OnDialog(playerid, dialogid, response, listitem)) return 1;
+    if (Pass_OnDialog(playerid, dialogid, response, listitem)) return 1;
     return 0;
 }
 
@@ -266,7 +271,7 @@ public KM_Tick()
 CMD:help(playerid, params[])
 {
     SendClientMessage(playerid, COLOR_BRAND, "Kingmakers RP commands");
-    SendClientMessage(playerid, COLOR_WHITE, "General: /guide /gps /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
+    SendClientMessage(playerid, COLOR_WHITE, "General: /daily /pass /bank /guide /gps /stats /inv /balance /pay /transfer /accept /decline /staff /report /helpme");
     SendClientMessage(playerid, COLOR_WHITE, "Chat: /me /do /b /s /low /w /pm /r /o  Phone: /phone /number /sms /911");
     SendClientMessage(playerid, COLOR_WHITE, "Vehicles: /engine /lights /lock /radio /park /myvehicles /buyvehicle /sellvehicle /refuel /drivingtest /licence /showlicence /tickets /paytickets");
     SendClientMessage(playerid, COLOR_WHITE, "Jobs: /jobs /takejob /quitjob /work /stopwork /calltaxi  Property: /enter /exit /buyproperty /sellproperty /myproperties /shop /till");
@@ -284,7 +289,7 @@ CMD:help(playerid, params[])
     if (Sup_IsStaff(playerid)) SendClientMessage(playerid, COLOR_INFO, "Staff: /reports /ar /cr /h");
     if (gPlayer[playerid][pAdmin] >= ADMIN_MOD) SendClientMessage(playerid, COLOR_ADMIN, "Moderator: /a /kick /mute /unmute /goto /gethere /freeze /unfreeze /check /ajail /togooc /spec /specoff");
     if (gPlayer[playerid][pAdmin] >= ADMIN_ADMIN) SendClientMessage(playerid, COLOR_ADMIN, "Admin: /ban /unban /veh /dveh /announce /sethealth /setskin /playstream /playsound /stopstream");
-    if (gPlayer[playerid][pAdmin] >= ADMIN_LEAD) SendClientMessage(playerid, COLOR_ADMIN, "Lead: /givemoney /setfaction /sethelper /createproperty /deleteproperty /settime /setweather");
+    if (gPlayer[playerid][pAdmin] >= ADMIN_LEAD) SendClientMessage(playerid, COLOR_ADMIN, "Lead: /givemoney /givepass /setfaction /sethelper /createproperty /deleteproperty /settime /setweather");
     if (gPlayer[playerid][pAdmin] >= ADMIN_OWNER) SendClientMessage(playerid, COLOR_ADMIN, "Owner: /setadmin /renameaccount /testblips");
     return 1;
 }
